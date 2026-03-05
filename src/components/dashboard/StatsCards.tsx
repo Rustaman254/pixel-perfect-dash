@@ -1,41 +1,47 @@
 const stats = [
   {
-    title: "Business account",
+    title: "M-Pesa",
+    emoji: "📱",
     period: "Last 30 days",
-    amount: "€ 8.672,20",
-    change: "16.0%",
+    amount: "$12,450.00",
+    change: "28.3%",
     changeUp: true,
-    sub: "vs. 7,120,14 Last Period",
+    sub: "432 transactions",
   },
   {
-    title: "Total Saving",
+    title: "Card Payments",
+    emoji: "💳",
     period: "Last 30 days",
-    amount: "€ 3.765,35",
-    change: "12%",
+    amount: "$24,680.50",
+    change: "18.6%",
     changeUp: true,
-    sub: "vs. 4,116,50 Last Period",
+    sub: "891 transactions",
   },
   {
-    title: "Tax Reserve",
+    title: "Crypto",
+    emoji: "₿",
     period: "Last 30 days",
-    amount: "€ 14.376,16",
-    change: "25.2%",
-    changeUp: false,
-    sub: "vs. 10,236,46 Last Period",
+    amount: "$11,190.00",
+    change: "42.1%",
+    changeUp: true,
+    sub: "USDC · USDT · USDA · BTC",
   },
 ];
 
 const StatsCards = () => {
   return (
-    <div className="grid grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
       {stats.map((stat) => (
-        <div key={stat.title} className="bg-card rounded-2xl p-5">
+        <div key={stat.title} className="bg-card rounded-2xl p-4 md:p-5">
           <div className="flex items-center justify-between mb-3">
-            <h4 className="text-sm font-medium text-foreground">{stat.title}</h4>
+            <div className="flex items-center gap-2">
+              <span className="text-base">{stat.emoji}</span>
+              <h4 className="text-sm font-medium text-foreground">{stat.title}</h4>
+            </div>
             <span className="text-[11px] text-muted-foreground">{stat.period}</span>
           </div>
           <div className="flex items-baseline gap-2 mb-1">
-            <h3 className="text-xl font-bold text-foreground">{stat.amount}</h3>
+            <h3 className="text-lg md:text-xl font-bold text-foreground">{stat.amount}</h3>
             <span className={`text-xs font-medium ${stat.changeUp ? "text-success" : "text-destructive"}`}>
               {stat.change} {stat.changeUp ? "↑" : "↓"}
             </span>
