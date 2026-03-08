@@ -1,0 +1,25 @@
+import { useState, ReactNode } from "react";
+import Sidebar from "@/components/dashboard/Sidebar";
+import TopBar from "@/components/dashboard/TopBar";
+
+interface DashboardLayoutProps {
+    children: ReactNode;
+}
+
+const DashboardLayout = ({ children }: DashboardLayoutProps) => {
+    const [sidebarOpen, setSidebarOpen] = useState(false);
+
+    return (
+        <div className="flex min-h-screen bg-white">
+            <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+            <div className="flex-1 md:ml-[240px] flex flex-col min-w-0">
+                <TopBar onMenuToggle={() => setSidebarOpen(true)} />
+                <main className="flex-1 p-4 md:p-6 space-y-4 overflow-auto">
+                    {children}
+                </main>
+            </div>
+        </div>
+    );
+};
+
+export default DashboardLayout;

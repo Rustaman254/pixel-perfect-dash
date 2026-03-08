@@ -1,12 +1,18 @@
 import { MousePointerClick, ShoppingCart } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const IncomeExpenseCards = () => {
+  const navigate = useNavigate();
+
   return (
     <div className="space-y-4">
       {/* Link Clicks */}
-      <div className="bg-card rounded-2xl p-4 md:p-5">
+      <div 
+        onClick={() => navigate("/analytics")}
+        className="bg-card rounded-2xl p-4 md:p-5 border border-border cursor-pointer hover:bg-muted/30 transition-colors group"
+      >
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center group-hover:bg-accent/80 transition-colors">
             <MousePointerClick className="w-5 h-5 text-accent-foreground" />
           </div>
         </div>
@@ -18,9 +24,12 @@ const IncomeExpenseCards = () => {
       </div>
 
       {/* Conversions */}
-      <div className="bg-card rounded-2xl p-4 md:p-5">
+      <div 
+        onClick={() => navigate("/analytics")}
+        className="bg-card rounded-2xl p-4 md:p-5 border border-border cursor-pointer hover:bg-muted/30 transition-colors group"
+      >
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center group-hover:bg-accent/80 transition-colors">
             <ShoppingCart className="w-5 h-5 text-accent-foreground" />
           </div>
         </div>
