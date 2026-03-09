@@ -4,6 +4,7 @@ import { User, Shield, Bell, Key, CreditCard, Save, Eye, EyeOff, Copy, Plus } fr
 import { useAppContext } from "@/contexts/AppContext";
 import { fetchWithAuth } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 const tabs = [
     { id: "profile", label: "Profile", icon: User },
@@ -20,8 +21,10 @@ const SettingsPage = () => {
     const { userProfile, refreshData } = useAppContext();
     const { toast } = useToast();
     const [activeTab, setActiveTab] = useState("profile");
-    const [showApiKey, setShowApiKey] = useState(false);
+    const [showApiKeys, setShowApiKeys] = useState<{ [key: number]: boolean }>({});
     const [loading, setLoading] = useState(false);
+    const [apiKeys, setApiKeys] = useState<any[]>([]);
+    const [fetchingKeys, setFetchingKeys] = useState(false);
     const [notifs, setNotifs] = useState({ email: true, push: true, sms: false, marketing: false, weeklyReport: true, payoutAlerts: true });
 
     const [formData, setFormData] = useState({
@@ -46,6 +49,24 @@ const SettingsPage = () => {
         }
     }, [userProfile]);
 
+    const fetchKeys = async () => {
+        try {
+            setFetchingKeys(true);
+            const data = await fetchWithAuth('/auth/api-keys');
+            setApiKeys(data);
+        } catch (err: any) {
+            console.error("Failed to fetch keys:", err);
+        } finally {
+            setFetchingKeys(false);
+        }
+    };
+
+    useEffect(() => {
+        if (activeTab === "api") {
+            fetchKeys();
+        }
+    }, [activeTab]);
+
     const handleSaveProfile = async () => {
         setLoading(true);
         try {
@@ -60,6 +81,43 @@ const SettingsPage = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleCreateKey = async () => {
+        const name = prompt("Enter a label for this API key:", "Default API Key");
+        if (name === null) return;
+        
+        try {
+            await fetchWithAuth('/auth/api-keys', {
+                method: 'POST',
+                body: JSON.stringify({ name })
+            });
+            fetchKeys();
+            toast({ title: "Success", description: "API Key created successfully!" });
+        } catch (err: any) {
+            toast({ title: "Error", description: err.message, variant: "destructive" });
+        }
+    };
+
+    const handleDeleteKey = async (id: number) => {
+        if (!confirm("Are you sure you want to delete this API key?")) return;
+        
+        try {
+            await fetchWithAuth(`/auth/api-keys/${id}`, { method: 'DELETE' });
+            fetchKeys();
+            toast({ title: "Key Deleted", description: "API Key has been removed." });
+        } catch (err: any) {
+            toast({ title: "Error", description: err.message, variant: "destructive" });
+        }
+    };
+
+    const toggleShowKey = (id: number) => {
+        setShowApiKeys(prev => ({ ...prev, [id]: !prev[id] }));
+    };
+
+    const copyToClipboard = (text: string) => {
+        navigator.clipboard.writeText(text);
+        toast({ title: "Copied!", description: "API Key copied to clipboard" });
     };
 
     const toggle = (key: keyof typeof notifs) => setNotifs(prev => ({ ...prev, [key]: !prev[key] }));
@@ -200,21 +258,57 @@ const SettingsPage = () => {
                 <div className="bg-card rounded-2xl p-5 border border-border">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="font-semibold text-foreground">API Keys</h3>
-                        <button className="flex items-center gap-2 text-sm font-medium text-white px-4 py-2 rounded-lg" style={{ backgroundColor: '#025864' }}><Plus className="w-4 h-4" />Create Key</button>
+                        <button 
+                            onClick={handleCreateKey}
+                            className="flex items-center gap-2 text-sm font-medium text-white px-4 py-2 rounded-lg" 
+                            style={{ backgroundColor: '#025864' }}
+                        >
+                            <Plus className="w-4 h-4" />Create Key
+                        </button>
                     </div>
-                    <div className="space-y-3">
-                        <div className="p-4 rounded-xl bg-muted/30 border border-border">
-                            <div className="flex items-center justify-between mb-2">
-                                <p className="text-sm font-medium text-foreground">Live Key</p>
-                                <span className="text-xs px-2 py-0.5 rounded-full bg-green-50 text-green-600">Active</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <code className="flex-1 text-sm text-muted-foreground bg-muted px-3 py-1.5 rounded font-mono">{showApiKey ? "sk_live_a1b2c3d4e5f6g7h8i9j0..." : "sk_live_••••••••••••••••"}</code>
-                                <button onClick={() => setShowApiKey(!showApiKey)} className="p-1.5 rounded-md hover:bg-muted text-muted-foreground"><Eye className="w-4 h-4" /></button>
-                                <button className="p-1.5 rounded-md hover:bg-muted text-muted-foreground"><Copy className="w-4 h-4" /></button>
-                            </div>
+                    
+                    {fetchingKeys ? (
+                        <div className="py-10 text-center text-sm text-muted-foreground">Loading keys...</div>
+                    ) : apiKeys.length === 0 ? (
+                        <div className="py-10 text-center text-sm text-muted-foreground border border-dashed border-border rounded-xl">
+                            No API keys generated yet.
                         </div>
-                    </div>
+                    ) : (
+                        <div className="space-y-3">
+                            {apiKeys.map((key) => (
+                                <div key={key.id} className="p-4 rounded-xl bg-muted/30 border border-border">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <div className="flex items-center gap-2">
+                                            <p className="text-sm font-medium text-foreground">{key.name}</p>
+                                            <span className={cn(
+                                                "text-[10px] px-2 py-0.5 rounded-full font-bold",
+                                                key.status === 'Active' ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"
+                                            )}>
+                                                {key.status}
+                                            </span>
+                                        </div>
+                                        <button 
+                                            onClick={() => handleDeleteKey(key.id)}
+                                            className="text-xs text-red-500 hover:text-red-700 font-medium"
+                                        >
+                                            Delete
+                                        </button>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <code className="flex-1 text-sm text-muted-foreground bg-muted px-3 py-1.5 rounded font-mono truncate">
+                                            {showApiKeys[key.id] ? key.key : `${key.key.substring(0, 10)}••••••••`}
+                                        </code>
+                                        <button onClick={() => toggleShowKey(key.id)} className="p-1.5 rounded-md hover:bg-muted text-muted-foreground">
+                                            {showApiKeys[key.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                        </button>
+                                        <button onClick={() => copyToClipboard(key.key)} className="p-1.5 rounded-md hover:bg-muted text-muted-foreground">
+                                            <Copy className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             )}
 

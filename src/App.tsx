@@ -11,11 +11,15 @@ import PaymentMethodsPage from "./pages/PaymentMethodsPage";
 import CurrenciesPage from "./pages/CurrenciesPage";
 import AnalyticsPage from "./pages/AnalyticsPage";
 import PayoutsPage from "./pages/PayoutsPage";
+import StatisticsPage from "./pages/StatisticsPage";
 import CustomersPage from "./pages/CustomersPage";
 import SettingsPage from "./pages/SettingsPage";
 import HelpCenterPage from "./pages/HelpCenterPage";
 import DeveloperDocsPage from "./pages/DeveloperDocsPage";
 import PublicPaymentPage from "./pages/PublicPaymentPage";
+import DeveloperSettings from "./pages/DeveloperSettings";
+import OAuthConsentPage from "./pages/OAuthConsentPage";
+import NotificationsPage from "./pages/NotificationsPage";
 
 // Auth & Admin
 import Login from "./pages/auth/Login";
@@ -24,6 +28,10 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import ManageUsers from "./pages/admin/ManageUsers";
 import ManageCompanies from "./pages/admin/ManageCompanies";
 import ManageApiKeys from "./pages/admin/ManageApiKeys";
+import SystemSettings from "./pages/admin/SystemSettings";
+import ManageSupport from "./pages/admin/ManageSupport";
+import AdminNotificationsPage from "./pages/admin/AdminNotificationsPage";
+import ManageReferralCodes from "./pages/admin/ManageReferralCodes";
 
 import { AppProvider, useAppContext } from "./contexts/AppContext";
 
@@ -49,15 +57,19 @@ const AppRoutes = () => {
         {/* Seller Dashboard */}
         <Route path="/" element={<ProtectedRoute role="seller"><Index /></ProtectedRoute>} />
         <Route path="/payment-links" element={<ProtectedRoute role="seller"><PaymentLinksPage /></ProtectedRoute>} />
+        <Route path="/notifications" element={<ProtectedRoute role="seller"><NotificationsPage /></ProtectedRoute>} />
         <Route path="/orders" element={<ProtectedRoute role="seller"><OrdersPage /></ProtectedRoute>} />
         <Route path="/payment-methods" element={<ProtectedRoute role="seller"><PaymentMethodsPage /></ProtectedRoute>} />
         <Route path="/currencies" element={<ProtectedRoute role="seller"><CurrenciesPage /></ProtectedRoute>} />
-        <Route path="/analytics" element={<ProtectedRoute role="seller"><AnalyticsPage /></ProtectedRoute>} />
+        <Route path="/analytics" element={<ProtectedRoute role="seller"><StatisticsPage /></ProtectedRoute>} />
+        <Route path="/statistics" element={<ProtectedRoute role="seller"><StatisticsPage /></ProtectedRoute>} />
         <Route path="/payouts" element={<ProtectedRoute role="seller"><PayoutsPage /></ProtectedRoute>} />
         <Route path="/customers" element={<ProtectedRoute role="seller"><CustomersPage /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute role="seller"><SettingsPage /></ProtectedRoute>} />
         <Route path="/help-center" element={<ProtectedRoute role="seller"><HelpCenterPage /></ProtectedRoute>} />
         <Route path="/developer-docs" element={<ProtectedRoute role="seller"><DeveloperDocsPage /></ProtectedRoute>} />
+        <Route path="/developer/settings" element={<ProtectedRoute role="seller"><DeveloperSettings /></ProtectedRoute>} />
+        <Route path="/oauth/authorize" element={<ProtectedRoute><OAuthConsentPage /></ProtectedRoute>} />
 
         {/* Admin Dashboard */}
         <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
@@ -66,7 +78,10 @@ const AppRoutes = () => {
         <Route path="/admin/api-keys" element={<ProtectedRoute role="admin"><ManageApiKeys /></ProtectedRoute>} />
         <Route path="/admin/revenue" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
         <Route path="/admin/payouts" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
-        <Route path="/admin/settings" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
+        <Route path="/admin/settings" element={<ProtectedRoute role="admin"><SystemSettings /></ProtectedRoute>} />
+        <Route path="/admin/support" element={<ProtectedRoute role="admin"><ManageSupport /></ProtectedRoute>} />
+        <Route path="/admin/notifications" element={<ProtectedRoute role="admin"><AdminNotificationsPage /></ProtectedRoute>} />
+        <Route path="/admin/referrals" element={<ProtectedRoute role="admin"><ManageReferralCodes /></ProtectedRoute>} />
 
         {/* Public Routes */}
         <Route path="/pay/:slug" element={<PublicPaymentPage />} />

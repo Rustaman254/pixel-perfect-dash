@@ -1,7 +1,7 @@
 import { useState } from "react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { useToast } from "@/hooks/use-toast";
-import { Copy, ExternalLink, MoreHorizontal, Plus, Search, Filter, X, MousePointerClick, Calendar, Clock, Package, Truck, CheckCircle2, AlertTriangle, DollarSign, Share2, Image as ImageIcon, Eye, QrCode, Download, User, Mail, Phone } from "lucide-react";
+import { Copy, ExternalLink, MoreHorizontal, Plus, Search, Filter, X, MousePointerClick, Calendar, Clock, Package, Truck, CheckCircle2, AlertTriangle, DollarSign, Share2, Image as ImageIcon, Eye, QrCode, Download, User, Mail, Phone, Heart } from "lucide-react";
 import { useAppContext } from "@/contexts/AppContext";
 import type { DealStatus } from "@/contexts/AppContext";
 import { fetchWithAuth } from "@/lib/api";
@@ -20,8 +20,9 @@ const PaymentLinksPage = () => {
     const [loading, setLoading] = useState(false);
     const [form, setForm] = useState({
         name: "", price: "", currency: "KES", description: "",
-        linkType: "one-time" as "one-time" | "reusable", hasExpiry: false, expiryDate: "",
+        linkType: "one-time" as "one-time" | "reusable" | "donation", hasExpiry: false, expiryDate: "",
         deliveryDays: "2", buyerName: "", buyerPhone: "", buyerEmail: "", hasPhotos: false,
+        category: "product" as "product" | "service", shippingFee: "", minDonation: "",
     });
     const [formError, setFormError] = useState("");
     const [showReviewModal, setShowReviewModal] = useState(false);
@@ -38,25 +39,30 @@ const PaymentLinksPage = () => {
             name: "", price: "", currency: "KES", description: "",
             linkType: "one-time", hasExpiry: false, expiryDate: "",
             deliveryDays: "2", buyerName: "", buyerPhone: "", buyerEmail: "", hasPhotos: false,
+            category: "product", shippingFee: "", minDonation: "",
         });
         setFormError("");
     };
 
     const handleCreate = async () => {
         if (!form.name.trim()) { setFormError("Please enter an item name."); return; }
-        if (!form.price.trim() || isNaN(parseFloat(form.price))) { setFormError("Please enter a valid amount."); return; }
+        if (form.linkType !== "donation" && (!form.price.trim() || isNaN(parseFloat(form.price)))) { setFormError("Please enter a valid amount."); return; }
         if (form.linkType === "reusable" && form.hasExpiry && !form.expiryDate) { setFormError("Please select an expiry date."); return; }
-        if (!form.deliveryDays || parseInt(form.deliveryDays) < 1) { setFormError("Please set expected delivery time."); return; }
+        if (form.linkType !== "donation" && (!form.deliveryDays || parseInt(form.deliveryDays) < 1)) { setFormError("Please set expected delivery time."); return; }
 
         setLoading(true);
         try {
-            const shortId = Math.random().toString(36).substring(2, 7);
+            const cryptoArr = new Uint8Array(4);
+            crypto.getRandomValues(cryptoArr);
+            const shortId = Array.from(cryptoArr).map(b => b.toString(16).padStart(2, '0')).join('');
             const slug = `${slugify(form.name)}-${shortId}`;
 
             let expiryLabel: string | null = null;
             let expiryDate: string | null = null;
             if (form.linkType === "one-time") {
                 expiryLabel = "1 hour after creation";
+            } else if (form.linkType === "donation") {
+                expiryLabel = "No expiry";
             } else if (form.hasExpiry && form.expiryDate) {
                 expiryDate = form.expiryDate;
                 expiryLabel = new Date(form.expiryDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
@@ -68,16 +74,19 @@ const PaymentLinksPage = () => {
                 name: form.name.trim(),
                 slug,
                 description: form.description.trim(),
-                price: parseFloat(form.price),
+                price: form.price ? parseFloat(form.price) : 0,
                 currency: form.currency,
                 linkType: form.linkType,
                 hasPhotos: form.hasPhotos,
-                deliveryDays: parseInt(form.deliveryDays),
+                deliveryDays: form.deliveryDays ? parseInt(form.deliveryDays) : null,
                 expiryDate,
                 expiryLabel,
                 buyerName: form.buyerName.trim(),
                 buyerPhone: form.buyerPhone.trim(),
                 buyerEmail: form.buyerEmail.trim(),
+                category: form.category,
+                shippingFee: parseFloat(form.shippingFee) || 0,
+                minDonation: form.linkType === "donation" ? (parseFloat(form.minDonation) || 0) : 0,
             };
 
             const newLink = await fetchWithAuth('/links', {
@@ -243,7 +252,10 @@ const PaymentLinksPage = () => {
                                             )}
                                             <div className="min-w-0">
                                                 <p className="text-sm font-medium text-foreground truncate">{link.name}</p>
-                                                <p className="text-[11px] text-muted-foreground truncate">{link.url}</p>
+                                                <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-[11px] text-[#025864] hover:underline flex items-center gap-1 truncate">
+                                                    <ExternalLink className="w-2.5 h-2.5" />
+                                                    {link.url}
+                                                </a>
                                                 {link.buyerName && (
                                                     <div className="space-y-0.5 mt-1 border-l-2 border-slate-100 pl-2 ml-1">
                                                         <p className="text-[10px] font-bold text-slate-700">{link.buyerName}</p>
@@ -274,8 +286,8 @@ const PaymentLinksPage = () => {
                                         </div>
                                     </td>
                                     <td className="py-3 hidden md:table-cell">
-                                        <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${link.linkType === "one-time" ? "bg-purple-50 text-purple-600" : "bg-blue-50 text-blue-600"}`}>
-                                            {link.linkType === "one-time" ? "One-time" : "Reusable"}
+                                        <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${link.linkType === "one-time" ? "bg-purple-50 text-purple-600" : link.linkType === "donation" ? "bg-pink-50 text-pink-600" : "bg-blue-50 text-blue-600"}`}>
+                                            {link.linkType === "one-time" ? "One-time" : link.linkType === "donation" ? "Donation" : "Reusable"}
                                         </span>
                                         {link.expiryLabel && (
                                             <p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1">
@@ -388,21 +400,103 @@ const PaymentLinksPage = () => {
                                 <div>
                                     <label className="text-sm font-medium text-foreground block mb-1.5">Item Name *</label>
                                     <input type="text" placeholder='e.g. "iPhone 12 128GB"' className={inputClass} value={form.name} onChange={(e) => setForm(p => ({ ...p, name: e.target.value }))} autoFocus />
-                                    {form.name.trim() && <p className="text-[11px] text-muted-foreground mt-1">🔗 ripplify.co/deal/{slugify(form.name)}</p>}
+                                    {form.name.trim() && <p className="text-[11px] text-[#025864] mt-1 font-medium bg-[#025864]/5 px-2 py-1 rounded-md border border-[#025864]/10 inline-block">🔗 {window.location.origin}/pay/{slugify(form.name)}</p>}
                                 </div>
 
-                                {/* Amount + Currency */}
-                                <div className="grid grid-cols-3 gap-3">
-                                    <div className="col-span-2">
-                                        <label className="text-sm font-medium text-foreground block mb-1.5">Amount *</label>
-                                        <input type="number" min="0" step="1" placeholder="45,000" className={inputClass} value={form.price} onChange={(e) => setForm(p => ({ ...p, price: e.target.value }))} />
+                                {/* Category Selection */}
+                                <div>
+                                    <label className="text-sm font-medium text-foreground block mb-2">Deal Category</label>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <button type="button" onClick={() => {
+                                            const newType = form.linkType === 'donation' ? 'one-time' : form.linkType;
+                                            setForm(p => ({ ...p, category: "product", linkType: newType }));
+                                        }}
+                                            className={`p-3 rounded-xl border-2 text-left transition-colors ${form.category === "product" ? "border-[#025864]" : "border-border hover:border-gray-300"}`}
+                                            style={form.category === "product" ? { backgroundColor: 'rgba(2,88,100,0.04)' } : undefined}>
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <Package className="w-4 h-4" style={{ color: form.category === "product" ? '#025864' : '#9ca3af' }} />
+                                                <span className="text-sm font-medium text-foreground">Physical Item</span>
+                                            </div>
+                                            <p className="text-[11px] text-muted-foreground">Tangible goods needing delivery</p>
+                                        </button>
+                                        <button type="button" onClick={() => setForm(p => ({ ...p, category: "service" }))}
+                                            className={`p-3 rounded-xl border-2 text-left transition-colors ${form.category === "service" ? "border-[#025864]" : "border-border hover:border-gray-300"}`}
+                                            style={form.category === "service" ? { backgroundColor: 'rgba(2,88,100,0.04)' } : undefined}>
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <MousePointerClick className="w-4 h-4" style={{ color: form.category === "service" ? '#025864' : '#9ca3af' }} />
+                                                <span className="text-sm font-medium text-foreground">Online Service</span>
+                                            </div>
+                                            <p className="text-[11px] text-muted-foreground">Events, consulting, or digital work</p>
+                                        </button>
                                     </div>
-                                    <div>
-                                        <label className="text-sm font-medium text-foreground block mb-1.5">Currency</label>
-                                        <select className={inputClass} value={form.currency} onChange={(e) => setForm(p => ({ ...p, currency: e.target.value }))}>
-                                            {currencies.map(c => <option key={c} value={c}>{c}</option>)}
-                                        </select>
+                                </div>
+
+                                {/* Link Type - MOVED HERE */}
+                                <div>
+                                    <label className="text-sm font-medium text-foreground block mb-2">Link Type</label>
+                                    <div className="grid grid-cols-3 gap-3">
+                                        <button type="button" onClick={() => setForm(p => ({ ...p, linkType: "one-time", hasExpiry: false, expiryDate: "" }))}
+                                            className={`p-3 rounded-xl border-2 text-left transition-colors ${form.linkType === "one-time" ? "border-[#025864]" : "border-border hover:border-gray-300"}`}
+                                            style={form.linkType === "one-time" ? { backgroundColor: 'rgba(2,88,100,0.04)' } : undefined}>
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <Clock className="w-4 h-4" style={{ color: form.linkType === "one-time" ? '#025864' : '#9ca3af' }} />
+                                                <span className="text-sm font-medium text-foreground">One-time</span>
+                                            </div>
+                                            <p className="text-[11px] text-muted-foreground">Expires in 1 hour or after one payment</p>
+                                        </button>
+                                        <button type="button" onClick={() => setForm(p => ({ ...p, linkType: "reusable" }))}
+                                            className={`p-3 rounded-xl border-2 text-left transition-colors ${form.linkType === "reusable" ? "border-[#025864]" : "border-border hover:border-gray-300"}`}
+                                            style={form.linkType === "reusable" ? { backgroundColor: 'rgba(2,88,100,0.04)' } : undefined}>
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <ExternalLink className="w-4 h-4" style={{ color: form.linkType === "reusable" ? '#025864' : '#9ca3af' }} />
+                                                <span className="text-sm font-medium text-foreground">Reusable</span>
+                                            </div>
+                                            <p className="text-[11px] text-muted-foreground">Multiple uses, set your own expiry</p>
+                                        </button>
+                                        <button 
+                                            type="button" 
+                                            disabled={form.category === "product"}
+                                            onClick={() => setForm(p => ({ ...p, linkType: "donation", hasExpiry: false, expiryDate: "" }))}
+                                            className={`p-3 rounded-xl border-2 text-left transition-all ${form.category === "product" ? "opacity-50 cursor-not-allowed grayscale" : (form.linkType === "donation" ? "border-pink-500" : "border-border hover:border-gray-300")}`}
+                                            style={form.linkType === "donation" && form.category !== "product" ? { backgroundColor: 'rgba(236,72,153,0.04)' } : undefined}>
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <Heart className="w-4 h-4" style={{ color: form.linkType === "donation" ? '#ec4899' : '#9ca3af' }} />
+                                                <span className="text-sm font-medium text-foreground">Donation</span>
+                                            </div>
+                                            <p className="text-[11px] text-muted-foreground">Accept flexible donations</p>
+                                            {form.category === "product" && <p className="text-[9px] text-pink-600 font-bold mt-1">Not for physical items</p>}
+                                        </button>
                                     </div>
+                                </div>
+
+                                {/* Amount + Currency + Shipping (if product) */}
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-3 gap-3">
+                                        <div className="col-span-2">
+                                            <label className="text-sm font-medium text-foreground block mb-1.5">{form.linkType === "donation" ? "Suggested Amount" : form.category === "product" ? "Item Price *" : "Service Fee *"}</label>
+                                            <input type="number" min="0" step="1" placeholder={form.linkType === "donation" ? "0 (optional)" : "45,000"} className={inputClass} value={form.price} onChange={(e) => setForm(p => ({ ...p, price: e.target.value }))} />
+                                        </div>
+                                        <div>
+                                            <label className="text-sm font-medium text-foreground block mb-1.5">Currency</label>
+                                            <select className={inputClass} value={form.currency} onChange={(e) => setForm(p => ({ ...p, currency: e.target.value }))}>
+                                                {currencies.map(c => <option key={c} value={c}>{c}</option>)}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    
+                                    {form.category === "product" && (
+                                        <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                                            <label className="text-sm font-medium text-foreground block mb-1.5 flex items-center justify-between">
+                                                <span>Shipping / Delivery Fee</span>
+                                                <span className="text-[10px] text-muted-foreground font-normal">Optional</span>
+                                            </label>
+                                            <div className="relative">
+                                                <Truck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                                <input type="number" min="0" step="1" placeholder="500" className={inputClass + " pl-9"} value={form.shippingFee} onChange={(e) => setForm(p => ({ ...p, shippingFee: e.target.value }))} />
+                                            </div>
+                                            <p className="text-[10px] text-muted-foreground mt-1 px-1">This fee will be added to the item price at checkout.</p>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Description */}
@@ -431,12 +525,56 @@ const PaymentLinksPage = () => {
                                     </button>
                                 </div>
 
+                                {/* One-time & Donation info notices */}
+                                {form.linkType === "one-time" && (
+                                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50 text-emerald-700 text-[11px] border border-emerald-100">
+                                        <Clock className="w-3.5 h-3.5 shrink-0" />
+                                        <span>Link expires <strong>1 hour</strong> after creation or after first payment.</span>
+                                    </div>
+                                )}
+
+                                {form.linkType === "donation" && (
+                                    <div className="space-y-4">
+                                        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-pink-50 text-pink-700 text-sm border border-pink-100">
+                                            <Heart className="w-4 h-4 shrink-0" />
+                                            <span>Donors can enter any amount. Suggested price is optional.</span>
+                                        </div>
+                                        <div>
+                                            <label className="text-sm font-medium text-foreground block mb-1.5 flex items-center justify-between">
+                                                <span>Minimum Donation</span>
+                                                <span className="text-[10px] text-muted-foreground font-normal">Optional</span>
+                                            </label>
+                                            <div className="relative">
+                                                <Heart className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                                <input type="number" min="0" step="1" placeholder="0" className={inputClass} value={form.minDonation} onChange={(e) => setForm(p => ({ ...p, minDonation: e.target.value }))} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Reusable: settable expiry */}
+                                {form.linkType === "reusable" && (
+                                    <div className="p-3 bg-[#025864]/5 rounded-xl border border-[#025864]/10">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <label className="text-sm font-bold text-[#025864]">Set Expiry Date</label>
+                                            <button type="button" onClick={() => setForm(p => ({ ...p, hasExpiry: !p.hasExpiry, expiryDate: "" }))} className={`relative w-10 h-5 rounded-full transition-colors ${form.hasExpiry ? '' : 'bg-gray-200'}`} style={form.hasExpiry ? { backgroundColor: '#025864' } : undefined}>
+                                                <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${form.hasExpiry ? 'left-[21px]' : 'left-0.5'}`} />
+                                            </button>
+                                        </div>
+                                        {form.hasExpiry && (
+                                            <div className="relative">
+                                                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                                <input type="date" className={inputClass + " pl-9"} value={form.expiryDate} onChange={(e) => setForm(p => ({ ...p, expiryDate: e.target.value }))} min={new Date().toISOString().split('T')[0]} />
+                                            </div>
+                                        )}
+                                        {!form.hasExpiry && <p className="text-[11px] text-muted-foreground">Link will stay active indefinitely.</p>}
+                                    </div>
+                                )}
+
                                 {/* Buyer Information (Optional) */}
                                 {form.linkType === "one-time" && (
                                     <div className="border-t border-border pt-4 space-y-4">
-                                        <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Buyer Information (Optional)</p>
-                                        <p className="text-[10px] text-muted-foreground -mt-2 mb-2 leading-relaxed">Add details if you already know who is buying. Reusable links will collect this directly from the buyers at checkout.</p>
-
+                                        <p className="text-[11px] font-bold uppercase tracking-wider text-[#025864]">Buyer Information (Optional)</p>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div>
                                                 <label className="text-sm font-medium text-foreground block mb-1.5">Buyer Name</label>
@@ -460,63 +598,6 @@ const PaymentLinksPage = () => {
                                                 <input type="email" placeholder="buyer@example.com" className={inputClass + " pl-9"} value={form.buyerEmail} onChange={(e) => setForm(p => ({ ...p, buyerEmail: e.target.value }))} />
                                             </div>
                                         </div>
-                                    </div>
-                                )}
-
-                                {/* Divider */}
-                                <div className="border-t border-border pt-4">
-                                    <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-3">Link Settings</p>
-                                </div>
-
-                                {/* Link Type */}
-                                <div>
-                                    <label className="text-sm font-medium text-foreground block mb-2">Link Type</label>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <button type="button" onClick={() => setForm(p => ({ ...p, linkType: "one-time", hasExpiry: false, expiryDate: "" }))}
-                                            className={`p-3 rounded-xl border-2 text-left transition-colors ${form.linkType === "one-time" ? "border-[#025864]" : "border-border hover:border-gray-300"}`}
-                                            style={form.linkType === "one-time" ? { backgroundColor: 'rgba(2,88,100,0.04)' } : undefined}>
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <Clock className="w-4 h-4" style={{ color: form.linkType === "one-time" ? '#025864' : '#9ca3af' }} />
-                                                <span className="text-sm font-medium text-foreground">One-time</span>
-                                            </div>
-                                            <p className="text-[11px] text-muted-foreground">Expires in 1 hour or after one payment</p>
-                                        </button>
-                                        <button type="button" onClick={() => setForm(p => ({ ...p, linkType: "reusable" }))}
-                                            className={`p-3 rounded-xl border-2 text-left transition-colors ${form.linkType === "reusable" ? "border-[#025864]" : "border-border hover:border-gray-300"}`}
-                                            style={form.linkType === "reusable" ? { backgroundColor: 'rgba(2,88,100,0.04)' } : undefined}>
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <ExternalLink className="w-4 h-4" style={{ color: form.linkType === "reusable" ? '#025864' : '#9ca3af' }} />
-                                                <span className="text-sm font-medium text-foreground">Reusable</span>
-                                            </div>
-                                            <p className="text-[11px] text-muted-foreground">Multiple uses, set your own expiry</p>
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {/* One-time: show auto-expiry notice */}
-                                {form.linkType === "one-time" && (
-                                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-purple-50 text-purple-700 text-sm">
-                                        <Clock className="w-4 h-4 shrink-0" />
-                                        <span>This link will expire <strong>1 hour</strong> after creation, or after the first payment — whichever comes first.</span>
-                                    </div>
-                                )}
-
-                                {/* Reusable: settable expiry */}
-                                {form.linkType === "reusable" && (
-                                    <div>
-                                        <div className="flex items-center justify-between mb-2">
-                                            <label className="text-sm text-foreground">Set Expiry Date</label>
-                                            <button type="button" onClick={() => setForm(p => ({ ...p, hasExpiry: !p.hasExpiry, expiryDate: "" }))} className={`relative w-10 h-5 rounded-full transition-colors ${form.hasExpiry ? '' : 'bg-gray-200'}`} style={form.hasExpiry ? { backgroundColor: '#00D47E' } : undefined}>
-                                                <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${form.hasExpiry ? 'left-[21px]' : 'left-0.5'}`} />
-                                            </button>
-                                        </div>
-                                        {form.hasExpiry && (
-                                            <div className="relative">
-                                                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                                <input type="date" className={inputClass + " pl-9"} value={form.expiryDate} onChange={(e) => setForm(p => ({ ...p, expiryDate: e.target.value }))} min={new Date().toISOString().split('T')[0]} />
-                                            </div>
-                                        )}
-                                        {!form.hasExpiry && <p className="text-[11px] text-muted-foreground">Link will stay active until you manually disable it.</p>}
                                     </div>
                                 )}
 

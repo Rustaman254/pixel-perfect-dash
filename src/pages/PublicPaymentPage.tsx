@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Check, ShieldCheck, Clock, AlertCircle, Package, Truck, CheckCircle2, ArrowRight, User, Mail, Phone, Lock, ChevronDown, ChevronUp, Image as ImageIcon, ChevronRight } from "lucide-react";
+import { Check, ShieldCheck, Clock, AlertCircle, Package, Truck, CheckCircle2, ArrowRight, User, Mail, Phone, Lock, ChevronDown, ChevronUp, Image as ImageIcon, ChevronRight, Heart } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { publicFetch } from "@/lib/api";
 
@@ -24,6 +24,7 @@ const PublicPaymentPage = () => {
     const [showReceipt, setShowReceipt] = useState(false);
 
     const [paymentMethod, setPaymentMethod] = useState("mpesa");
+    const [donationAmount, setDonationAmount] = useState("");
 
     useEffect(() => {
         const fetchLink = async () => {
@@ -32,8 +33,26 @@ const PublicPaymentPage = () => {
                 const data = await publicFetch(`/links/public/${slug}`);
                 setLink(data);
 
-                // Skip to tracking if already paid/shipped
                 const savedBuyer = localStorage.getItem(`buyer_info_${slug}`);
+
+                if (data.isExpired) {
+                    // One-time link is expired or used
+                    if (data.expirationReason === 'already-used') {
+                        // Check if this device is the buyer
+                        if (savedBuyer) {
+                            const parsed = JSON.parse(savedBuyer);
+                            setBuyerInfo(parsed);
+                            setStep(4);
+                        } else {
+                            setError("This one-time payment link has already been used.");
+                        }
+                    } else if (data.expirationReason === 'time-expired') {
+                        setError("This payment link has expired (1-hour time limit).");
+                    }
+                    return;
+                }
+
+                // Skip to tracking if already paid/shipped (for non-expired links or status change)
                 if (['Funds locked', 'Shipped', 'Completed'].includes(data.status)) {
                     if (savedBuyer) {
                         const parsed = JSON.parse(savedBuyer);
@@ -113,8 +132,11 @@ const PublicPaymentPage = () => {
 
     const handleNextStep = () => {
         if (step === 1) {
-            if (link.buyerName && !isEditingInfo) {
-                // Pre-filled info, go to confirmation
+            if (link.linkType === 'donation') {
+                // Donations skip buyer details, go straight to payment
+                setStep(2);
+                setIsEditingInfo(true);
+            } else if (link.buyerName && !isEditingInfo) {
                 setStep(2);
             } else {
                 setStep(2);
@@ -137,17 +159,22 @@ const PublicPaymentPage = () => {
         try {
             const transactionId = "TXN-" + Math.random().toString(36).substring(2, 10).toUpperCase();
 
+            const isDonation = link.linkType === 'donation';
+            const payAmount = isDonation 
+                ? (parseFloat(donationAmount) || 0)
+                : link.price + (link.category === 'product' ? (link.shippingFee || 0) : 0);
+
             await publicFetch(`/transactions/public/${slug}`, {
                 method: 'POST',
                 body: JSON.stringify({
                     buyerName: buyerInfo.fullName,
                     buyerEmail: buyerInfo.email,
                     buyerPhone: buyerInfo.phone,
-                    amount: link.price,
+                    amount: payAmount,
                     currency: link.currency,
-                    status: 'Funds locked',
+                    status: isDonation ? 'Completed' : 'Funds locked',
                     transactionId,
-                    type: 'Payment'
+                    type: isDonation ? 'Donation' : 'Payment'
                 })
             });
 
@@ -156,8 +183,8 @@ const PublicPaymentPage = () => {
 
             setStep(4);
             toast({
-                title: "Payment Successful",
-                description: "Your funds are now held in escrow securely.",
+                title: isDonation ? "Donation Received!" : "Payment Successful",
+                description: isDonation ? "Thank you for your generous donation!" : "Your funds are now held in escrow securely.",
             });
         } catch (err: any) {
             toast({
@@ -231,9 +258,14 @@ const PublicPaymentPage = () => {
                                         </div>
                                         <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 leading-tight">{link.name}</h1>
                                         <div className="flex items-center gap-4 pt-1">
-                                            <div className="text-3xl font-black text-[#025864]">{link.currency} {link.price.toLocaleString()}</div>
-                                            <span className="px-2.5 py-1 bg-slate-100 text-slate-600 text-[11px] font-bold rounded-md flex items-center gap-1">
-                                                <Package className="w-3 h-3" /> Escrow Protected
+                                            <div className="text-3xl font-black text-[#025864]">
+                                                {link.linkType === 'donation' 
+                                                    ? (link.price > 0 ? `${link.currency} ${link.price.toLocaleString()}` : 'Any Amount')
+                                                    : `${link.currency} ${link.price.toLocaleString()}`
+                                                }
+                                            </div>
+                                            <span className={`px-2.5 py-1 text-[11px] font-bold rounded-md flex items-center gap-1 ${link.linkType === 'donation' ? 'bg-pink-50 text-pink-600' : 'bg-slate-100 text-slate-600'}`}>
+                                                {link.linkType === 'donation' ? <><Heart className="w-3 h-3" /> Donation Link</> : <><Package className="w-3 h-3" /> Escrow Protected</>}
                                             </span>
                                         </div>
                                     </div>
@@ -243,6 +275,28 @@ const PublicPaymentPage = () => {
                                             <p className="text-slate-700 leading-relaxed text-sm">{link.description}</p>
                                         </div>
                                     )}
+                                    {/* Donation-specific: custom amount input */}
+                                    {link.linkType === 'donation' && (
+                                        <div className="bg-pink-50 rounded-2xl p-5 border border-pink-100 space-y-3">
+                                            <h4 className="text-xs font-bold text-pink-400 uppercase tracking-wider">Enter Donation Amount</h4>
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-lg font-bold text-slate-700">{link.currency}</span>
+                                                <input
+                                                    type="number"
+                                                    min={link.minDonation || 1}
+                                                    step="1"
+                                                    placeholder={link.price > 0 ? link.price.toString() : "Enter amount"}
+                                                    className="w-full px-4 py-3 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-pink-300 focus:border-pink-400 text-lg font-bold text-slate-900"
+                                                    value={donationAmount}
+                                                    onChange={(e) => setDonationAmount(e.target.value)}
+                                                />
+                                            </div>
+                                            {link.minDonation > 0 && (
+                                                <p className="text-[11px] text-pink-600">Minimum donation: {link.currency} {link.minDonation.toLocaleString()}</p>
+                                            )}
+                                        </div>
+                                    )}
+                                    {link.linkType !== 'donation' && (
                                     <div className="space-y-4 py-2">
                                         <div className="flex items-start gap-3">
                                             <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center shrink-0">
@@ -263,8 +317,22 @@ const PublicPaymentPage = () => {
                                             </div>
                                         </div>
                                     </div>
-                                    <button onClick={handleNextStep} className="w-full bg-[#025864] hover:bg-[#014751] text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all group">
-                                        Buy Now with Escrow
+                                    )}
+                                    {link.linkType === 'donation' && (
+                                    <div className="space-y-4 py-2">
+                                        <div className="flex items-start gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-pink-50 flex items-center justify-center shrink-0">
+                                                <Heart className="w-4 h-4 text-pink-500" />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-bold text-slate-900">Support This Cause</p>
+                                                <p className="text-xs text-slate-500">Your donation goes directly to {sellerName}. Thank you for your generosity!</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    )}
+                                    <button onClick={handleNextStep} className={`w-full font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all group text-white ${link.linkType === 'donation' ? 'bg-pink-500 hover:bg-pink-600' : 'bg-[#025864] hover:bg-[#014751]'}`}>
+                                        {link.linkType === 'donation' ? 'Donate Now' : 'Buy Now with Escrow'}
                                         <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                                     </button>
                                 </div>
@@ -404,7 +472,12 @@ const PublicPaymentPage = () => {
                                             <p className="text-xs text-emerald-700 leading-relaxed">Money is held by RippliFy Escrow. The seller is only paid after you receive your item and confirm it's as described.</p>
                                         </div>
                                     </div>
-                                    <button onClick={handlePayment} className="w-full bg-[#025864] hover:bg-[#014751] text-white font-bold py-4 rounded-2xl transition-all shadow-lg shadow-[#025864]/20">Pay {link.currency} {link.price.toLocaleString()} Securely</button>
+                                    <button onClick={handlePayment} className={`w-full font-bold py-4 rounded-2xl transition-all shadow-lg text-white ${link.linkType === 'donation' ? 'bg-pink-500 hover:bg-pink-600 shadow-pink-200' : 'bg-[#025864] hover:bg-[#014751] shadow-[#025864]/20'}`}>
+                                        {link.linkType === 'donation' 
+                                            ? `Donate ${link.currency} ${(parseFloat(donationAmount) || 0).toLocaleString()}`
+                                            : `Pay ${link.currency} ${(link.price + (link.category === 'product' ? (link.shippingFee || 0) : 0)).toLocaleString()} Securely`
+                                        }
+                                    </button>
                                 </div>
                             </div>
                         )}
@@ -418,14 +491,16 @@ const PublicPaymentPage = () => {
 
                                     <div className="space-y-2">
                                         <h2 className="text-2xl font-black text-slate-900">
-                                            {link.status === 'Funds locked' && "Payment Secured!"}
-                                            {link.status === 'Shipped' && "Item Shipped!"}
-                                            {link.status === 'Completed' && "Deal Completed!"}
+                                            {link.linkType === 'donation' && "Thank You!"}
+                                            {link.linkType !== 'donation' && link.status === 'Funds locked' && "Payment Secured!"}
+                                            {link.linkType !== 'donation' && link.status === 'Shipped' && "Item Shipped!"}
+                                            {link.linkType !== 'donation' && link.status === 'Completed' && "Deal Completed!"}
                                         </h2>
                                         <p className="text-slate-600 leading-relaxed max-w-sm mx-auto">
-                                            {link.status === 'Funds locked' && <>Your payment is now held in RippliFy Escrow. We've notified <strong>{link.businessName || "the seller"}</strong> to begin shipping.</>}
-                                            {link.status === 'Shipped' && <>Good news! <strong>{link.businessName || "The seller"}</strong> has shipped your item. It's on its way to you.</>}
-                                            {link.status === 'Completed' && <>This transaction is complete. Thank you for using RippliFy Escrow!</>}
+                                            {link.linkType === 'donation' && <>Your donation has been received! Thank you for supporting <strong>{link.businessName || sellerName}</strong>.</>}
+                                            {link.linkType !== 'donation' && link.status === 'Funds locked' && <>Your payment is now held in RippliFy Escrow. We've notified <strong>{link.businessName || "the seller"}</strong> to begin shipping.</>}
+                                            {link.linkType !== 'donation' && link.status === 'Shipped' && <>Good news! <strong>{link.businessName || "The seller"}</strong> has shipped your item. It's on its way to you.</>}
+                                            {link.linkType !== 'donation' && link.status === 'Completed' && <>This transaction is complete. Thank you for using RippliFy Escrow!</>}
                                         </p>
                                     </div>
 
@@ -521,9 +596,11 @@ const PublicPaymentPage = () => {
                                     </div>
                                     <div className="space-y-3 pt-2">
                                         <div className="flex justify-between text-sm"><span className="text-slate-500">Item Price</span><span className="font-bold">{link.currency} {link.price.toLocaleString()}</span></div>
+                                        {link.category === 'product' && link.shippingFee > 0 && (
+                                            <div className="flex justify-between text-sm"><span className="text-slate-500">Shipping Fee</span><span className="font-bold">{link.currency} {link.shippingFee.toLocaleString()}</span></div>
+                                        )}
                                         <div className="flex justify-between text-sm"><span className="text-slate-500">Escrow Fee</span><span className="text-emerald-600 font-bold">Free</span></div>
-                                        <div className="flex justify-between text-sm"><span className="text-slate-500">Shipping</span><span className="text-slate-900 font-medium">To be discussed</span></div>
-                                        <div className="pt-3 border-t border-slate-100 flex justify-between items-center"><span className="font-bold text-slate-900">Total Secure Amount</span><span className="text-xl font-black text-[#025864]">{link.currency} {link.price.toLocaleString()}</span></div>
+                                        <div className="pt-3 border-t border-slate-100 flex justify-between items-center"><span className="font-bold text-slate-900">Total Secure Amount</span><span className="text-xl font-black text-[#025864]">{link.currency} {(link.price + (link.category === 'product' ? (link.shippingFee || 0) : 0)).toLocaleString()}</span></div>
                                     </div>
                                 </div>
                                 <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 space-y-3">

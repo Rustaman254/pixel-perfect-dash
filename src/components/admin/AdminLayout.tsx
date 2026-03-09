@@ -1,10 +1,11 @@
-import { useState, ReactNode } from "react";
+import { useState, ReactNode, useEffect } from "react";
 import {
   LayoutDashboard, Users, Building2, BarChart3,
-  Settings, LogOut, ShieldCheck, Menu, X, CreditCard
+  Settings, LogOut, ShieldCheck, Menu, X, CreditCard, Bell, Ticket
 } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAppContext } from "@/contexts/AppContext";
+import { fetchWithAuth } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 interface AdminLayoutProps {
@@ -15,6 +16,22 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   const [open, setOpen] = useState(false);
   const { userProfile, logout } = useAppContext();
   const navigate = useNavigate();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const fetchUnreadCount = async () => {
+    try {
+      const data = await fetchWithAuth('/notifications/admin/all');
+      setUnreadCount(data.filter((n: any) => !n.isRead).length);
+    } catch (e) {
+      console.error("Admin unread fetch failed", e);
+    }
+  };
+
+  useEffect(() => {
+    fetchUnreadCount();
+    const interval = setInterval(fetchUnreadCount, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -28,6 +45,8 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     { icon: ShieldCheck, label: "API Key Management", to: "/admin/api-keys" },
     { icon: BarChart3, label: "Revenue & Stats", to: "/admin/revenue" },
     { icon: CreditCard, label: "Global Payouts", to: "/admin/payouts" },
+    { icon: Ticket, label: "Referral Codes", to: "/admin/referrals" },
+    { icon: ShieldCheck, label: "Support Tickets", to: "/admin/support" },
     { icon: Settings, label: "System Settings", to: "/admin/settings" },
   ];
 
@@ -79,7 +98,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
                 <ShieldCheck className="w-6 h-6 text-red-500" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold truncate">{userProfile.email}</p>
+                <p className="text-sm font-bold truncate">{userProfile?.email || "Admin"}</p>
                 <p className="text-[10px] text-red-400 uppercase tracking-widest font-bold">Super Admin</p>
               </div>
             </div>
@@ -94,10 +113,42 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 md:ml-64 p-6 md:p-8">
-        {children}
-      </main>
+      {/* Main Content Area */}
+      <div className="flex-1 md:ml-64 flex flex-col">
+        {/* Admin Top Header */}
+        <header className="h-14 bg-white border-b border-border px-4 md:px-8 flex items-center justify-between sticky top-0 z-40">
+          <div className="flex items-center gap-4">
+            <div className="relative group">
+              <button 
+                onClick={() => navigate('/admin/notifications')}
+                className="p-2 rounded-lg hover:bg-slate-50 transition-colors relative"
+              >
+                <Bell className="w-5 h-5 text-slate-600" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+              <div className="absolute left-0 top-full mt-1 px-2 py-1 bg-slate-800 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                Platform Notifications
+              </div>
+            </div>
+            <h2 className="text-sm font-semibold text-slate-700 hidden sm:block">Dashboard Control Panel</h2>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:flex flex-col items-right text-right">
+              <span className="text-[11px] font-bold text-slate-900 leading-tight">{userProfile?.fullName || "Administrator"}</span>
+              <span className="text-[9px] text-red-500 uppercase font-black tracking-tighter">System Access Level: High</span>
+            </div>
+          </div>
+        </header>
+
+        <main className="p-6 md:p-8">
+          {children}
+        </main>
+      </div>
     </div>
   );
 };

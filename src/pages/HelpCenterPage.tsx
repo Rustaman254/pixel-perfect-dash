@@ -1,6 +1,8 @@
 import { useState } from "react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
-import { Search, ChevronDown, ChevronUp, MessageSquare, Mail, Phone, FileText, HelpCircle, ExternalLink } from "lucide-react";
+import { Search, ChevronDown, ChevronUp, MessageSquare, Mail, Phone, FileText, HelpCircle, ExternalLink, Loader2 } from "lucide-react";
+import { fetchWithAuth } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
 
 const faqs = [
     { q: "How do I create a payment link?", a: "Navigate to Payment Links, click 'Create New Link', fill in the details (name, price, description), and click 'Create'. Your payment link will be ready to share immediately." },
@@ -23,6 +25,40 @@ const HelpCenterPage = () => {
     const [search, setSearch] = useState("");
     const [openFaq, setOpenFaq] = useState<number | null>(0);
     const [contactForm, setContactForm] = useState({ name: "", email: "", subject: "", message: "" });
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const { toast } = useToast();
+
+    const handleContactSubmit = async () => {
+        if (!contactForm.name || !contactForm.email || !contactForm.subject || !contactForm.message) {
+            toast({
+                title: "Incomplete Form",
+                description: "Please fill in all fields before sending.",
+                variant: "destructive"
+            });
+            return;
+        }
+
+        setIsSubmitting(true);
+        try {
+            await fetchWithAuth('/support', {
+                method: 'POST',
+                body: JSON.stringify(contactForm)
+            });
+            toast({
+                title: "Message Sent",
+                description: "Our support team will get back to you shortly.",
+            });
+            setContactForm({ name: "", email: "", subject: "", message: "" });
+        } catch (error: any) {
+            toast({
+                title: "Failed to send",
+                description: error.message || "An error occurred.",
+                variant: "destructive"
+            });
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
 
     const filteredFaqs = faqs.filter((f) =>
         f.q.toLowerCase().includes(search.toLowerCase()) || f.a.toLowerCase().includes(search.toLowerCase())
@@ -79,8 +115,14 @@ const HelpCenterPage = () => {
                             <input type="email" placeholder="Email Address" className="w-full px-3 py-2 rounded-lg border border-border text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#025864]/20 focus:border-[#025864]" value={contactForm.email} onChange={(e) => setContactForm(p => ({ ...p, email: e.target.value }))} />
                             <input type="text" placeholder="Subject" className="w-full px-3 py-2 rounded-lg border border-border text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#025864]/20 focus:border-[#025864]" value={contactForm.subject} onChange={(e) => setContactForm(p => ({ ...p, subject: e.target.value }))} />
                             <textarea placeholder="How can we help?" rows={4} className="w-full px-3 py-2 rounded-lg border border-border text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#025864]/20 focus:border-[#025864] resize-none" value={contactForm.message} onChange={(e) => setContactForm(p => ({ ...p, message: e.target.value }))} />
-                            <button className="w-full flex items-center justify-center gap-2 text-sm font-medium text-white px-4 py-2.5 rounded-lg" style={{ backgroundColor: '#025864' }}>
-                                <MessageSquare className="w-4 h-4" />Send Message
+                            <button 
+                                onClick={handleContactSubmit}
+                                disabled={isSubmitting}
+                                className="w-full flex items-center justify-center gap-2 text-sm font-medium text-white px-4 py-2.5 rounded-lg disabled:opacity-70" 
+                                style={{ backgroundColor: '#025864' }}
+                            >
+                                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageSquare className="w-4 h-4" />}
+                                {isSubmitting ? "Sending..." : "Send Message"}
                             </button>
                         </div>
                     </div>

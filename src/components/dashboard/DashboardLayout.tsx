@@ -10,7 +10,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
     return (
-        <div className="flex min-h-screen bg-white">
+        <div className="flex h-screen bg-white overflow-hidden">
             <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
             <div className="flex-1 md:ml-[240px] flex flex-col min-w-0">
                 <TopBar onMenuToggle={() => setSidebarOpen(true)} />

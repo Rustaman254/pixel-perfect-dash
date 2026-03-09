@@ -1,7 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
-import { Search, Globe, Plus } from "lucide-react";
+import { Search, Globe, Plus, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { fetchWithAuth } from "@/lib/api";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 
 interface Currency {
     code: string;
@@ -29,38 +34,122 @@ const initialCurrencies: Currency[] = [
 ];
 
 const CurrenciesPage = () => {
-    const [currencies, setCurrencies] = useState(initialCurrencies);
+    const [currencies, setCurrencies] = useState<Currency[]>([]);
+    const [supportedCurrencies, setSupportedCurrencies] = useState<Currency[]>([]);
+    
     const [search, setSearch] = useState("");
     const [filter, setFilter] = useState<"All" | "Active" | "Inactive">("All");
+    const [loading, setLoading] = useState(true);
     const { toast } = useToast();
 
-    const handleAddCurrency = () => {
-        const code = prompt("Enter Currency Code (e.g., CAD):");
-        if (!code) return;
-        const name = prompt("Enter Currency Name (e.g., Canadian Dollar):");
-        if (!name) return;
-        
-        const newCurrency: Currency = {
-            code: code.toUpperCase(),
-            name: name,
-            flag: "🏳️",
-            rate: (Math.random() * 100).toFixed(2),
-            symbol: "$",
-            enabled: true,
-            volume: "$0",
-        };
+    const [isAddOpen, setIsAddOpen] = useState(false);
+    const [selectedCurrencyToAdd, setSelectedCurrencyToAdd] = useState<string>("");
 
-        setCurrencies([newCurrency, ...currencies]);
-        toast({
-            title: "Currency Added",
-            description: `${name} (${code.toUpperCase()}) has been added to your list.`,
-        });
+    useEffect(() => {
+        fetchCurrencies();
+    }, []);
+
+    const fetchCurrencies = async () => {
+        try {
+            // First fetch the list of currencies supported by the platform
+            const supported = await fetchWithAuth('/currencies/supported');
+            setSupportedCurrencies(supported);
+
+            // Then fetch the user's currency settings
+            const userSettings = await fetchWithAuth('/currencies');
+            
+            // If the user has no settings, maybe we fallback to defaults or empty
+            const merged = userSettings.map((us: any) => {
+                const sc = supported.find((s: any) => s.code === us.code);
+                if (sc) {
+                    return { ...sc, ...us, enabled: !!us.enabled };
+                }
+                return null;
+            }).filter(Boolean);
+            
+            // If user has NO currencies configured yet, let's load initialCurrencies that are supported
+            if (merged.length === 0) {
+                const defaults = initialCurrencies.map(ic => {
+                    const sc = supported.find((s: any) => s.code === ic.code);
+                    return sc ? { ...sc, enabled: ic.enabled } : null;
+                }).filter(Boolean);
+                setCurrencies(defaults as Currency[]);
+            } else {
+                setCurrencies(merged as Currency[]);
+            }
+            
+        } catch (error) {
+            console.error("Failed to fetch currencies:", error);
+            toast({
+                title: "Error",
+                description: "Failed to load your currency settings.",
+                variant: "destructive"
+            });
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const toggleCurrency = (code: string) => {
+    const handleAddCurrency = () => {
+        setIsAddOpen(true);
+        setSelectedCurrencyToAdd("");
+    };
+
+    const confirmAddCurrency = async () => {
+        if (!selectedCurrencyToAdd) return;
+        
+        const currencyToAdd = supportedCurrencies.find(c => c.code === selectedCurrencyToAdd);
+        if (!currencyToAdd) return;
+
+        // Add to local state
+        const newCurrencies = [{ ...currencyToAdd, enabled: true }, ...currencies];
+        setCurrencies(newCurrencies);
+        
+        try {
+            await fetchWithAuth(`/currencies/${currencyToAdd.code}`, {
+                method: 'PUT',
+                body: JSON.stringify({ enabled: true })
+            });
+            toast({
+                title: "Currency Added",
+                description: `${currencyToAdd.name} has been added to your platform.`,
+            });
+            setIsAddOpen(false);
+        } catch (error) {
+            setCurrencies(currencies); // Revert
+            toast({
+                title: "Error",
+                description: "Failed to add currency.",
+                variant: "destructive"
+            });
+        }
+    };
+
+    const toggleCurrency = async (code: string) => {
+        const currency = currencies.find(c => c.code === code);
+        if (!currency) return;
+
+        const newEnabled = !currency.enabled;
+
         setCurrencies((prev) =>
-            prev.map((c) => (c.code === code ? { ...c, enabled: !c.enabled } : c))
+            prev.map((c) => (c.code === code ? { ...c, enabled: newEnabled } : c))
         );
+
+        try {
+            await fetchWithAuth(`/currencies/${code}`, {
+                method: 'PUT',
+                body: JSON.stringify({ enabled: newEnabled })
+            });
+        } catch (error) {
+            setCurrencies((prev) =>
+                prev.map((c) => (c.code === code ? { ...c, enabled: currency.enabled } : c))
+            );
+            toast({
+                title: "Error",
+                description: "Failed to update currency setting.",
+                variant: "destructive"
+            });
+        }
     };
 
     const filtered = currencies.filter((c) => {
@@ -150,6 +239,52 @@ const CurrenciesPage = () => {
                     </div>
                 ))}
             </div>
+
+            {/* Add Currency Dialog */}
+            <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Add Supported Currency</DialogTitle>
+                        <DialogDescription>Select a currency to support on your platform.</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label>Currency</Label>
+                            <Select value={selectedCurrencyToAdd} onValueChange={setSelectedCurrencyToAdd}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select currency..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {supportedCurrencies
+                                        .filter(sc => !currencies.some(c => c.code === sc.code))
+                                        .map(sc => (
+                                            <SelectItem key={sc.code} value={sc.code}>
+                                                <span className="flex items-center gap-2">
+                                                    <span>{sc.flag}</span>
+                                                    <span>{sc.code} - {sc.name}</span>
+                                                </span>
+                                            </SelectItem>
+                                        ))
+                                    }
+                                    {supportedCurrencies.filter(sc => !currencies.some(c => c.code === sc.code)).length === 0 && (
+                                        <SelectItem value="none" disabled>No more currencies available</SelectItem>
+                                    )}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsAddOpen(false)}>Cancel</Button>
+                        <Button 
+                            className="bg-primary text-primary-foreground" 
+                            onClick={confirmAddCurrency}
+                            disabled={!selectedCurrencyToAdd || selectedCurrencyToAdd === "none"}
+                        >
+                            Add Currency
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </DashboardLayout>
     );
 };

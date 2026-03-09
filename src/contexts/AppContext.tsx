@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, ReactNode, useEffect } from
 import { fetchWithAuth } from '@/lib/api';
 
 // Common Types
-export type LinkType = "reusable" | "one-time";
+export type LinkType = "reusable" | "one-time" | "donation";
 export type DealStatus = "Active" | "Waiting for payment" | "Funds locked" | "Shipped" | "Completed" | "Disputed" | "Expired" | "Used";
 export type UserRole = "seller" | "admin";
 
@@ -29,6 +29,9 @@ export interface PaymentLink {
     hasPhotos: boolean;
     paymentCount: number;
     totalEarnedValue: number;
+    category: "product" | "service";
+    shippingFee: number;
+    minDonation: number;
 }
 
 export interface Transaction {
@@ -46,6 +49,17 @@ export interface Transaction {
     status: string;
     transactionId: string;
     type: string;
+    createdAt: string;
+}
+
+export interface Payout {
+    id: number;
+    userId: number;
+    amount: number;
+    currency: string;
+    method: string;
+    details: string;
+    status: string;
     createdAt: string;
 }
 
@@ -72,6 +86,8 @@ interface AppContextType {
     setUserProfile: React.Dispatch<React.SetStateAction<UserProfile | null>>;
     links: PaymentLink[];
     setLinks: React.Dispatch<React.SetStateAction<PaymentLink[]>>;
+    payouts: Payout[];
+    setPayouts: React.Dispatch<React.SetStateAction<Payout[]>>;
     transactions: Transaction[];
     setTransactions: React.Dispatch<React.SetStateAction<Transaction[]>>;
     isAuthenticated: boolean;
@@ -86,6 +102,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider = ({ children }: { children: ReactNode }) => {
     const [links, setLinks] = useState<PaymentLink[]>([]);
     const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [payouts, setPayouts] = useState<Payout[]>([]);
     const [userProfile, setUserProfile] = useState<UserProfile | null>(() => {
         const saved = localStorage.getItem('ripplify_profile');
         return saved ? JSON.parse(saved) : null;
@@ -97,9 +114,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     const refreshData = async () => {
         if (!isAuthenticated) return;
         try {
-            const [linksData, transactionsData] = await Promise.all([
+            const [linksData, transactionsData, payoutsData, profileData] = await Promise.all([
                 fetchWithAuth('/links/my'),
-                fetchWithAuth('/transactions/my')
+                fetchWithAuth('/transactions/my'),
+                fetchWithAuth('/payouts'),
+                fetchWithAuth('/auth/me').catch(() => null)
             ]);
 
             const formattedLinks = linksData.map((l: any) => ({
@@ -111,18 +130,21 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
             setLinks(formattedLinks);
             setTransactions(transactionsData);
+            setPayouts(payoutsData);
+            if (profileData && profileData.user) {
+                setUserProfile(profileData.user);
+            } else if (profileData) {
+                setUserProfile(profileData);
+            }
         } catch (error) {
             console.error("Error refreshing data:", error);
         }
     };
 
-    // Socket listeners removed - replaced globally by polling
-
     useEffect(() => {
         if (isAuthenticated) {
             refreshData();
 
-            // Fallback polling every 10 seconds
             const interval = setInterval(() => {
                 refreshData();
             }, 10000);
@@ -131,10 +153,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         } else {
             setLinks([]);
             setTransactions([]);
+            setPayouts([]);
         }
     }, [isAuthenticated]);
-
-    // ... rest of the file
 
     useEffect(() => {
         if (userProfile) {
@@ -157,6 +178,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         setUserProfile(null);
         setLinks([]);
         setTransactions([]);
+        setPayouts([]);
         localStorage.removeItem('auth_token');
         localStorage.removeItem('ripplify_profile');
     };
@@ -165,6 +187,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         <AppContext.Provider value={{
             links, setLinks,
             transactions, setTransactions,
+            payouts, setPayouts,
             userProfile, setUserProfile,
             isAuthenticated, setIsAuthenticated,
             login, logout, refreshData

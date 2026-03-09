@@ -1,30 +1,37 @@
-import { useState } from "react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell } from "recharts";
+import { useState, useEffect } from "react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, Tooltip } from "recharts";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-
-const data = [
-  { name: "Week 1", value: 6200, positive: true },
-  { name: "", value: -1800, positive: false },
-  { name: "", value: 4500, positive: true },
-  { name: "", value: -900, positive: false },
-  { name: "Week 2", value: 8300, positive: true },
-  { name: "", value: -2100, positive: false },
-  { name: "", value: 5400, positive: true },
-  { name: "", value: -1500, positive: false },
-  { name: "Week 3", value: 7100, positive: true },
-  { name: "", value: -3200, positive: false },
-  { name: "", value: 6800, positive: true },
-  { name: "", value: -1100, positive: false },
-  { name: "Week 4", value: 9200, positive: true },
-  { name: "", value: -2400, positive: false },
-  { name: "Week 5", value: 7500, positive: true },
-  { name: "", value: -1700, positive: false },
-];
+import { fetchWithAuth } from "@/lib/api";
 
 const CashFlowChart = () => {
-  const [view, setView] = useState<"weekly" | "daily">("weekly");
+  const [view, setView] = useState<"weekly" | "daily">("daily");
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+
+  const fetchStats = async () => {
+    try {
+      const response = await fetchWithAuth('/transactions/stats');
+      const statsArray = response.stats || [];
+      const formattedData = statsArray.map((s: any) => ({
+        name: s.date,
+        value: s.revenue,
+        positive: true
+      }));
+      setData(formattedData);
+    } catch (err: any) {
+      console.error("Failed to fetch stats:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStats();
+    const interval = setInterval(fetchStats, 30000); // Poll every 30s
+    return () => clearInterval(interval);
+  }, []);
 
   const handleSettings = () => {
     toast({
@@ -32,6 +39,14 @@ const CashFlowChart = () => {
       description: "Chart configuration options will appear here.",
     });
   };
+
+  if (loading && data.length === 0) {
+    return (
+      <div className="bg-card rounded-2xl p-4 md:p-5 col-span-1 md:col-span-2 border border-border h-[280px] flex items-center justify-center">
+        <p className="text-sm text-muted-foreground animate-pulse">Loading charts...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-card rounded-2xl p-4 md:p-5 col-span-1 md:col-span-2 border border-border">
@@ -64,18 +79,28 @@ const CashFlowChart = () => {
         </div>
       </div>
       <div className="h-[180px] md:h-[200px]">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} barCategoryGap="20%">
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
-            <Bar dataKey="value" radius={[3, 3, 0, 0]}>
-              {data.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.positive ? "hsl(var(--chart-positive))" : "hsl(var(--chart-negative))"} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
+        {data.length === 0 ? (
+            <div className="h-full flex items-center justify-center border border-dashed border-border rounded-xl bg-muted/20">
+                <p className="text-xs text-muted-foreground">No transaction data yet.</p>
+            </div>
+        ) : (
+            <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={data} barCategoryGap="20%">
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(val) => val.split('-').slice(1).join('/')} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(v) => `KES ${(v / 1000).toFixed(0)}k`} />
+                    <Tooltip 
+                        contentStyle={{ backgroundColor: 'hsl(var(--card))', borderRadius: '12px', border: '1px solid hsl(var(--border))', fontSize: '12px' }}
+                        itemStyle={{ color: '#025864' }}
+                    />
+                    <Bar dataKey="value" radius={[3, 3, 0, 0]}>
+                    {data.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.positive ? "#00D47E" : "#FF4d4d"} />
+                    ))}
+                    </Bar>
+                </BarChart>
+            </ResponsiveContainer>
+        )}
       </div>
     </div>
   );

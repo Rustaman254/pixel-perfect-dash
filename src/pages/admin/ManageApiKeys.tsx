@@ -158,13 +158,39 @@ const ManageApiKeys = () => {
                                         {new Date(k.createdAt).toLocaleDateString()}
                                     </td>
                                     <td className="px-6 py-4 text-right">
-                                        <button
-                                            onClick={() => handleDeleteKey(k.id)}
-                                            className="p-2 hover:bg-red-50 rounded-lg transition-colors text-red-400 hover:text-red-600"
-                                            title="Revoke Key"
-                                        >
-                                            <Trash2 className="w-5 h-5" />
-                                        </button>
+                                        <div className="flex items-center justify-end gap-2">
+                                            <button
+                                                onClick={async () => {
+                                                    try {
+                                                        const newStatus = k.status === 'Active' ? 'Suspended' : 'Active';
+                                                        await fetchWithAuth(`/admin/api-keys/${k.id}/status`, {
+                                                            method: 'PATCH',
+                                                            body: JSON.stringify({ status: newStatus })
+                                                        });
+                                                        fetchData();
+                                                        toast({ title: "Status Updated", description: `API Key is now ${newStatus}` });
+                                                    } catch (error: any) {
+                                                        toast({ title: "Error", description: error.message, variant: "destructive" });
+                                                    }
+                                                }}
+                                                className={cn(
+                                                    "p-2 rounded-lg transition-colors",
+                                                    k.status === 'Active'
+                                                        ? "hover:bg-amber-50 text-amber-500 hover:text-amber-600"
+                                                        : "hover:bg-emerald-50 text-emerald-500 hover:text-emerald-600"
+                                                )}
+                                                title={k.status === 'Active' ? "Suspend Key" : "Activate Key"}
+                                            >
+                                                {k.status === 'Active' ? <ShieldAlert className="w-5 h-5" /> : <ShieldCheck className="w-5 h-5" />}
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeleteKey(k.id)}
+                                                className="p-2 hover:bg-red-50 rounded-lg transition-colors text-red-400 hover:text-red-600"
+                                                title="Revoke Key"
+                                            >
+                                                <Trash2 className="w-5 h-5" />
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}

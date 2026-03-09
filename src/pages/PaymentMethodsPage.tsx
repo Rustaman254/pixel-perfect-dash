@@ -1,7 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
-import { CreditCard, Smartphone, Bitcoin, Building2, Settings, ChevronRight, Plus, HelpCircle } from "lucide-react";
+import { CreditCard, Smartphone, Bitcoin, Building2, Settings, ChevronRight, Plus, HelpCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { fetchWithAuth } from "@/lib/api";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 
 interface PaymentMethod {
     id: string;
@@ -22,15 +27,53 @@ const initialMethods: PaymentMethod[] = [
 
 const PaymentMethodsPage = () => {
     const [methods, setMethods] = useState(initialMethods);
+    const [loading, setLoading] = useState(true);
     const { toast } = useToast();
 
+    const [isAddOpen, setIsAddOpen] = useState(false);
+    const [newMethodName, setNewMethodName] = useState("");
+    
+    const [configMethodId, setConfigMethodId] = useState<string | null>(null);
+    const [configFee, setConfigFee] = useState("");
+
+    useEffect(() => {
+        fetchMethods();
+    }, []);
+
+    const fetchMethods = async () => {
+        try {
+            const userMethods = await fetchWithAuth('/payment-methods');
+            // Merge user settings into initialMethods
+            const merged = initialMethods.map(method => {
+                const userSetting = userMethods.find((m: any) => m.methodId === method.id);
+                if (userSetting) {
+                    return { ...method, enabled: !!userSetting.enabled, fee: userSetting.fee };
+                }
+                return method;
+            });
+            setMethods(merged);
+        } catch (error) {
+            console.error("Failed to fetch payment methods:", error);
+            toast({
+                title: "Error",
+                description: "Failed to load your payment method settings.",
+                variant: "destructive"
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleAddMethod = () => {
-        const name = prompt("Enter Payment Method Name (e.g., PayPal):");
-        if (!name) return;
+        setIsAddOpen(true);
+    };
+
+    const confirmAddMethod = () => {
+        if (!newMethodName.trim()) return;
         
         const newMethod: PaymentMethod = {
-            id: name.toLowerCase().replace(/\s/g, "-"),
-            name: name,
+            id: newMethodName.toLowerCase().replace(/\s/g, "-"),
+            name: newMethodName,
             description: "New payment method added manually",
             icon: HelpCircle,
             enabled: true,
@@ -41,14 +84,83 @@ const PaymentMethodsPage = () => {
         setMethods([...methods, newMethod]);
         toast({
             title: "Payment Method Added",
-            description: `${name} has been added to your payment options.`,
+            description: `${newMethodName} has been added to your payment options.`,
         });
+        setIsAddOpen(false);
+        setNewMethodName("");
     };
 
-    const toggleMethod = (id: string) => {
+    const toggleMethod = async (id: string) => {
+        const method = methods.find(m => m.id === id);
+        if (!method) return;
+        
+        const newEnabled = !method.enabled;
+        
+        // Optimistic UI update
         setMethods((prev) =>
-            prev.map((m) => (m.id === id ? { ...m, enabled: !m.enabled } : m))
+            prev.map((m) => (m.id === id ? { ...m, enabled: newEnabled } : m))
         );
+
+        try {
+            await fetchWithAuth(`/payment-methods/${id}`, {
+                method: 'PUT',
+                body: JSON.stringify({ enabled: newEnabled, fee: method.fee })
+            });
+        } catch (error) {
+            // Revert on error
+            setMethods((prev) =>
+                prev.map((m) => (m.id === id ? { ...m, enabled: method.enabled } : m))
+            );
+            toast({
+                title: "Error",
+                description: "Failed to update payment method.",
+                variant: "destructive"
+            });
+        }
+    };
+
+    const handleConfigure = (id: string) => {
+        const method = methods.find(m => m.id === id);
+        if (!method) return;
+        setConfigMethodId(id);
+        setConfigFee(method.fee);
+    };
+
+    const confirmConfigure = async () => {
+        if (!configMethodId) return;
+        const method = methods.find(m => m.id === configMethodId);
+        if (!method) return;
+
+        const newFee = configFee.trim();
+        if (!newFee || newFee === method.fee) {
+            setConfigMethodId(null);
+            return;
+        }
+
+        setMethods((prev) =>
+            prev.map((m) => (m.id === configMethodId ? { ...m, fee: newFee } : m))
+        );
+
+        try {
+            await fetchWithAuth(`/payment-methods/${configMethodId}`, {
+                method: 'PUT',
+                body: JSON.stringify({ enabled: method.enabled, fee: newFee })
+            });
+            toast({
+                title: "Settings Updated",
+                description: `Fee rate for ${method.name} updated to ${newFee}.`
+            });
+        } catch (error) {
+            setMethods((prev) =>
+                prev.map((m) => (m.id === configMethodId ? { ...m, fee: method.fee } : m))
+            );
+            toast({
+                title: "Error",
+                description: "Failed to update fee rate.",
+                variant: "destructive"
+            });
+        }
+        setConfigMethodId(null);
     };
 
     return (
@@ -119,9 +231,13 @@ const PaymentMethodsPage = () => {
                         </div>
                         {method.enabled && (
                             <div className="mt-4 pt-4 border-t border-border">
-                                <button className="flex items-center gap-2 text-sm font-medium transition-colors hover:opacity-80" style={{ color: '#025864' }}>
+                                <button 
+                                    onClick={() => handleConfigure(method.id)}
+                                    className="flex items-center gap-2 text-sm font-medium transition-colors hover:opacity-80" 
+                                    style={{ color: '#025864' }}
+                                >
                                     <Settings className="w-4 h-4" />
-                                    Configure Settings
+                                    Configure Fee
                                     <ChevronRight className="w-3.5 h-3.5" />
                                 </button>
                             </div>
@@ -129,6 +245,56 @@ const PaymentMethodsPage = () => {
                     </div>
                 ))}
             </div>
+
+            {/* Add Method Dialog */}
+            <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Add Payment Method</DialogTitle>
+                        <DialogDescription>Enter the details for the new payment method.</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="method-name">Payment Method Name</Label>
+                            <Input 
+                                id="method-name" 
+                                placeholder="e.g., PayPal" 
+                                value={newMethodName} 
+                                onChange={(e) => setNewMethodName(e.target.value)} 
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsAddOpen(false)}>Cancel</Button>
+                        <Button className="bg-primary text-primary-foreground" onClick={confirmAddMethod}>Add Method</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Configure Fee Dialog */}
+            <Dialog open={!!configMethodId} onOpenChange={(open) => !open && setConfigMethodId(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Configure Fee</DialogTitle>
+                        <DialogDescription>Update the transaction fee for this payment method.</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="method-fee">Fee Rate</Label>
+                            <Input 
+                                id="method-fee" 
+                                placeholder="e.g., 2.5%" 
+                                value={configFee} 
+                                onChange={(e) => setConfigFee(e.target.value)} 
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setConfigMethodId(null)}>Cancel</Button>
+                        <Button className="bg-primary text-primary-foreground" onClick={confirmConfigure}>Save Changes</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </DashboardLayout>
     );
 };

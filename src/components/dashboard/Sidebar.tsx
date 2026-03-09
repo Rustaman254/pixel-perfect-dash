@@ -1,15 +1,17 @@
+import { useState, useEffect } from "react";
 import {
   LayoutDashboard, Link2, ArrowLeftRight, CreditCard,
   BarChart3, Globe, Wallet, Settings, HelpCircle,
-  ChevronDown, X, Users, LogOut, TerminalSquare
+  ChevronDown, X, Users, LogOut, TerminalSquare, Plus, Bell
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { useAppContext } from "@/contexts/AppContext";
 import { useToast } from "@/hooks/use-toast";
+import { fetchWithAuth } from "@/lib/api";
 
 const generalItems = [
-  { icon: LayoutDashboard, label: "Dashboard", to: "/" },
+  { icon: LayoutDashboard, label: "Overview", to: "/" },
   { icon: Link2, label: "Payment Links", to: "/payment-links" },
   { icon: ArrowLeftRight, label: "Orders", to: "/orders" },
   { icon: CreditCard, label: "Payment Methods", to: "/payment-methods" },
@@ -17,7 +19,7 @@ const generalItems = [
 ];
 
 const manageItems = [
-  { icon: BarChart3, label: "Analytics", to: "/analytics" },
+  { icon: BarChart3, label: "Statistics", to: "/statistics" },
   { icon: Wallet, label: "Payouts", to: "/payouts" },
   { icon: Users, label: "Customers", to: "/customers" },
 ];
@@ -36,12 +38,22 @@ interface SidebarProps {
 const Sidebar = ({ open, onClose }: SidebarProps) => {
   const { userProfile, logout } = useAppContext();
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const [showWorkspaceModal, setShowWorkspaceModal] = useState(false);
+  useEffect(() => {
+    // Other effects if any
+  }, []);
 
   const handleWorkspaceSwitch = () => {
     toast({
       title: "Workspace Switcher",
       description: "Workspace switching functionality will be available soon.",
     });
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
   };
 
   return (
@@ -84,7 +96,7 @@ const Sidebar = ({ open, onClose }: SidebarProps) => {
                 onClick={onClose}
                 className={({ isActive }) =>
                   cn(
-                    "flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm transition-colors",
+                    "flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-sm transition-colors",
                     isActive
                       ? "font-medium"
                       : "hover:bg-[#ebeef1]"
@@ -96,8 +108,10 @@ const Sidebar = ({ open, onClose }: SidebarProps) => {
                 })}
                 end={item.to === "/"}
               >
-                <item.icon className="w-4 h-4" />
-                <span>{item.label}</span>
+                <div className="flex items-center gap-3">
+                  <item.icon className="w-4 h-4" />
+                  <span>{item.label}</span>
+                </div>
               </NavLink>
             ))}
           </nav>
@@ -130,7 +144,7 @@ const Sidebar = ({ open, onClose }: SidebarProps) => {
         </div>
 
         {/* Bottom */}
-        <div className="px-4 pb-4 space-y-0.5">
+        <div className="px-4 pb-4 space-y-0.5 border-t pt-4">
           {bottomItems.map((item) => (
             <NavLink
               key={item.label}
@@ -154,32 +168,71 @@ const Sidebar = ({ open, onClose }: SidebarProps) => {
             </NavLink>
           ))}
 
-          {/* User */}
-          <div className="flex items-center justify-between px-3 py-3 mt-2 border-t border-border group">
-            <div className="flex items-center gap-3 overflow-hidden">
-              {userProfile?.profilePictureUrl ? (
-                <img src={userProfile.profilePictureUrl} alt={userProfile.businessName} className="w-8 h-8 rounded-full object-cover shrink-0" />
-              ) : (
-                <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold text-white shrink-0" style={{ backgroundColor: '#025864' }}>
-                  {userProfile?.businessName?.substring(0, 2).toUpperCase() || "U"}
+          {/* User & Sign Out */}
+          <div className="pt-2">
+            <div className="flex items-center justify-between px-3 py-3 border-t border-border group cursor-pointer hover:bg-black/5 rounded-xl transition-colors" onClick={() => setShowWorkspaceModal(true)}>
+              <div className="flex items-center gap-3 overflow-hidden">
+                {userProfile?.profilePictureUrl ? (
+                  <img src={userProfile.profilePictureUrl} alt={userProfile.businessName} className="w-8 h-8 rounded-full object-cover shrink-0" />
+                ) : (
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold text-white shrink-0" style={{ backgroundColor: '#025864' }}>
+                    {userProfile?.businessName?.substring(0, 2).toUpperCase() || "U"}
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate" style={{ color: '#333333' }}>{userProfile?.businessName || "User"}</p>
+                  <p className="text-[11px] truncate" style={{ color: '#999999' }}>{userProfile?.email || ""}</p>
                 </div>
-              )}
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate" style={{ color: '#333333' }}>{userProfile?.businessName || "User"}</p>
-                <p className="text-[11px] truncate" style={{ color: '#999999' }}>{userProfile?.email || ""}</p>
               </div>
+              <ArrowLeftRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors" />
             </div>
+            
             <button
-              onClick={() => logout()}
-              className="p-2 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all focus:opacity-100 shrink-0"
-              title="Log out"
+              onClick={handleLogout}
+              className="flex items-center gap-3 w-full px-3 py-2.5 mt-1 rounded-lg text-sm text-red-500 hover:bg-red-50 transition-colors"
             >
               <LogOut className="w-4 h-4" />
+              <span>Sign Out</span>
             </button>
           </div>
-          <p className="text-[10px] px-3 mt-2" style={{ color: '#bbbbbb' }}>© 2025 Ripplify Inc.</p>
+
+          <p className="text-[10px] px-3 mt-4" style={{ color: '#bbbbbb' }}>© 2025 Ripplify Inc.</p>
         </div>
       </aside>
+
+      {/* Workspace Switcher Modal */}
+      {showWorkspaceModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4" onClick={(e) => { if (e.target === e.currentTarget) setShowWorkspaceModal(false) }}>
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl overflow-hidden p-6 relative">
+            <button onClick={() => setShowWorkspaceModal(false)} className="absolute right-4 top-4 text-slate-400 hover:text-slate-600">
+              <X className="w-5 h-5" />
+            </button>
+            <h3 className="font-bold text-lg text-slate-800 mb-4">Switch Workspace</h3>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-[#025864]/5 border-2 border-[#025864]">
+                <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0" style={{ backgroundColor: '#025864' }}>
+                  {userProfile?.businessName?.substring(0, 2).toUpperCase() || "U"}
+                </div>
+                <div>
+                  <h4 className="font-medium text-slate-900">{userProfile?.businessName || "Your Business"}</h4>
+                  <p className="text-xs text-slate-500">Current Workspace</p>
+                </div>
+              </div>
+              
+              <button 
+                onClick={() => {
+                  toast({ title: "Coming Soon", description: "Creating a new business will be available in the next update." });
+                  setShowWorkspaceModal(false);
+                }}
+                className="w-full flex items-center justify-center gap-2 p-3 rounded-xl border border-dashed border-slate-300 hover:bg-slate-50 hover:border-slate-400 transition-all text-sm font-medium text-slate-600 mt-2"
+              >
+                <Plus className="w-4 h-4" />
+                Create New Business
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

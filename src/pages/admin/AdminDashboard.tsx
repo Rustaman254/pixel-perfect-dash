@@ -15,7 +15,7 @@ const data = [
 
 const recentActivities = [
   { company: "Global Tech Solutions", action: "New Registration", date: "2 mins ago", status: "Active" },
-  { company: "My Store", action: "API Key Generated", date: "15 mins ago", status: "Active" },
+  { company: "Global Traders", action: "API Key Generated", date: "15 mins ago", status: "Active" },
   { company: "Aero Logistics", action: "Suspended", date: "1 hour ago", status: "Suspended" },
 ];
 
@@ -26,11 +26,10 @@ const AdminDashboard = () => {
 
   const loadStats = async () => {
     try {
-      setLoading(true);
       const data = await fetchWithAuth('/admin/stats');
       setStats(data);
     } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      console.error("Failed to load admin stats:", error);
     } finally {
       setLoading(false);
     }
@@ -38,10 +37,12 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     loadStats();
+    const interval = setInterval(loadStats, 30000); // Polling every 30s
+    return () => clearInterval(interval);
   }, []);
 
   const platformStats = [
-    { title: "Platform Revenue", value: stats ? `KES ${stats.revenue.toLocaleString()}` : "...", change: "+12.5%", positive: true, icon: TrendingUp, color: "bg-emerald-50 text-emerald-600" },
+    { title: "Platform Revenue", value: stats ? `KES ${Number(stats.revenue).toLocaleString()}` : "...", change: "+12.5%", positive: true, icon: TrendingUp, color: "bg-emerald-50 text-emerald-600" },
     { title: "Active Sellers", value: stats ? stats.sellers : "...", change: "+8.2%", positive: true, icon: Users, color: "bg-blue-50 text-blue-600" },
     { title: "Payment Links", value: stats ? stats.links : "...", change: "+4.1%", positive: true, icon: Building2, color: "bg-indigo-50 text-indigo-600" },
     { title: "Escrow Transactions", value: stats ? stats.transactions : "...", change: "-2.4%", positive: false, icon: ShieldCheck, color: "bg-orange-50 text-orange-600" },
@@ -49,9 +50,15 @@ const AdminDashboard = () => {
 
   return (
     <AdminLayout>
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-900">Platform Overview</h1>
-        <p className="text-slate-500">Monitor and manage Ripplify global operations.</p>
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+            <h1 className="text-2xl font-bold text-slate-900">Platform Overview</h1>
+            <p className="text-slate-500">Monitor and manage Ripplify global operations.</p>
+        </div>
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-full text-xs font-bold animate-pulse">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            Live Updates
+        </div>
       </div>
 
       {/* Stats Grid */}
@@ -102,39 +109,34 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        {/* Recent Activity */}
+        {/* Company Stats */}
         <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="font-bold text-slate-900">Recent Activity</h3>
-            <button className="p-2 hover:bg-slate-50 rounded-lg transition-colors">
-              <MoreVertical className="w-5 h-5 text-slate-400" />
-            </button>
+            <h3 className="font-bold text-slate-900">Company Revenue</h3>
           </div>
-          <div className="space-y-6">
-            {recentActivities.map((activity, i) => (
-              <div key={i} className="flex gap-4">
-                <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center shrink-0">
-                  <ShieldCheck className="w-5 h-5 text-slate-400" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-slate-900 truncate">{activity.company}</p>
-                  <p className="text-xs text-slate-500">{activity.action}</p>
-                </div>
-                <div className="text-right shrink-0">
-                  <p className="text-[10px] text-slate-400 mb-1">{activity.date}</p>
-                  <span className={cn(
-                    "text-[10px] px-2 py-0.5 rounded-full font-bold",
-                    activity.status === "Active" ? "bg-emerald-50 text-emerald-600" :
-                      activity.status === "Suspended" ? "bg-red-50 text-red-600" : "bg-orange-50 text-orange-600"
-                  )}>
-                    {activity.status}
-                  </span>
-                </div>
-              </div>
-            ))}
+          <div className="space-y-6 max-h-[350px] overflow-y-auto pr-2">
+            {!stats?.companyStats || stats.companyStats.length === 0 ? (
+                <div className="py-10 text-center text-sm text-slate-500">No company data yet.</div>
+            ) : (
+                stats.companyStats.map((company: any, i: number) => (
+                    <div key={i} className="flex gap-4 items-center border-b border-slate-50 pb-4 last:border-0 last:pb-0">
+                        <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center shrink-0 font-bold text-[#025864]">
+                            {company.businessName?.charAt(0) || "C"}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold text-slate-900 truncate">{company.businessName || "Unknown"}</p>
+                            <p className="text-[10px] text-slate-500">{company.txCount} transactions</p>
+                        </div>
+                        <div className="text-right shrink-0">
+                            <p className="text-xs font-bold text-slate-900">KES {Number(company.totalVolume).toLocaleString()}</p>
+                            <p className="text-[10px] text-emerald-600 font-medium">Earned: KES {Number(company.totalFees).toLocaleString()}</p>
+                        </div>
+                    </div>
+                ))
+            )}
           </div>
-          <button className="w-full mt-8 py-3 bg-slate-50 text-slate-600 font-bold text-sm rounded-xl hover:bg-slate-100 transition-colors">
-            View All Activity
+          <button className="w-full mt-6 py-3 bg-slate-50 text-slate-600 font-bold text-sm rounded-xl hover:bg-slate-100 transition-colors">
+            View All Companies
           </button>
         </div>
       </div>
@@ -143,14 +145,14 @@ const AdminDashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="p-6 bg-[#025864] rounded-3xl text-white">
           <h4 className="font-bold mb-2">Pending Withdrawals</h4>
-          <p className="text-white/70 text-sm mb-6">There are 12 withdrawal requests waiting for approval.</p>
+          <p className="text-white/70 text-sm mb-6">There are 0 withdrawal requests waiting for approval.</p>
           <button className="w-full py-3 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl transition-all">
             Review All
           </button>
         </div>
         <div className="p-6 bg-red-600 rounded-3xl text-white">
           <h4 className="font-bold mb-2">Flagged Accounts</h4>
-          <p className="text-white/70 text-sm mb-6">4 accounts have been flagged for suspicious activities.</p>
+          <p className="text-white/70 text-sm mb-6">0 accounts have been flagged for suspicious activities.</p>
           <button className="w-full py-3 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl transition-all">
             Investigate
           </button>
