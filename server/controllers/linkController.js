@@ -1,9 +1,19 @@
 import PaymentLink from '../models/PaymentLink.js';
+import slugify from 'slugify';
 
 export const createLink = async (req, res) => {
     try {
-        const { name, slug, description, price, currency, linkType, hasPhotos, deliveryDays, expiryDate, expiryLabel, buyerName, buyerPhone, buyerEmail } = req.body;
-
+        let { 
+            name, slug, description, price, currency, linkType, hasPhotos, 
+            deliveryDays, expiryDate, expiryLabel, buyerName, buyerPhone, buyerEmail,
+            category, shippingFee
+        } = req.body;
+ 
+        if (!slug && name) {
+            const shortId = Math.random().toString(36).substring(2, 7);
+            slug = `${slugify(name)}-${shortId}`;
+        }
+ 
         const newLink = await PaymentLink.create({
             userId: req.user.id,
             name,
@@ -18,7 +28,9 @@ export const createLink = async (req, res) => {
             expiryLabel,
             buyerName,
             buyerPhone,
-            buyerEmail
+            buyerEmail,
+            category,
+            shippingFee: parseFloat(shippingFee) || 0
         });
 
         res.status(201).json(newLink);

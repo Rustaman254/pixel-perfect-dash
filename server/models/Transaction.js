@@ -58,6 +58,54 @@ const Transaction = {
             LEFT JOIN users u ON p.userId = u.id
             WHERE t.trackingToken = ?
         `, token);
+    },
+
+    findStats: async (userId) => {
+        const db = getDb();
+        return await db.all(`
+            SELECT 
+                strftime('%Y-%m-%d', createdAt) as date,
+                SUM(CASE WHEN status = 'Completed' OR status = 'Funds locked' OR status = 'Shipped' THEN amount ELSE 0 END) as revenue,
+                COUNT(*) as count,
+                SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) as successfulCount,
+                SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) as pendingCount
+            FROM transactions
+            WHERE userId = ?
+            GROUP BY date
+            ORDER BY date ASC
+            LIMIT 30
+        `, userId);
+    },
+
+    findPaymentMethodStats: async (userId) => {
+        const db = getDb();
+        return await db.all(`
+            SELECT 
+                currency as name,
+                COUNT(*) as count,
+                SUM(amount) as totalAmount
+            FROM transactions
+            WHERE userId = ?
+            GROUP BY currency
+        `, userId);
+    },
+
+    findAdminStats: async () => {
+        const db = getDb();
+        return await db.all(`
+            SELECT 
+                u.id,
+                u.businessName,
+                u.email,
+                COUNT(t.id) as txCount,
+                SUM(CASE WHEN t.status = 'Completed' THEN t.amount ELSE 0 END) as totalVolume,
+                SUM(t.fee) as totalFees
+            FROM users u
+            LEFT JOIN transactions t ON u.id = t.userId
+            WHERE u.role = 'seller'
+            GROUP BY u.id
+            ORDER BY totalVolume DESC
+        `);
     }
 };
 

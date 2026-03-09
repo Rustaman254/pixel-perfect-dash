@@ -37,7 +37,7 @@ export const registerUser = async (req, res) => {
             role: role || "seller",
             fullName: fullName || "",
             phone: phone || "",
-            businessName: role === "admin" ? "Super Admin" : "My Store",
+            businessName: businessName || (role === "admin" ? "Super Admin" : (fullName ? `${fullName}'s Store` : "New Store")),
             idType: idType || "National ID",
             idNumber: idNumber || "",
             location: location || "",

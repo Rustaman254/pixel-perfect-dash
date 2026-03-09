@@ -1,20 +1,26 @@
 import { getDb } from '../config/db.js';
 import ApiKey from '../models/ApiKey.js';
+import Transaction from '../models/Transaction.js';
 
 export const getPlatformStats = async (req, res) => {
     try {
         const db = getDb();
 
         const totalRevenue = await db.get(`SELECT SUM(amount) as total FROM transactions WHERE status = 'Completed'`);
+        const totalFees = await db.get(`SELECT SUM(fee) as total FROM transactions WHERE status = 'Completed'`);
         const activeSellers = await db.get(`SELECT COUNT(*) as count FROM users WHERE role = 'seller'`);
         const totalLinks = await db.get(`SELECT COUNT(*) as count FROM payment_links`);
         const totalTransactions = await db.get(`SELECT COUNT(*) as count FROM transactions`);
 
+        const companyStats = await Transaction.findAdminStats();
+
         res.json({
-            revenue: totalRevenue?.total || 0,
+            volume: totalRevenue?.total || 0,
+            revenue: totalFees?.total || 0,
             sellers: activeSellers?.count || 0,
             links: totalLinks?.count || 0,
-            transactions: totalTransactions?.count || 0
+            transactions: totalTransactions?.count || 0,
+            companyStats
         });
     } catch (error) {
         res.status(500).json({ message: error.message });

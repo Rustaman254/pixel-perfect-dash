@@ -6,8 +6,9 @@ const PaymentLink = {
         const result = await db.run(`
       INSERT INTO payment_links (
         userId, name, slug, description, price, currency, linkType, status, 
-        hasPhotos, deliveryDays, expiryDate, expiryLabel, buyerName, buyerPhone, buyerEmail
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        hasPhotos, deliveryDays, expiryDate, expiryLabel, buyerName, buyerPhone, buyerEmail,
+        category, shippingFee
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
             linkData.userId,
             linkData.name,
@@ -23,7 +24,9 @@ const PaymentLink = {
             linkData.expiryLabel,
             linkData.buyerName,
             linkData.buyerPhone,
-            linkData.buyerEmail
+            linkData.buyerEmail,
+            linkData.category || 'product',
+            linkData.shippingFee || 0
         ]);
 
         return await db.get(`SELECT * FROM payment_links WHERE id = ?`, result.lastID);

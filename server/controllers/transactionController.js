@@ -67,3 +67,15 @@ export const getTransactionByTrackingToken = async (req, res) => {
     }
 };
 
+export const getStats = async (req, res) => {
+    try {
+        const [stats, methodStats] = await Promise.all([
+            Transaction.findStats(req.user.id),
+            Transaction.findPaymentMethodStats(req.user.id)
+        ]);
+        res.json({ stats, methodStats });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+

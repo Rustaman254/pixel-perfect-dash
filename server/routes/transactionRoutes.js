@@ -1,11 +1,11 @@
-import express from 'express';
-import { createTransaction, getMyTransactions, getTransactionByTrackingToken } from '../controllers/transactionController.js';
+import { createTransaction, getMyTransactions, getTransactionByTrackingToken, getStats } from '../controllers/transactionController.js';
 import { protect } from '../middlewares/authMiddleware.js';
 
 const router = express.Router();
 
 // Private routes
 router.get('/my', protect, getMyTransactions);
+router.get('/stats', protect, getStats);
 
 // Public tracking route BEFORE the wildcard slug route
 router.get('/public/track/:token', getTransactionByTrackingToken);
