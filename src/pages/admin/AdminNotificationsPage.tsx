@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import AdminLayout from "@/components/admin/AdminLayout";
-import { Bell, Send, Users, Trash2, Clock, Info, CheckCircle2, AlertTriangle, AlertCircle, Plus } from "lucide-react";
+import { Bell, Send, Users, Trash2, Clock, Info, CheckCircle2, AlertTriangle, AlertCircle, Plus, ExternalLink } from "lucide-react";
 import { fetchWithAuth } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -27,6 +28,7 @@ const AdminNotificationsPage = () => {
     const [loading, setLoading] = useState(true);
     const [sending, setSending] = useState(false);
     const { toast } = useToast();
+    const navigate = useNavigate();
 
     // Form state
     const [title, setTitle] = useState("");
@@ -278,7 +280,18 @@ const AdminNotificationsPage = () => {
                                             </span>
                                         </div>
                                         <p className="text-xs text-slate-500 mb-2">Target: {n.email || "Platform Broadcast"}</p>
-                                        <p className="text-sm text-slate-600 leading-relaxed mb-4">{n.message}</p>
+                                        <p className="text-sm text-slate-600 leading-relaxed mb-3">{n.message}</p>
+                                        {(n as any).actionUrl && (
+                                            <div className="mb-4">
+                                                <button 
+                                                    onClick={() => navigate((n as any).actionUrl)}
+                                                    className="px-3 py-1.5 bg-slate-100 text-slate-700 text-[10px] font-bold rounded-lg border border-slate-200 hover:bg-slate-200 transition-colors flex items-center gap-1.5 w-fit"
+                                                >
+                                                    <ExternalLink className="w-3 h-3" />
+                                                    {(n as any).actionLabel || 'View Action'}
+                                                </button>
+                                            </div>
+                                        )}
                                         <button 
                                             onClick={() => handleDelete(n.id)}
                                             className="text-xs font-bold text-red-500 hover:text-red-700 flex items-center gap-1"

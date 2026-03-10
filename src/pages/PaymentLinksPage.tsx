@@ -451,21 +451,22 @@ const PaymentLinksPage = () => {
                                                 <ExternalLink className="w-4 h-4" style={{ color: form.linkType === "reusable" ? '#025864' : '#9ca3af' }} />
                                                 <span className="text-sm font-medium text-foreground">Reusable</span>
                                             </div>
-                                            <p className="text-[11px] text-muted-foreground">Multiple uses, set your own expiry</p>
+                                            <p className="text-[11px] text-muted-foreground">Multiple uses</p>
                                         </button>
-                                        <button 
-                                            type="button" 
-                                            disabled={form.category === "product"}
-                                            onClick={() => setForm(p => ({ ...p, linkType: "donation", hasExpiry: false, expiryDate: "" }))}
-                                            className={`p-3 rounded-xl border-2 text-left transition-all ${form.category === "product" ? "opacity-50 cursor-not-allowed grayscale" : (form.linkType === "donation" ? "border-pink-500" : "border-border hover:border-gray-300")}`}
-                                            style={form.linkType === "donation" && form.category !== "product" ? { backgroundColor: 'rgba(236,72,153,0.04)' } : undefined}>
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <Heart className="w-4 h-4" style={{ color: form.linkType === "donation" ? '#ec4899' : '#9ca3af' }} />
-                                                <span className="text-sm font-medium text-foreground">Donation</span>
-                                            </div>
-                                            <p className="text-[11px] text-muted-foreground">Accept flexible donations</p>
-                                            {form.category === "product" && <p className="text-[9px] text-pink-600 font-bold mt-1">Not for physical items</p>}
-                                        </button>
+                                        {/* Donation - Only show for service/digital */}
+                                        {form.category !== "product" && (
+                                            <button 
+                                                type="button" 
+                                                onClick={() => setForm(p => ({ ...p, linkType: "donation", hasExpiry: false, expiryDate: "" }))}
+                                                className={`p-3 rounded-xl border-2 text-left transition-all ${form.linkType === "donation" ? "border-pink-500" : "border-border hover:border-gray-300"}`}
+                                                style={form.linkType === "donation" ? { backgroundColor: 'rgba(236,72,153,0.04)' } : undefined}>
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <Heart className="w-4 h-4" style={{ color: form.linkType === "donation" ? '#ec4899' : '#9ca3af' }} />
+                                                    <span className="text-sm font-medium text-foreground">Donation</span>
+                                                </div>
+                                                <p className="text-[11px] text-muted-foreground">Accept flexible donations</p>
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
 

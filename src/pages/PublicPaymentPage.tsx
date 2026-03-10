@@ -117,8 +117,8 @@ const PublicPaymentPage = () => {
                     <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto">
                         <AlertCircle className="w-8 h-8 text-red-500" />
                     </div>
-                    <h1 className="text-xl font-bold text-slate-900">Link Not Found</h1>
-                    <p className="text-slate-600">This payment link might be expired, deleted, or the URL is incorrect.</p>
+                    <h1 className="text-xl font-bold text-slate-900">{error === 'Payment link not found' ? 'Link Not Found' : 'Link Unavailable'}</h1>
+                    <p className="text-slate-600">{error || "This payment link might be expired, deleted, or the URL is incorrect."}</p>
                     <button onClick={() => navigate("/")} className="text-[#025864] font-medium hover:underline">Return to Ripplify</button>
                 </div>
             </div>

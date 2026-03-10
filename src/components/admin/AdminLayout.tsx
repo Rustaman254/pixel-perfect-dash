@@ -7,6 +7,8 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { useAppContext } from "@/contexts/AppContext";
 import { fetchWithAuth } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { formatDistanceToNow } from "date-fns";
+import { ExternalLink, Clock as ClockIcon } from "lucide-react";
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -16,20 +18,32 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   const [open, setOpen] = useState(false);
   const { userProfile, logout } = useAppContext();
   const navigate = useNavigate();
+  const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [showNotifications, setShowNotifications] = useState(false);
 
-  const fetchUnreadCount = async () => {
+  const fetchNotifications = async () => {
     try {
       const data = await fetchWithAuth('/notifications/admin/all');
+      setNotifications(data.slice(0, 5));
       setUnreadCount(data.filter((n: any) => !n.isRead).length);
     } catch (e) {
-      console.error("Admin unread fetch failed", e);
+      console.error("Admin notifications fetch failed", e);
+    }
+  };
+
+  const handleMarkAsRead = async (id: number) => {
+    try {
+      await fetchWithAuth(`/notifications/${id}/read`, { method: 'PUT' });
+      fetchNotifications();
+    } catch (e) {
+      console.error("Mark read failed", e);
     }
   };
 
   useEffect(() => {
-    fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 30000);
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(interval);
   }, []);
 
@@ -118,21 +132,113 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
         {/* Admin Top Header */}
         <header className="h-14 bg-white border-b border-border px-4 md:px-8 flex items-center justify-between sticky top-0 z-40">
           <div className="flex items-center gap-4">
-            <div className="relative group">
+            <div className="relative">
               <button 
-                onClick={() => navigate('/admin/notifications')}
+                onClick={() => setShowNotifications(!showNotifications)}
                 className="p-2 rounded-lg hover:bg-slate-50 transition-colors relative"
               >
                 <Bell className="w-5 h-5 text-slate-600" />
                 {unreadCount > 0 && (
-                  <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white">
+                  <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white">
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
                 )}
               </button>
-              <div className="absolute left-0 top-full mt-1 px-2 py-1 bg-slate-800 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                Platform Notifications
-              </div>
+
+              {showNotifications && (
+                <>
+                  <div className="fixed inset-0 z-[55]" onClick={() => setShowNotifications(false)} />
+                  <div className="absolute left-0 mt-2 w-80 bg-white border border-slate-200 shadow-xl rounded-2xl z-[60] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                    <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+                      <h3 className="font-bold text-sm text-slate-900">Platform Alerts</h3>
+                      {unreadCount > 0 && (
+                        <span className="text-[10px] font-bold text-white bg-red-500 px-2 py-0.5 rounded-full">
+                          {unreadCount} New
+                        </span>
+                      )}
+                    </div>
+                    <div className="max-h-[350px] overflow-y-auto">
+                      {notifications.length > 0 ? (
+                        <div className="divide-y divide-slate-50">
+                          {notifications.map((n) => (
+                            <div
+                              key={n.id}
+                              className={cn(
+                                "p-4 hover:bg-slate-50 transition-all cursor-pointer group",
+                                !n.isRead && "bg-blue-50/40"
+                              )}
+                              onClick={() => {
+                                if (!n.isRead) handleMarkAsRead(n.id);
+                                setShowNotifications(false);
+                                if (n.actionUrl && n.actionUrl.startsWith('/')) {
+                                   navigate(n.actionUrl);
+                                } else {
+                                   navigate('/admin/notifications');
+                                }
+                              }}
+                            >
+                              <div className="flex gap-3">
+                                <div className={cn(
+                                  "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 shadow-sm",
+                                  n.type === 'success' ? "bg-emerald-100 text-emerald-600" :
+                                    n.type === 'warning' ? "bg-amber-100 text-amber-600" :
+                                      n.type === 'alert' ? "bg-red-100 text-red-600" :
+                                        "bg-blue-100 text-blue-600"
+                                )}>
+                                  <Bell className="w-4 h-4" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className={cn("text-xs font-bold truncate", !n.isRead ? "text-slate-900" : "text-slate-500")}>
+                                    {n.title}
+                                  </p>
+                                  <p className="text-[10px] text-slate-500 line-clamp-2 mt-0.5">
+                                    {n.message}
+                                  </p>
+                                  
+                                  {n.actionUrl && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (!n.isRead) handleMarkAsRead(n.id);
+                                        setShowNotifications(false);
+                                        navigate(n.actionUrl);
+                                      }}
+                                      className="mt-2 w-full py-1.5 bg-slate-900 text-white text-[10px] font-bold rounded-lg hover:bg-black transition-colors flex items-center justify-center gap-1.5"
+                                    >
+                                      <ExternalLink className="w-3 h-3" />
+                                      {n.actionLabel || 'View Details'}
+                                    </button>
+                                  )}
+
+                                  <div className="flex items-center gap-2 mt-2">
+                                    <ClockIcon className="w-3 h-3 text-slate-300" />
+                                    <span className="text-[9px] font-medium text-slate-400">
+                                      {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="py-12 flex flex-col items-center justify-center text-center px-6">
+                          <Bell className="w-8 h-8 text-slate-100 mb-2" />
+                          <p className="text-xs font-bold text-slate-900">Clean Slate</p>
+                          <p className="text-[10px] text-slate-400 mt-0.5">No recent alerts found.</p>
+                        </div>
+                      )}
+                    </div>
+                    <NavLink
+                      to="/admin/notifications"
+                      onClick={() => setShowNotifications(false)}
+                      className="block py-3 text-center text-[10px] font-bold text-blue-600 hover:bg-slate-50 transition-colors border-t border-slate-100 uppercase tracking-widest"
+                    >
+                      View All Alerts
+                    </NavLink>
+                  </div>
+                </>
+              )}
             </div>
             <h2 className="text-sm font-semibold text-slate-700 hidden sm:block">Dashboard Control Panel</h2>
           </div>
