@@ -1,7 +1,8 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { useToast } from "@/hooks/use-toast";
-import { Copy, ExternalLink, MoreHorizontal, Plus, Search, Filter, X, MousePointerClick, Calendar, Clock, Package, Truck, CheckCircle2, AlertTriangle, DollarSign, Share2, Image as ImageIcon, Eye, QrCode, Download, User, Mail, Phone, Heart } from "lucide-react";
+import { Copy, ExternalLink, MoreHorizontal, Plus, Search, Filter, X, MousePointerClick, Calendar, Clock, Package, Truck, CheckCircle2, AlertTriangle, DollarSign, Share2, Image as ImageIcon, Eye, QrCode, Download, User, Mail, Phone, Heart, BarChart3 } from "lucide-react";
 import { useAppContext } from "@/contexts/AppContext";
 import type { DealStatus } from "@/contexts/AppContext";
 import { fetchWithAuth } from "@/lib/api";
@@ -312,6 +313,13 @@ const PaymentLinksPage = () => {
                                                     <Truck className="w-3 h-3" /> Ship
                                                 </button>
                                             )}
+                                            <Link
+                                                to={`/insights/entity/${link.id}`}
+                                                className="p-1.5 rounded-md hover:bg-muted transition-colors text-[#025864] hover:text-[#014751]"
+                                                title="View Insights"
+                                            >
+                                                <BarChart3 className="w-3.5 h-3.5" />
+                                            </Link>
                                             <button
                                                 onClick={() => {
                                                     setSelectedLink(link);

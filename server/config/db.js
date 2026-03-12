@@ -347,6 +347,51 @@ const connectDB = async () => {
       await dbInstance.run("INSERT INTO system_settings (key, value) VALUES ('withdrawal_fee', '50')"); // Fixed 50 units
     }
 
+    // Create Insights Sessions Table
+    await dbInstance.exec(`
+      CREATE TABLE IF NOT EXISTS insight_sessions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        userId INTEGER NOT NULL,
+        sessionId TEXT UNIQUE NOT NULL,
+        device TEXT,
+        browser TEXT,
+        os TEXT,
+        country TEXT,
+        city TEXT,
+        duration INTEGER DEFAULT 0,
+        pageViews INTEGER DEFAULT 0,
+        isRageClick BOOLEAN DEFAULT 0,
+        isDeadClick BOOLEAN DEFAULT 0,
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (userId) REFERENCES users (id)
+      )
+    `);
+
+    // Create Insights Events Table
+    await dbInstance.exec(`
+      CREATE TABLE IF NOT EXISTS insight_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        sessionId TEXT NOT NULL,
+        type TEXT NOT NULL,
+        target TEXT,
+        url TEXT,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (sessionId) REFERENCES insight_sessions (sessionId)
+      )
+    `);
+
+    // Create Insights Entity Mappings Table
+    await dbInstance.exec(`
+      CREATE TABLE IF NOT EXISTS insight_entity_mappings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        entityId INTEGER NOT NULL,
+        entityType TEXT NOT NULL,
+        clarityId TEXT NOT NULL,
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(entityId, entityType)
+      )
+    `);
+
     console.log("SQLite Connected & All tables checked.");
     return dbInstance;
   } catch (error) {

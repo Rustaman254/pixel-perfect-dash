@@ -24,6 +24,10 @@ const manageItems = [
   { icon: Users, label: "Customers", to: "/customers" },
 ];
 
+const externalLinks = [
+  { icon: BarChart3, label: "Insights", href: "http://localhost:5174" },
+];
+
 const bottomItems = [
   { icon: TerminalSquare, label: "Developer Docs", to: "/developer-docs" },
   { icon: Settings, label: "Settings", to: "/settings" },
@@ -139,6 +143,21 @@ const Sidebar = ({ open, onClose }: SidebarProps) => {
                 <item.icon className="w-4 h-4" />
                 <span>{item.label}</span>
               </NavLink>
+            ))}
+          </nav>
+
+          <p className="text-[11px] font-medium uppercase tracking-wider px-2 mb-2 mt-6" style={{ color: '#999999' }}>Products</p>
+          <nav className="space-y-0.5">
+            {externalLinks.map((item) => (
+              <a
+                key={item.label}
+                href={item.href}
+                className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm transition-colors hover:bg-[#ebeef1]"
+                style={{ color: '#333333' }}
+              >
+                <item.icon className="w-4 h-4" />
+                <span>{item.label}</span>
+              </a>
             ))}
           </nav>
         </div>

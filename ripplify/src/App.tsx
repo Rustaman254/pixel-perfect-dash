@@ -74,6 +74,7 @@ const AppRoutes = () => {
         <Route path="/developer/settings" element={<ProtectedRoute role="seller"><DeveloperSettings /></ProtectedRoute>} />
         <Route path="/oauth/authorize" element={<ProtectedRoute><OAuthConsentPage /></ProtectedRoute>} />
 
+
         {/* Admin Dashboard */}
         <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
         <Route path="/admin/users" element={<ProtectedRoute role="admin"><ManageUsers /></ProtectedRoute>} />

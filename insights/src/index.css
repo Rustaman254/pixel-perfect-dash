@@ -1,0 +1,105 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 20%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 20%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 20%;
+
+    --primary: 182 96% 18%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 22% 97%;
+    --secondary-foreground: 0 0% 20%;
+
+    --muted: 210 15% 93%;
+    --muted-foreground: 215 14% 50%;
+
+    --accent: 155 100% 95%;
+    --accent-foreground: 182 96% 18%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 20% 88%;
+    --input: 214 20% 90%;
+    --ring: 182 96% 18%;
+
+    --radius: 0.75rem;
+
+    /* Sidebar */
+    --sidebar-bg: 210 22% 97%;
+    --sidebar-foreground: 0 0% 20%;
+    --sidebar-active: 155 100% 42%;
+    --sidebar-hover: 210 18% 92%;
+
+    /* Dashboard */
+    --balance-gradient-start: 182 96% 15%;
+    --balance-gradient-end: 182 96% 18%;
+
+    --success: 155 100% 42%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    --chart-positive: 155 100% 42%;
+    --chart-negative: 182 96% 18%;
+  }
+}
+
+@layer base {
+  @font-face {
+    font-family: 'Roobert';
+    src: url('/fonts/Roobert-Regular.ttf') format('truetype');
+    font-weight: 400;
+    font-style: normal;
+  }
+  @font-face {
+    font-family: 'Roobert';
+    src: url('/fonts/Roobert-Medium.ttf') format('truetype');
+    font-weight: 500;
+    font-style: normal;
+  }
+  @font-face {
+    font-family: 'Roobert';
+    src: url('/fonts/Roobert-SemiBold.ttf') format('truetype');
+    font-weight: 600;
+    font-style: normal;
+  }
+  @font-face {
+    font-family: 'Roobert';
+    src: url('/fonts/Roobert-Bold.ttf') format('truetype');
+    font-weight: 700;
+    font-style: normal;
+  }
+  @font-face {
+    font-family: 'Rebond Grotesque';
+    src: url('/fonts/RebondGrotesque-Regular.otf') format('opentype');
+    font-weight: 400;
+    font-style: normal;
+  }
+  @font-face {
+    font-family: 'Rebond Grotesque';
+    src: url('/fonts/RebondGrotesque-Bold.otf') format('opentype');
+    font-weight: 700;
+    font-style: normal;
+  }
+
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Roobert', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Rebond Grotesque', sans-serif;
+  }
+}

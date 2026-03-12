@@ -14,6 +14,7 @@ import payoutRoutes from "./routes/payoutRoutes.js";
 import supportRoutes from "./routes/supportRoutes.js";
 import paymentMethodRoutes from "./routes/paymentMethodRoutes.js";
 import currencyRoutes from "./routes/currencyRoutes.js";
+import insightRoutes from "./routes/insightRoutes.js";
 
 dotenv.config();
 
@@ -38,6 +39,7 @@ app.use("/api/payouts", payoutRoutes);
 app.use("/api/support", supportRoutes);
 app.use("/api/payment-methods", paymentMethodRoutes);
 app.use("/api/currencies", currencyRoutes);
+app.use("/api/insights", insightRoutes);
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
