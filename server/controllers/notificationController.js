@@ -6,7 +6,8 @@ import User from "../models/User.js";
 // @access  Private
 export const getMyNotifications = async (req, res) => {
     try {
-        const notifications = await Notification.findByUserId(req.user.id, req.user.role, req.user.createdAt);
+        const appName = req.headers['x-app-name'] || 'ripplify';
+        const notifications = await Notification.findByUserId(req.user.id, req.user.role, req.user.createdAt, appName);
         res.json(notifications);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -30,7 +31,8 @@ export const markRead = async (req, res) => {
 // @access  Private
 export const markAllRead = async (req, res) => {
     try {
-        await Notification.markAllAsRead(req.user.id);
+        const appName = req.headers['x-app-name'] || 'ripplify';
+        await Notification.markAllAsRead(req.user.id, appName);
         res.json({ message: "All notifications marked as read" });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -54,7 +56,7 @@ export const deleteNotification = async (req, res) => {
 // @access  Admin
 export const adminSendNotification = async (req, res) => {
     try {
-        const { userId, title, message, type, actionUrl, actionLabel, targetRole } = req.body;
+        const { userId, title, message, type, actionUrl, actionLabel, targetRole, appName = 'ripplify' } = req.body;
         
         // If userId is provided, send to specific user. If null, it's a broadcast.
         const notification = await Notification.create({
@@ -64,7 +66,8 @@ export const adminSendNotification = async (req, res) => {
             type: type || 'info',
             actionUrl: actionUrl || null,
             actionLabel: actionLabel || null,
-            targetRole: targetRole || null
+            targetRole: targetRole || null,
+            appName
         });
         
         res.status(201).json(notification);
@@ -78,7 +81,8 @@ export const adminSendNotification = async (req, res) => {
 // @access  Admin
 export const adminGetAllNotifications = async (req, res) => {
     try {
-        const notifications = await Notification.findAll();
+        const appName = req.headers['x-app-name'] || null;
+        const notifications = await Notification.findAll(appName);
         res.json(notifications);
     } catch (error) {
         res.status(500).json({ message: error.message });

@@ -107,6 +107,16 @@ const Transaction = {
             GROUP BY u.id
             ORDER BY totalVolume DESC
         `);
+    },
+
+    updateStatus: async (id, status) => {
+        const db = getDb();
+        return await db.run(`UPDATE transactions SET status = ? WHERE id = ?`, [status, id]);
+    },
+
+    updateTransactionId: async (id, transactionId) => {
+        const db = getDb();
+        return await db.run(`UPDATE transactions SET transactionId = ? WHERE id = ?`, [transactionId, id]);
     }
 };
 

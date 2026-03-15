@@ -1,19 +1,28 @@
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { fetchWithAuth } from "@/lib/api";
 import { 
     Search, Monitor, Smartphone, Globe, ExternalLink, Filter, 
     ChevronRight, Clock, MapPin, MousePointer, Layout, Fingerprint,
-    Play, Shield, Activity, Calendar, Users
+    Play, Shield, Activity, Calendar, Users, ShieldCheck, X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import usePageTitle from "@/hooks/usePageTitle";
+import rrwebPlayer from "rrweb-player";
+import "rrweb-player/dist/style.css";
+import { toast } from "sonner";
 
 const SessionsPage = () => {
+    usePageTitle("Sessions");
     const [sessions, setSessions] = useState<any[]>([]);
     const [selectedSession, setSelectedSession] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [sessionDetail, setSessionDetail] = useState<any>(null);
     const [loadingDetail, setLoadingDetail] = useState(false);
+    
+    const [isReplaying, setIsReplaying] = useState(false);
+    const replayContainerRef = useRef<HTMLDivElement>(null);
+    const playerRef = useRef<any>(null);
 
     const fetchSessions = async () => {
         try {
@@ -49,6 +58,49 @@ const SessionsPage = () => {
             setSessionDetail(null);
         }
     }, [selectedSession]);
+
+    const startReplay = () => {
+        if (!sessionDetail || !sessionDetail.events) return;
+        
+        const rrwebEvents = sessionDetail.events
+            .filter((e: any) => e.type === 'rrweb_event')
+            .map((e: any) => {
+                try {
+                    return JSON.parse(e.data);
+                } catch (err) {
+                    return null;
+                }
+            })
+            .filter(Boolean);
+
+        if (rrwebEvents.length < 2) {
+            toast.error("Not enough interaction data recorded to replay this session.");
+            return;
+        }
+
+        setIsReplaying(true);
+        setTimeout(() => {
+            if (replayContainerRef.current) {
+                replayContainerRef.current.innerHTML = '';
+                playerRef.current = new rrwebPlayer({
+                    target: replayContainerRef.current,
+                    props: {
+                        events: rrwebEvents,
+                        width: Math.min(1024, window.innerWidth - 80),
+                        height: Math.min(768, window.innerHeight - 80),
+                    }
+                });
+            }
+        }, 100);
+    };
+
+    const stopReplay = () => {
+        setIsReplaying(false);
+        if (playerRef.current) {
+            playerRef.current.pause();
+            playerRef.current = null;
+        }
+    };
 
     const getDeviceIcon = (device: string) => {
         if (device?.toLowerCase().includes('mobile')) return <Smartphone className="w-4 h-4" />;
@@ -184,7 +236,7 @@ const SessionsPage = () => {
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <button className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all shadow-sm">
+                                        <button onClick={startReplay} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all shadow-sm">
                                             <Play className="w-4 h-4 fill-white" />
                                             Replay Session
                                         </button>
@@ -209,9 +261,17 @@ const SessionsPage = () => {
                                             <p className="text-sm font-bold text-slate-800 truncate">{selectedSession.os} / {selectedSession.browser}</p>
                                         </div>
                                         <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">User Identity</p>
+                                            <p className="text-sm font-bold text-slate-800 truncate">{selectedSession.endUserId || 'Anonymous'}</p>
+                                        </div>
+                                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Metadata</p>
+                                            <p className="text-[10px] font-mono text-slate-600 truncate">{selectedSession.metadata || 'None'}</p>
+                                        </div>
+                                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
                                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">User Agency</p>
                                             <div className="flex items-center gap-1">
-                                                <Shield className="w-3 h-3 text-green-500" />
+                                                <ShieldCheck className="w-3 h-3 text-green-500" />
                                                 <span className="text-sm font-bold text-slate-800">Verified</span>
                                             </div>
                                         </div>
@@ -269,6 +329,24 @@ const SessionsPage = () => {
                     )}
                 </div>
             </div>
+
+            {isReplaying && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="relative bg-slate-900 border border-slate-700 rounded-xl shadow-2xl flex flex-col items-center">
+                        <div className="w-full flex justify-between items-center p-4 border-b border-slate-700 bg-slate-800 rounded-t-xl">
+                            <span className="text-white text-sm font-bold">Session Replay</span>
+                            <button onClick={stopReplay} className="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-white transition-colors">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="p-4 flex items-center justify-center bg-transparent">
+                            <div ref={replayContainerRef} className="rounded overflow-hidden shadow-inner bg-white">
+                                {/* rrweb player binds here */}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </DashboardLayout>
     );
 };

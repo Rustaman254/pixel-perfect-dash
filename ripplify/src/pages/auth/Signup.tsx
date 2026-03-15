@@ -4,6 +4,7 @@ import { ArrowRight, Check, Phone, Mail, User, Lock, Building, MapPin, CreditCar
 import { useToast } from "@/hooks/use-toast";
 import { useAppContext } from "@/contexts/AppContext";
 import { cn } from "@/lib/utils";
+import Logo from "@/components/Logo";
 
 const Signup = () => {
   const [step, setStep] = useState(1);
@@ -130,9 +131,8 @@ const Signup = () => {
         </div>
 
         <div className="p-8">
-          <div className="flex items-center gap-2 mb-8 justify-center">
-            <div className="w-10 h-10 rounded-xl bg-[#025864] flex items-center justify-center text-white font-bold text-xl">R</div>
-            <span className="text-2xl font-bold text-[#025864]">Ripplify</span>
+          <div className="mb-8 flex justify-center">
+            <Logo size={40} textClassName="text-2xl" />
           </div>
 
           {step === 1 && (

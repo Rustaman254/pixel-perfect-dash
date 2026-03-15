@@ -6,6 +6,7 @@ import { Copy, ExternalLink, MoreHorizontal, Plus, Search, Filter, X, MousePoint
 import { useAppContext } from "@/contexts/AppContext";
 import type { DealStatus } from "@/contexts/AppContext";
 import { fetchWithAuth } from "@/lib/api";
+import usePageTitle from "@/hooks/usePageTitle";
 
 const currencies = ["KES", "USD", "EUR", "GBP", "NGN", "TZS", "UGX"];
 
@@ -13,6 +14,7 @@ const slugify = (text: string) =>
     text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 
 const PaymentLinksPage = () => {
+    usePageTitle("Payment Links");
     const { links, refreshData } = useAppContext();
     const { toast } = useToast();
     const [search, setSearch] = useState("");
@@ -297,10 +299,39 @@ const PaymentLinksPage = () => {
                                         )}
                                     </td>
                                     <td className="py-3">
-                                        <span className={`text-[11px] font-medium px-2 py-1 rounded-full inline-flex items-center gap-1 ${statusConfig[link.status]?.color || ""}`}>
-                                            {(() => { const Icon = statusConfig[link.status]?.icon; return Icon ? <Icon className="w-3 h-3" /> : null; })()}
-                                            {link.status}
-                                        </span>
+                                        {(() => {
+                                            let currentStatus = link.status;
+                                            
+                                            // Handle dynamically determined statuses for one-time links
+                                            if (link.linkType === 'one-time') {
+                                                if (link.paymentCount > 0) {
+                                                    currentStatus = 'Used';
+                                                } else {
+                                                    const createdTime = new Date(link.createdAt + (link.createdAt.includes('Z') ? '' : ' UTC')).getTime();
+                                                    const now = new Date().getTime();
+                                                    const ONE_HOUR = 60 * 60 * 1000;
+                                                    if (now - createdTime > ONE_HOUR && link.status === 'Active') {
+                                                        currentStatus = 'Expired';
+                                                    }
+                                                }
+                                            } else if (link.linkType === 'reusable' && link.expiryDate) {
+                                                const expiryTime = new Date(link.expiryDate).getTime();
+                                                const now = new Date().getTime();
+                                                if (now > expiryTime && link.status === 'Active') {
+                                                    currentStatus = 'Expired';
+                                                }
+                                            }
+
+                                            const config = statusConfig[currentStatus] || statusConfig["Active"];
+                                            const Icon = config.icon;
+
+                                            return (
+                                                <span className={`text-[11px] font-medium px-2 py-1 rounded-full inline-flex items-center gap-1 ${config.color}`}>
+                                                    <Icon className="w-3 h-3" />
+                                                    {currentStatus}
+                                                </span>
+                                            );
+                                        })()}
                                     </td>
                                     <td className="py-3">
                                         <div className="flex items-center justify-end gap-1">

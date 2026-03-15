@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import PaymentLink from '../models/PaymentLink.js';
+import UserPaymentMethod from '../models/UserPaymentMethod.js';
 import slugify from '../utils/slugify.js';
 
 export const createLink = async (req, res) => {
@@ -77,12 +78,17 @@ export const getPublicLink = async (req, res) => {
         }
         // Donation links never expire automatically (like reusable links)
 
-        // Increment clicks only if not expired
-        if (!isExpired) {
-            await PaymentLink.incrementClicks(link.id);
-        }
+        // Fetch enabled payment methods for this seller
+        const paymentMethods = await UserPaymentMethod.findAllByUserId(link.userId);
+        const enabledMethods = paymentMethods.filter(pm => pm.enabled).map(pm => pm.methodId);
 
-        res.json({ ...link, isExpired, expirationReason });
+        res.json({ 
+            ...link, 
+            isExpired, 
+            expirationReason, 
+            enabledMethods,
+            publicKey: process.env.FLUTTERWAVE_PUBLIC_KEY
+        });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

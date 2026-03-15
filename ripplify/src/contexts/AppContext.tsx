@@ -18,6 +18,7 @@ export interface PaymentLink {
     price: string;
     currency: string;
     created: string;
+    createdAt: string;
     description: string;
     linkType: LinkType;
     expiryDate: string | null;

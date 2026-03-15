@@ -4,8 +4,10 @@ import { useParams } from "react-router-dom";
 import { fetchWithAuth } from "@/lib/api";
 import { ArrowLeft, BarChart3, TrendingUp, Users, Clock, MousePointer2, Activity, Target, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
+import usePageTitle from "@/hooks/usePageTitle";
 
 const EntityAnalytics = () => {
+    usePageTitle("Entity Analysis");
     const { id } = useParams();
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
@@ -149,7 +151,7 @@ const EntityAnalytics = () => {
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-4">
-                                         {session.isRageClick === 1 && <Zap className="w-4 h-4 text-red-400" title="Rage Clicks" />}
+                                         {session.isRageClick === 1 && <Zap className="w-4 h-4 text-red-400" />}
                                          <a 
                                             href={`/sessions`} 
                                             className="text-[10px] font-bold text-white bg-slate-900 px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all transform translate-x-1 group-hover:translate-x-0 overflow-hidden"

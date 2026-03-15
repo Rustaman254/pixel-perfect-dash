@@ -2,8 +2,10 @@ import { useState } from "react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Search, Download, Users, MoreHorizontal, ChevronLeft, ChevronRight, Mail } from "lucide-react";
 import { useAppContext } from "@/contexts/AppContext";
+import usePageTitle from "@/hooks/usePageTitle";
 
 const CustomersPage = () => {
+    usePageTitle("Customers");
     const { transactions } = useAppContext();
     const [search, setSearch] = useState("");
     const [page, setPage] = useState(1);

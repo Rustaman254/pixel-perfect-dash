@@ -9,6 +9,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { useAppContext } from "@/contexts/AppContext";
 import { useToast } from "@/hooks/use-toast";
 import { fetchWithAuth } from "@/lib/api";
+import Logo from "../Logo";
 
 const generalItems = [
   { icon: LayoutDashboard, label: "Overview", to: "/" },
@@ -25,7 +26,7 @@ const manageItems = [
 ];
 
 const externalLinks = [
-  { icon: BarChart3, label: "Insights", href: "http://localhost:5174" },
+  { icon: BarChart3, label: "Insights", href: "http://localhost:5175" },
 ];
 
 const bottomItems = [
@@ -72,11 +73,8 @@ const Sidebar = ({ open, onClose }: SidebarProps) => {
         open ? "translate-x-0" : "-translate-x-full md:translate-x-0"
       )} style={{ backgroundColor: '#f5f7f9' }}>
         {/* Logo */}
-        <div className="flex items-center gap-2.5 px-5 pt-5 pb-6">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#025864' }}>
-            <span className="text-white text-sm font-bold">R</span>
-          </div>
-          <span className="font-semibold text-lg" style={{ color: '#025864' }}>Ripplify</span>
+        <div className="px-5 pt-5 pb-6">
+          <Logo />
           <button
             onClick={handleWorkspaceSwitch}
             className="ml-auto hover:opacity-70 hidden md:block"

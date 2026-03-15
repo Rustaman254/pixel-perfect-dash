@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 const insightsItems = [
   { icon: LayoutDashboard, label: "Overview", to: "/" },
   { icon: Users, label: "Sessions", to: "/sessions" },
+  { icon: Settings, label: "Setup", to: "/setup" },
 ];
 
 const bottomItems = [

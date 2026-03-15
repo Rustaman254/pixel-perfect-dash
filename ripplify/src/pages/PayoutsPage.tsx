@@ -4,8 +4,10 @@ import { Download, ArrowUpRight, Clock, CheckCircle2, ChevronLeft, ChevronRight,
 import { useAppContext } from "@/contexts/AppContext";
 import { fetchWithAuth } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import usePageTitle from "@/hooks/usePageTitle";
 
 const PayoutsPage = () => {
+    usePageTitle("Payouts");
     const { userProfile, links, payouts, refreshData } = useAppContext();
     const { toast } = useToast();
     const [page, setPage] = useState(1);

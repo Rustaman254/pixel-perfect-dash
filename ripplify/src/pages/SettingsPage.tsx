@@ -4,6 +4,7 @@ import { User, Shield, Bell, Key, CreditCard, Save, Eye, EyeOff, Copy, Plus } fr
 import { useAppContext } from "@/contexts/AppContext";
 import { fetchWithAuth } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import usePageTitle from "@/hooks/usePageTitle";
 import { cn } from "@/lib/utils";
 
 const tabs = [
@@ -18,6 +19,7 @@ const inputClass = "w-full px-3 py-2 rounded-lg border border-border text-sm tex
 const btnPrimary = "flex items-center gap-2 text-sm font-medium text-white px-5 py-2.5 rounded-lg disabled:opacity-50";
 
 const SettingsPage = () => {
+    usePageTitle("Settings");
     const { userProfile, refreshData } = useAppContext();
     const { toast } = useToast();
     const [activeTab, setActiveTab] = useState("profile");

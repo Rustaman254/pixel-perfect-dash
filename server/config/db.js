@@ -73,19 +73,19 @@ const connectDB = async () => {
     // Migration: add updatedAt to payment_links if missing
     try {
       await dbInstance.exec(`ALTER TABLE payment_links ADD COLUMN updatedAt DATETIME`);
-    } catch (e) {}
+    } catch (e) { }
 
     try {
       await dbInstance.exec(`ALTER TABLE payment_links ADD COLUMN category TEXT DEFAULT 'product'`);
-    } catch (e) {}
+    } catch (e) { }
 
     try {
       await dbInstance.exec(`ALTER TABLE payment_links ADD COLUMN shippingFee REAL DEFAULT 0`);
-    } catch (e) {}
+    } catch (e) { }
 
     try {
       await dbInstance.exec(`ALTER TABLE payment_links ADD COLUMN minDonation REAL DEFAULT 0`);
-    } catch (e) {}
+    } catch (e) { }
 
     // Create Transactions Table
     await dbInstance.exec(`
@@ -142,7 +142,7 @@ const connectDB = async () => {
 
     try {
       await dbInstance.exec(`ALTER TABLE transactions ADD COLUMN fee REAL DEFAULT 0`);
-    } catch (e) {}
+    } catch (e) { }
 
     // Create System Settings Table
     await dbInstance.exec(`
@@ -264,20 +264,56 @@ const connectDB = async () => {
         actionUrl TEXT,
         actionLabel TEXT,
         targetRole TEXT,
+        appName TEXT DEFAULT 'ripplify',
         createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (userId) REFERENCES users (id)
       )
     `);
-    // Create Notifications Table
+    // Alter Notifications Table migrations
     try {
       await dbInstance.exec(`ALTER TABLE notifications ADD COLUMN actionUrl TEXT`);
-    } catch (e) {}
+    } catch (e) { }
     try {
       await dbInstance.exec(`ALTER TABLE notifications ADD COLUMN actionLabel TEXT`);
-    } catch (e) {}
+    } catch (e) { }
     try {
       await dbInstance.exec(`ALTER TABLE notifications ADD COLUMN targetRole TEXT`);
-    } catch (e) {}
+    } catch (e) { }
+    try {
+      await dbInstance.exec(`ALTER TABLE notifications ADD COLUMN appName TEXT DEFAULT 'ripplify'`);
+    } catch (e) { }
+
+    // Create Apps Table (Admin Managed)
+    await dbInstance.exec(`
+      CREATE TABLE IF NOT EXISTS apps (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE NOT NULL,
+        slug TEXT UNIQUE NOT NULL,
+        icon TEXT,
+        url TEXT,
+        isActive BOOLEAN DEFAULT 1,
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Seed Default Apps
+    const hasApps = await dbInstance.get("SELECT COUNT(*) as count FROM apps");
+    if (hasApps.count === 0) {
+      await dbInstance.run(`
+        INSERT INTO apps (name, slug, icon, url, isActive) 
+        VALUES ('Ripplify', 'ripplify', 'Wallet', 'http://localhost:8080', 1),
+               ('Insights', 'insights', 'BarChart', 'http://localhost:5175', 1)
+      `);
+    }
+    try {
+      await dbInstance.exec(`ALTER TABLE notifications ADD COLUMN actionUrl TEXT`);
+    } catch (e) { }
+    try {
+      await dbInstance.exec(`ALTER TABLE notifications ADD COLUMN actionLabel TEXT`);
+    } catch (e) { }
+    try {
+      await dbInstance.exec(`ALTER TABLE notifications ADD COLUMN targetRole TEXT`);
+    } catch (e) { }
 
     // Create Referral Codes Table
     await dbInstance.exec(`
@@ -325,12 +361,12 @@ const connectDB = async () => {
         { code: "GHS", name: "Ghanaian Cedi", flag: "🇬🇭", rate: 14.80, symbol: "₵", enabled: 1 },
         { code: "TZS", name: "Tanzanian Shilling", flag: "🇹🇿", rate: 2510.00, symbol: "TSh", enabled: 1 },
       ];
-      
+
       const insertStmt = await dbInstance.prepare(`
         INSERT INTO supported_currencies (code, name, flag, rate, symbol, enabled)
         VALUES (?, ?, ?, ?, ?, ?)
       `);
-      
+
       for (const curr of defaultCurrencies) {
         await insertStmt.run(curr.code, curr.name, curr.flag, curr.rate, curr.symbol, curr.enabled);
       }
@@ -375,10 +411,21 @@ const connectDB = async () => {
         type TEXT NOT NULL,
         target TEXT,
         url TEXT,
+        data TEXT,
         timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (sessionId) REFERENCES insight_sessions (sessionId)
       )
     `);
+
+    try {
+      await dbInstance.exec(`ALTER TABLE insight_sessions ADD COLUMN endUserId TEXT`);
+    } catch (e) { }
+    try {
+      await dbInstance.exec(`ALTER TABLE insight_sessions ADD COLUMN metadata TEXT`);
+    } catch (e) { }
+    try {
+      await dbInstance.exec(`ALTER TABLE insight_events ADD COLUMN data TEXT`);
+    } catch (e) { }
 
     // Create Insights Entity Mappings Table
     await dbInstance.exec(`

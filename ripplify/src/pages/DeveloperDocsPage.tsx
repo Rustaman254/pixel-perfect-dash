@@ -3,6 +3,7 @@ import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { TerminalSquare, Key, Link2, Copy, Check, ChevronRight, Layout, Code2, Globe, ShieldCheck, ShoppingBag } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { fetchWithAuth } from "@/lib/api";
+import usePageTitle from "@/hooks/usePageTitle";
 import { cn } from "@/lib/utils";
 import CheckoutWidget from "@/components/CheckoutWidget";
 
@@ -22,6 +23,7 @@ const platforms = [
 ];
 
 const DeveloperDocsPage = () => {
+    usePageTitle("Developer Docs");
     const [activeSection, setActiveSection] = useState("intro");
     const [activePlatform, setActivePlatform] = useState("html");
     const { toast } = useToast();

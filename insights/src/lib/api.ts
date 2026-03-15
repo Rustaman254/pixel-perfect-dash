@@ -1,9 +1,11 @@
-const BASE_URL = "http://localhost:3001/api";
+const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
 
 export const fetchWithAuth = async (endpoint: string, options: RequestInit = {}) => {
     const token = localStorage.getItem('auth_token');
     const headers = {
         'Content-Type': 'application/json',
+        'ngrok-skip-browser-warning': '69420',
+        'x-app-name': 'insights',
         ...options.headers,
         ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
     };
@@ -31,6 +33,8 @@ export const publicFetch = async (endpoint: string, options: RequestInit = {}) =
         ...options,
         headers: {
             'Content-Type': 'application/json',
+            'ngrok-skip-browser-warning': '69420',
+            'x-app-name': 'insights',
             ...options.headers,
         },
     });

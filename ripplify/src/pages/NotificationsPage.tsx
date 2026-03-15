@@ -3,6 +3,7 @@ import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Bell, CheckCircle2, Info, AlertTriangle, Trash2, Check, Clock } from "lucide-react";
 import { fetchWithAuth } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import usePageTitle from "@/hooks/usePageTitle";
 import { cn } from "@/lib/utils";
 
 interface Notification {
@@ -15,6 +16,7 @@ interface Notification {
 }
 
 const NotificationsPage = () => {
+    usePageTitle("Notifications");
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [loading, setLoading] = useState(true);
     const { toast } = useToast();

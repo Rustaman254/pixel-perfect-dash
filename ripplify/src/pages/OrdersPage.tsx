@@ -4,10 +4,12 @@ import { Search, Download, ChevronLeft, ChevronRight, ExternalLink, CheckCircle2
 import { useAppContext } from "@/contexts/AppContext";
 import { useToast } from "@/hooks/use-toast";
 import { fetchWithAuth } from "@/lib/api";
+import usePageTitle from "@/hooks/usePageTitle";
 
 type StatusType = "All" | "Success" | "Pending" | "Failed" | "Refunded";
 
 const OrdersPage = () => {
+    usePageTitle("Orders");
     const { transactions, refreshData } = useAppContext();
     const { toast } = useToast();
     const [search, setSearch] = useState("");

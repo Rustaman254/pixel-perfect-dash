@@ -15,6 +15,7 @@ import supportRoutes from "./routes/supportRoutes.js";
 import paymentMethodRoutes from "./routes/paymentMethodRoutes.js";
 import currencyRoutes from "./routes/currencyRoutes.js";
 import insightRoutes from "./routes/insightRoutes.js";
+import appRoutes from "./routes/appRoutes.js";
 
 dotenv.config();
 
@@ -23,7 +24,18 @@ connectDB();
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.static("public"));
+app.use(express.json({ type: ['application/json', 'text/plain'] }));
+
+// Request Logger
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.url} - ${res.statusCode} (${duration}ms)`);
+  });
+  next();
+});
 
 const server = http.createServer(app);
 
@@ -40,6 +52,7 @@ app.use("/api/support", supportRoutes);
 app.use("/api/payment-methods", paymentMethodRoutes);
 app.use("/api/currencies", currencyRoutes);
 app.use("/api/insights", insightRoutes);
+app.use("/api/apps", appRoutes);
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {

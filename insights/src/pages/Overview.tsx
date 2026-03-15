@@ -1,203 +1,244 @@
+import { 
+  Users, MousePointer, Clock, Activity, ArrowUpRight, 
+  ArrowDownRight, Smartphone, Monitor, Globe, Search,
+  Zap, ShieldAlert, Sparkles, Wand2, Link2
+} from "lucide-react";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
-import { useState, useEffect } from "react";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, BarChart, Bar } from "recharts";
+import { useQuery } from "@tanstack/react-query";
 import { fetchWithAuth } from "@/lib/api";
-import { Users, MousePointer2, Clock, Zap, BarChart3, ArrowRight, MousePointerClick, TrendingUp, Tablet, Monitor, Smartphone, Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Link } from "react-router-dom";
+import usePageTitle from "@/hooks/usePageTitle";
+import HistoryTable from "@/components/dashboard/HistoryTable";
+import { useNavigate } from "react-router-dom";
 
 const InsightsOverview = () => {
-    const [data, setData] = useState<any>(null);
-    const [loading, setLoading] = useState(true);
+  usePageTitle("Overview");
+  const navigate = useNavigate();
 
-    const fetchOverview = async () => {
-        try {
-            const response = await fetchWithAuth('/insights/overview');
-            setData(response);
-        } catch (err: any) {
-            console.error("Failed to fetch insights overview:", err);
-        } finally {
-            setLoading(false);
-        }
-    };
+  const { data: overview, isLoading: overviewLoading } = useQuery({
+    queryKey: ["insights-overview"],
+    queryFn: () => fetchWithAuth("/insights/overview"),
+    refetchInterval: 5000,
+  });
 
-    useEffect(() => {
-        fetchOverview();
-    }, []);
+  const { data: features, isLoading: featuresLoading } = useQuery({
+    queryKey: ["insights-features"],
+    queryFn: () => fetchWithAuth("/insights/features"),
+    refetchInterval: 5000,
+  });
 
-    const stats = data?.stats || { totalSessions: 0, totalPageViews: 0, avgDuration: 0, totalRageClicks: 0 };
-    const chartData = data?.sessionsOverTime || [];
-    
-    const advancedMetrics = [
-        { label: "Dead Clicks", value: "8.2%", color: "text-amber-500" },
-        { label: "Rage Clicks", value: stats.totalRageClicks, color: "text-red-500" },
-        { label: "Excessive Scrolling", value: "12%", color: "text-indigo-500" },
-        { label: "Quick Backs", value: "4.5%", color: "text-slate-500" },
-    ];
+  const { data: sessions } = useQuery({
+    queryKey: ["insights-sessions"],
+    queryFn: () => fetchWithAuth("/insights/sessions?limit=200"),
+    refetchInterval: 5000,
+  });
 
-    const deviceStats = [
-        { name: 'Desktop', value: 65, icon: Monitor },
-        { name: 'Mobile', value: 28, icon: Smartphone },
-        { name: 'Tablet', value: 7, icon: Tablet },
-    ];
+  const { data: products } = useQuery({
+    queryKey: ["insights-products"],
+    queryFn: () => fetchWithAuth("/insights/products"),
+    refetchInterval: 5000,
+  });
 
-    const summaryCards = [
-        { title: "Total Sessions", value: stats.totalSessions.toLocaleString(), trend: "+12%", icon: Users, color: "bg-indigo-50 text-indigo-600" },
-        { title: "Avg. Duration", value: `${stats.avgDuration}s`, trend: "-5%", icon: Clock, color: "bg-emerald-50 text-emerald-600" },
-        { title: "Click Conversion", value: "24.2%", trend: "+2%", icon: MousePointerClick, color: "bg-blue-50 text-blue-600" },
-        { title: "User Retention", value: "68%", trend: "+8%", icon: TrendingUp, color: "bg-violet-50 text-violet-600" },
-    ];
+  const stats = [
+    { label: "Total Revenue", value: `$${(overview?.stats?.totalRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: Zap, change: "", color: "indigo" },
+    { label: "Conversion Rate", value: `${overview?.stats?.conversionRate || 0}%`, icon: Sparkles, change: "", color: "emerald" },
+    { label: "Avg. Scroll", value: `${overview?.stats?.avgScrollDepth || 0}%`, icon: ArrowDownRight, change: "", color: "amber" },
+    { label: "Rage Clicks", value: overview?.stats?.totalRageClicks || 0, icon: Activity, change: "", color: "rose" },
+    { label: "Dead Clicks", value: overview?.stats?.totalDeadClicks || 0, icon: MousePointer, change: "", color: "slate" },
+    { label: "Total Sessions", value: overview?.stats?.totalSessions || 0, icon: Users, change: "", color: "indigo" },
+    { label: "Link Clicks", value: overview?.stats?.totalLinkClicks || 0, icon: Link2, change: "", color: "emerald" },
+  ];
 
-    if (loading) {
-        return (
-            <DashboardLayout>
-                <div className="flex items-center justify-center h-[500px]">
-                    <p className="animate-pulse text-indigo-600 font-medium">Analyzing user behavioral patterns...</p>
+  return (
+    <DashboardLayout>
+      <div className="space-y-10 max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div>
+            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Intelligence Overview</h1>
+            <p className="text-slate-500 mt-1 font-medium">Predictive behavioral analysis for your web application.</p>
+          </div>
+          <div className="flex items-center gap-3">
+             <div className="px-4 py-2 bg-indigo-50 border border-indigo-100 rounded-2xl flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                <span className="text-sm font-bold text-indigo-700">Live Traffic</span>
+             </div>
+          </div>
+        </div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {stats.map((stat, i) => (
+            <div key={i} className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-md transition-all duration-300">
+              <div className="flex items-center justify-between mb-4">
+                <div className={cn(
+                  "w-12 h-12 rounded-2xl flex items-center justify-center",
+                  stat.color === 'indigo' ? "bg-indigo-50 text-indigo-600" :
+                  stat.color === 'emerald' ? "bg-emerald-50 text-emerald-600" :
+                  stat.color === 'slate' ? "bg-slate-50 text-slate-600" :
+                  stat.color === 'amber' ? "bg-amber-50 text-amber-600" : "bg-rose-50 text-rose-600"
+                )}>
+                  <stat.icon className="w-6 h-6" />
                 </div>
-            </DashboardLayout>
-        );
-    }
-
-    return (
-        <DashboardLayout>
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Dashboard Overview</h1>
-                    <p className="text-slate-500 text-sm">Real-time behavioral insights and session metrics.</p>
-                </div>
-                <div className="flex items-center gap-3">
-                    <div className="flex -space-x-2">
-                        {[1, 2, 3].map(i => (
-                            <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-500">
-                                {String.fromCharCode(64 + i)}
-                            </div>
-                        ))}
-                    </div>
-                    <Link 
-                        to="/sessions" 
-                        className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all text-sm font-bold shadow-sm shadow-indigo-200"
-                    >
-                        Analyze Sessions <ArrowRight className="w-4 h-4" />
-                    </Link>
-                </div>
+                {stat.change && (
+                  <span className={cn(
+                    "text-xs font-bold px-2 py-1 rounded-lg",
+                    stat.change.startsWith('+') ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"
+                  )}>
+                    {stat.change}
+                  </span>
+                )}
+              </div>
+              <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">{stat.label}</p>
+              <h3 className="text-3xl font-black text-slate-900 mt-1">{stat.value}</h3>
             </div>
+          ))}
+        </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                {summaryCards.map((card) => (
-                    <div key={card.title} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow group">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className={cn("p-2.5 rounded-xl transition-transform group-hover:scale-110", card.color)}>
-                                <card.icon className="w-5 h-5" />
-                            </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main Chart */}
+          <div className="lg:col-span-2 bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+            <div className="flex items-center justify-between mb-8">
+              <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                 <Sparkles className="w-5 h-5 text-indigo-500" />
+                 Engagement Trends
+              </h3>
+            </div>
+            <div className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={overview?.sessionsOverTime || []}>
+                  <defs>
+                    <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.2}/>
+                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis 
+                    dataKey="date" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 600 }}
+                    dy={10}
+                  />
+                  <YAxis hide />
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="count" 
+                    stroke="#6366f1" 
+                    strokeWidth={4}
+                    fillOpacity={1} 
+                    fill="url(#colorCount)" 
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Feature Health / Insights */}
+          <div className="bg-slate-900 p-8 rounded-[2.5rem] shadow-xl border border-slate-800">
+            <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                <Wand2 className="w-5 h-5 text-indigo-400" />
+                Feature Analysis
+            </h3>
+            <div className="space-y-4">
+               {featuresLoading ? (
+                 <div className="text-slate-500 text-sm animate-pulse">Analyzing interactions...</div>
+               ) : features?.length > 0 ? (
+                 features.slice(0, 5).map((feature: any, i: number) => (
+                    <div key={i} className="p-4 bg-white/5 rounded-2xl border border-white/5 hover:bg-white/10 transition-colors">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-bold text-slate-400 truncate max-w-[150px]">{feature.target}</span>
                             <span className={cn(
-                                "text-[10px] font-bold px-2 py-0.5 rounded-full",
-                                card.trend.startsWith('+') ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"
+                                "text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded",
+                                feature.color === 'emerald' ? "bg-emerald-500/20 text-emerald-400" :
+                                feature.color === 'amber' ? "bg-amber-500/20 text-amber-400" :
+                                feature.color === 'indigo' ? "bg-indigo-500/20 text-indigo-400" : "bg-rose-500/20 text-rose-400"
                             )}>
-                                {card.trend}
+                                {feature.recommendation}
                             </span>
                         </div>
-                        <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mb-1">{card.title}</p>
-                        <h3 className="text-2xl font-bold text-slate-900">{card.value}</h3>
+                        <div className="flex items-center gap-4 text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                            <span>{feature.usages} Uses</span>
+                            {feature.rageClicks > 0 && <span className="text-rose-400">{feature.rageClicks} Rage</span>}
+                        </div>
                     </div>
-                ))}
+                 ))
+               ) : (
+                 <div className="p-8 text-center bg-white/5 rounded-3xl border border-dashed border-white/10">
+                    <Zap className="w-8 h-8 text-slate-700 mx-auto mb-2" />
+                    <p className="text-xs text-slate-500">Collect more data to generate insights.</p>
+                 </div>
+               )}
             </div>
+          </div>
+        </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                <div className="lg:col-span-8 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-                    <div className="flex items-center justify-between mb-8">
-                        <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                            <Activity className="w-4 h-4 text-indigo-500" />
-                            Session Activity
-                        </h3>
-                        <div className="flex bg-slate-50 p-1 rounded-lg">
-                            <button className="px-3 py-1 text-xs font-bold bg-white text-indigo-600 rounded-md shadow-sm">Historical</button>
-                            <button className="px-3 py-1 text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors">Real-time</button>
-                        </div>
-                    </div>
-                    <div className="h-[320px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={chartData}>
-                                <defs>
-                                    <linearGradient id="colorSessions" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.15}/>
-                                        <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                <XAxis 
-                                    dataKey="date" 
-                                    axisLine={false} 
-                                    tickLine={false} 
-                                    tick={{fontSize: 10, fontWeight: 600, fill: '#94a3b8'}}
-                                    dy={10}
-                                />
-                                <YAxis 
-                                    axisLine={false} 
-                                    tickLine={false} 
-                                    tick={{fontSize: 10, fontWeight: 600, fill: '#94a3b8'}}
-                                />
-                                <Tooltip 
-                                    contentStyle={{ 
-                                        backgroundColor: '#fff', 
-                                        borderRadius: '12px', 
-                                        border: '1px solid #e2e8f0',
-                                        boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                                        fontSize: '12px',
-                                        fontWeight: 'bold'
-                                    }}
-                                />
-                                <Area 
-                                    type="monotone" 
-                                    dataKey="count" 
-                                    stroke="#4f46e5" 
-                                    strokeWidth={3} 
-                                    fillOpacity={1} 
-                                    fill="url(#colorSessions)" 
-                                    animationDuration={1500}
-                                />
-                            </AreaChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-
-                <div className="lg:col-span-4 space-y-6">
-                    <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-                        <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2">
-                             <Zap className="w-4 h-4 text-amber-500" />
-                             Insights
-                        </h3>
-                        <div className="space-y-4">
-                            {advancedMetrics.map(m => (
-                                <div key={m.label} className="flex items-center justify-between p-3 bg-slate-50/50 rounded-xl border border-slate-50 hover:bg-slate-50 transition-colors">
-                                    <span className="text-sm font-medium text-slate-600">{m.label}</span>
-                                    <span className={cn("text-sm font-bold", m.color)}>{m.value}</span>
-                                </div>
-                            ))}
-                        </div>
-                        <button className="w-full mt-6 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-all">
-                            View Friction Report
-                        </button>
-                    </div>
-
-                    <div className="bg-indigo-600 p-6 rounded-2xl shadow-lg shadow-indigo-100 text-white relative overflow-hidden">
-                        <div className="relative z-10">
-                            <h3 className="font-bold text-lg mb-2">Live Replays</h3>
-                            <p className="text-indigo-100 text-xs mb-4">Watch real users navigate your store in real-time.</p>
-                            <Link 
-                                to="/sessions" 
-                                className="inline-flex items-center justify-center w-full py-2 bg-white text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-50 transition-colors"
-                            >
-                                Launch Player
-                            </Link>
-                        </div>
-                        <div className="absolute -right-4 -bottom-4 opacity-10">
-                            <BarChart3 size={120} />
-                        </div>
-                    </div>
-                </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Product Performance Correlation */}
+          <div className="lg:col-span-3 bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                   <Zap className="w-5 h-5 text-amber-500" />
+                   Product Performance
+                </h3>
+                <p className="text-sm text-slate-500 font-medium">Correlation between behavioral interest and actual sales.</p>
+              </div>
             </div>
-        </DashboardLayout>
-    );
+            
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="border-b border-slate-50">
+                    <th className="pb-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Product</th>
+                    <th className="pb-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Visits</th>
+                    <th className="pb-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Clicks</th>
+                    <th className="pb-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Sales</th>
+                    <th className="pb-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Conv. Rate</th>
+                    <th className="pb-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-right">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {products?.map((product: any) => (
+                    <tr key={product.id} className="group hover:bg-slate-50/50 transition-colors">
+                      <td className="py-4">
+                        <div className="font-bold text-slate-900">{product.name}</div>
+                        <div className="text-[10px] text-slate-400 font-medium">/{product.slug}</div>
+                      </td>
+                      <td className="py-4 text-sm font-bold text-slate-600">{product.visits}</td>
+                      <td className="py-4 text-sm font-bold text-slate-600">{product.clicks}</td>
+                      <td className="py-4 text-sm font-bold text-indigo-600">{product.sales}</td>
+                      <td className="py-4 text-sm font-bold text-slate-900">{product.conversionRate}%</td>
+                      <td className="py-4 text-right">
+                        <span className={cn(
+                          "text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-lg",
+                          product.health === 'Healthy' ? "bg-emerald-50 text-emerald-600" :
+                          product.health === 'Needs Attention' ? "bg-amber-50 text-amber-600" : "bg-rose-50 text-rose-600"
+                        )}>
+                          {product.health}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        {/* History Table */}
+        <HistoryTable 
+            sessions={sessions || []} 
+            onRowClick={(s) => navigate(`/sessions?id=${s.sessionId}`)} 
+        />
+      </div>
+    </DashboardLayout>
+  );
 };
 
 export default InsightsOverview;

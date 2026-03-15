@@ -1,7 +1,7 @@
 import { useState, ReactNode, useEffect } from "react";
 import {
   LayoutDashboard, Users, Building2, BarChart3,
-  Settings, LogOut, ShieldCheck, Menu, X, CreditCard, Bell, Ticket
+  Settings, LogOut, ShieldCheck, Menu, X, CreditCard, Bell, Ticket, AppWindow
 } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAppContext } from "@/contexts/AppContext";
@@ -9,6 +9,7 @@ import { fetchWithAuth } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { ExternalLink, Clock as ClockIcon } from "lucide-react";
+import Logo from "../Logo";
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -60,6 +61,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     { icon: BarChart3, label: "Revenue & Stats", to: "/admin/revenue" },
     { icon: CreditCard, label: "Global Payouts", to: "/admin/payouts" },
     { icon: Ticket, label: "Referral Codes", to: "/admin/referrals" },
+    { icon: AppWindow, label: "App Management", to: "/admin/apps" },
     { icon: ShieldCheck, label: "Support Tickets", to: "/admin/support" },
     { icon: Settings, label: "System Settings", to: "/admin/settings" },
   ];
@@ -80,9 +82,8 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
         open ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="flex flex-col h-full p-6">
-          <div className="flex items-center gap-2 mb-10">
-            <div className="w-8 h-8 rounded-lg bg-red-500 flex items-center justify-center text-white font-bold">R</div>
-            <span className="text-xl font-bold">Admin Panel</span>
+          <div className="mb-10">
+            <Logo text="Admin Panel" textColor="#ffffff" />
             <button onClick={() => setOpen(false)} className="md:hidden ml-auto">
               <X className="w-5 h-5" />
             </button>

@@ -3,6 +3,7 @@ import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Search, ChevronDown, ChevronUp, MessageSquare, Mail, Phone, FileText, HelpCircle, ExternalLink, Loader2 } from "lucide-react";
 import { fetchWithAuth } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import usePageTitle from "@/hooks/usePageTitle";
 
 const faqs = [
     { q: "How do I create a payment link?", a: "Navigate to Payment Links, click 'Create New Link', fill in the details (name, price, description), and click 'Create'. Your payment link will be ready to share immediately." },
@@ -22,6 +23,7 @@ const guides = [
 ];
 
 const HelpCenterPage = () => {
+    usePageTitle("Help Center");
     const [search, setSearch] = useState("");
     const [openFaq, setOpenFaq] = useState<number | null>(0);
     const [contactForm, setContactForm] = useState({ name: "", email: "", subject: "", message: "" });

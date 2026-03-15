@@ -3,6 +3,7 @@ import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { CreditCard, Smartphone, Bitcoin, Building2, Settings, ChevronRight, Plus, HelpCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { fetchWithAuth } from "@/lib/api";
+import usePageTitle from "@/hooks/usePageTitle";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,6 +27,7 @@ const initialMethods: PaymentMethod[] = [
 ];
 
 const PaymentMethodsPage = () => {
+    usePageTitle("Payment Methods");
     const [methods, setMethods] = useState(initialMethods);
     const [loading, setLoading] = useState(true);
     const { toast } = useToast();

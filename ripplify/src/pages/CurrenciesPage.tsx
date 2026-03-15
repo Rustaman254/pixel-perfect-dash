@@ -3,6 +3,7 @@ import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Search, Globe, Plus, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { fetchWithAuth } from "@/lib/api";
+import usePageTitle from "@/hooks/usePageTitle";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
@@ -34,6 +35,7 @@ const initialCurrencies: Currency[] = [
 ];
 
 const CurrenciesPage = () => {
+    usePageTitle("Currencies");
     const [currencies, setCurrencies] = useState<Currency[]>([]);
     const [supportedCurrencies, setSupportedCurrencies] = useState<Currency[]>([]);
     

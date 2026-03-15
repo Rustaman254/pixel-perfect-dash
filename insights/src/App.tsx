@@ -8,6 +8,7 @@ import NotFound from "./pages/NotFound";
 import InsightsOverview from "./pages/Overview";
 import EntityAnalytics from "./pages/EntityAnalytics";
 import SessionsPage from "./pages/Sessions";
+import SetupPage from "./pages/Setup";
 import Login from "./pages/auth/Login";
 import Signup from "./pages/auth/Signup";
 
@@ -33,7 +34,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 const AppRoutes = () => {
   return (
-    <BrowserRouter>
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <Routes>
         {/* Auth */}
         <Route path="/login" element={<Login />} />
@@ -45,9 +46,10 @@ const AppRoutes = () => {
         <Route path="/insights/sessions" element={<ProtectedRoute><SessionsPage /></ProtectedRoute>} />
 
         {/* Insights - Standalone Product (Root) */}
-        <Route path="/" element={<ProtectedRoute><InsightsOverview /></ProtectedRoute>} />
-        <Route path="/entity/:id" element={<ProtectedRoute><EntityAnalytics /></ProtectedRoute>} />
         <Route path="/sessions" element={<ProtectedRoute><SessionsPage /></ProtectedRoute>} />
+        <Route path="/entity/:id" element={<ProtectedRoute><EntityAnalytics /></ProtectedRoute>} />
+        <Route path="/setup" element={<ProtectedRoute><SetupPage /></ProtectedRoute>} />
+        <Route path="/" element={<ProtectedRoute><InsightsOverview /></ProtectedRoute>} />
 
         <Route path="*" element={<RouteComponent />} />
       </Routes>

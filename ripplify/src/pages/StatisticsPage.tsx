@@ -1,4 +1,5 @@
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import usePageTitle from "@/hooks/usePageTitle";
 import { useState, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, Tooltip, AreaChart, Area, PieChart, Pie } from "recharts";
 import { fetchWithAuth } from "@/lib/api";
@@ -6,6 +7,7 @@ import { TrendingUp, DollarSign, ShoppingBag, CreditCard, ArrowUpRight, ArrowDow
 import { cn } from "@/lib/utils";
 
 const StatisticsPage = () => {
+    usePageTitle("Statistics");
     const [data, setData] = useState<any[]>([]);
     const [methodStats, setMethodStats] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);

@@ -4,6 +4,7 @@ export const fetchWithAuth = async (endpoint: string, options: RequestInit = {})
     const token = localStorage.getItem('auth_token');
     const headers = {
         'Content-Type': 'application/json',
+        'x-app-name': 'ripplify',
         ...options.headers,
         ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
     };
@@ -31,8 +32,16 @@ export const publicFetch = async (endpoint: string, options: RequestInit = {}) =
         ...options,
         headers: {
             'Content-Type': 'application/json',
+            'x-app-name': 'ripplify',
             ...options.headers,
         },
+    });
+
+    console.log(`publicFetch Response for ${endpoint}:`, { 
+        ok: response.ok, 
+        status: response.status,
+        type: typeof response.json,
+        isResponse: response instanceof Response
     });
 
     if (!response.ok) {

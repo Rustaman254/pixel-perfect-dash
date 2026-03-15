@@ -4,6 +4,7 @@ import { Mail, Lock, LogIn, ShieldAlert } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAppContext } from "@/contexts/AppContext";
 import { cn } from "@/lib/utils";
+import Logo from "@/components/Logo";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -52,9 +53,8 @@ const Login = () => {
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-md bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
         <div className="p-8">
-          <div className="flex items-center gap-2 mb-8 justify-center">
-            <div className="w-10 h-10 rounded-xl bg-[#025864] flex items-center justify-center text-white font-bold text-xl">R</div>
-            <span className="text-2xl font-bold text-[#025864]">Ripplify</span>
+          <div className="mb-8 flex justify-center">
+            <Logo size={40} textClassName="text-2xl" />
           </div>
 
           <div className="text-center mb-8">

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Check, ShieldCheck, Clock, AlertCircle, Package, Truck, CheckCircle2, ArrowRight, User, Mail, Phone, Lock, ChevronDown, ChevronUp, Image as ImageIcon, ChevronRight, Heart } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { publicFetch } from "@/lib/api";
+import Logo from "@/components/Logo";
 
 const PublicPaymentPage = () => {
     const { slug } = useParams();
@@ -24,9 +25,20 @@ const PublicPaymentPage = () => {
     const [showReceipt, setShowReceipt] = useState(false);
 
     const [paymentMethod, setPaymentMethod] = useState("mpesa");
+    const [mpesaPhone, setMpesaPhone] = useState("");
     const [donationAmount, setDonationAmount] = useState("");
 
+    const [verifyingPayment, setVerifyingPayment] = useState(false);
+
     useEffect(() => {
+        const searchParams = new URLSearchParams(window.location.search);
+        const orderTrackingId = searchParams.get('OrderTrackingId');
+        const merchantReference = searchParams.get('OrderMerchantReference');
+
+        if (orderTrackingId && merchantReference) {
+            setVerifyingPayment(true);
+        }
+
         const fetchLink = async () => {
             try {
                 if (!slug) return;
@@ -76,6 +88,13 @@ const PublicPaymentPage = () => {
                         phone: data.buyerPhone || ""
                     });
                 }
+                if (orderTrackingId && merchantReference) {
+                    // We just returned from PesaPal, wait a bit or check status directly
+                    // Usually the IPN handles it, but we can poll for a few seconds
+                    setTimeout(() => {
+                        setVerifyingPayment(false);
+                    }, 3000);
+                }
             } catch (err: any) {
                 setError(err.message);
             } finally {
@@ -101,6 +120,20 @@ const PublicPaymentPage = () => {
 
         return () => clearInterval(interval);
     }, [slug]);
+
+    if (verifyingPayment) {
+        return (
+            <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+                <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-sm border border-slate-100">
+                    <div className="w-16 h-16 bg-[#025864]/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <Clock className="w-8 h-8 text-[#025864] animate-spin" />
+                    </div>
+                    <h2 className="text-2xl font-bold text-slate-900 mb-2">Verifying Payment</h2>
+                    <p className="text-slate-500 text-sm">Please wait while we confirm your transaction with PesaPal...</p>
+                </div>
+            </div>
+        );
+    }
 
     if (loading) {
         return (
@@ -151,20 +184,27 @@ const PublicPaymentPage = () => {
                 });
                 return;
             }
+            if (paymentMethod === 'mpesa' && !mpesaPhone) {
+                setMpesaPhone(buyerInfo.phone);
+            }
             setStep(3);
         }
     };
 
     const handlePayment = async () => {
         try {
-            const transactionId = "TXN-" + Math.random().toString(36).substring(2, 10).toUpperCase();
-
             const isDonation = link.linkType === 'donation';
             const payAmount = isDonation 
                 ? (parseFloat(donationAmount) || 0)
                 : link.price + (link.category === 'product' ? (link.shippingFee || 0) : 0);
 
-            await publicFetch(`/transactions/public/${slug}`, {
+            if (payAmount <= 0) {
+                toast({ title: "Invalid Amount", description: "Please enter a valid amount.", variant: "destructive" });
+                return;
+            }
+
+            // 1. Create a pending transaction and get PesaPal redirect URL
+            const data = await publicFetch(`/transactions/public/${slug}`, {
                 method: 'POST',
                 body: JSON.stringify({
                     buyerName: buyerInfo.fullName,
@@ -172,23 +212,22 @@ const PublicPaymentPage = () => {
                     buyerPhone: buyerInfo.phone,
                     amount: payAmount,
                     currency: link.currency,
-                    status: isDonation ? 'Completed' : 'Funds locked',
-                    transactionId,
                     type: isDonation ? 'Donation' : 'Payment'
                 })
             });
 
-            // Persist for tracking
-            localStorage.setItem(`buyer_info_${slug}`, JSON.stringify(buyerInfo));
+            if (data.redirect_url) {
+                // Store buyer info for when they return
+                localStorage.setItem(`buyer_info_${slug}`, JSON.stringify(buyerInfo));
+                // Redirect to PesaPal
+                window.location.href = data.redirect_url;
+            } else {
+                throw new Error("Failed to get payment redirect URL");
+            }
 
-            setStep(4);
-            toast({
-                title: isDonation ? "Donation Received!" : "Payment Successful",
-                description: isDonation ? "Thank you for your generous donation!" : "Your funds are now held in escrow securely.",
-            });
         } catch (err: any) {
             toast({
-                title: "Payment Failed",
+                title: "Payment Initialization Failed",
                 description: err.message,
                 variant: "destructive"
             });
@@ -226,11 +265,8 @@ const PublicPaymentPage = () => {
     return (
         <div className="min-h-screen bg-[#F8FAFC] font-sans text-slate-900 pb-12">
             <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-30">
-                <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-[#025864] flex items-center justify-center">
-                        <ShieldCheck className="w-5 h-5 text-white" />
-                    </div>
-                    <span className="font-bold text-lg tracking-tight">RippliFy</span>
+                <div>
+                    <Logo text="Ripplify" />
                 </div>
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 rounded-full">
                     <ShieldCheck className="w-4 h-4 text-emerald-600" />
@@ -265,8 +301,18 @@ const PublicPaymentPage = () => {
                                                 }
                                             </div>
                                             <span className={`px-2.5 py-1 text-[11px] font-bold rounded-md flex items-center gap-1 ${link.linkType === 'donation' ? 'bg-pink-50 text-pink-600' : 'bg-slate-100 text-slate-600'}`}>
-                                                {link.linkType === 'donation' ? <><Heart className="w-3 h-3" /> Donation Link</> : <><Package className="w-3 h-3" /> Escrow Protected</>}
+                                                {link.linkType === 'donation' ? 'Donation' : link.linkType === 'reusable' ? 'Reusable Link' : 'One-time Link'}
                                             </span>
+                                            {link.status === 'Active' && (
+                                                <span className="px-2.5 py-1 text-[11px] font-bold rounded-md bg-emerald-50 text-emerald-600 flex items-center gap-1">
+                                                    <CheckCircle2 className="w-3 h-3" /> Active
+                                                </span>
+                                            )}
+                                            {link.expiryLabel && (
+                                                <span className="px-2.5 py-1 text-[11px] font-bold rounded-md bg-amber-50 text-amber-600 flex items-center gap-1">
+                                                    <Clock className="w-3 h-3" /> Expires: {link.expiryLabel}
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
                                     {link.description && (
@@ -444,26 +490,50 @@ const PublicPaymentPage = () => {
                                         </div>
                                     </div>
                                     <div className="space-y-3">
-                                        <button onClick={() => setPaymentMethod("mpesa")} className={`w-full p-4 rounded-2xl border-2 flex items-center justify-between transition-all ${paymentMethod === 'mpesa' ? 'border-[#025864] bg-[#025864]/5' : 'border-slate-100 hover:border-slate-200'}`}>
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center font-bold text-emerald-600 italic">M</div>
-                                                <div className="text-left">
-                                                    <p className="font-bold text-slate-900">M-PESA / Mobile Money</p>
-                                                    <p className="text-[10px] text-slate-500 uppercase tracking-wider">Fast & Direct</p>
-                                                </div>
+                                        {(link.enabledMethods?.includes('mpesa') || !link.enabledMethods) && (
+                                            <div className="space-y-3">
+                                                <button onClick={() => setPaymentMethod("mpesa")} className={`w-full p-4 rounded-2xl border-2 flex items-center justify-between transition-all ${paymentMethod === 'mpesa' ? 'border-[#025864] bg-[#025864]/5' : 'border-slate-100 hover:border-slate-200'}`}>
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center font-bold text-emerald-600 italic">M</div>
+                                                        <div className="text-left">
+                                                            <p className="font-bold text-slate-900">M-PESA / Mobile Money</p>
+                                                            <p className="text-[10px] text-slate-500 uppercase tracking-wider">Fast & Direct</p>
+                                                        </div>
+                                                    </div>
+                                                    {paymentMethod === 'mpesa' && <div className="w-5 h-5 rounded-full bg-[#025864] flex items-center justify-center"><Check className="w-3 h-3 text-white" /></div>}
+                                                </button>
+
+                                                {paymentMethod === 'mpesa' && (
+                                                    <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 animate-in fade-in slide-in-from-top-2 duration-300">
+                                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Confirm M-PESA Number</label>
+                                                        <div className="relative">
+                                                            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                                            <input 
+                                                                type="tel"
+                                                                value={mpesaPhone}
+                                                                onChange={(e) => setMpesaPhone(e.target.value)}
+                                                                placeholder="2547XXXXXXXX"
+                                                                className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#025864]/20 focus:border-[#025864]"
+                                                            />
+                                                        </div>
+                                                        <p className="text-[10px] text-slate-500 mt-2">The STK push will be sent to this number.</p>
+                                                    </div>
+                                                )}
                                             </div>
-                                            {paymentMethod === 'mpesa' && <div className="w-5 h-5 rounded-full bg-[#025864] flex items-center justify-center"><Check className="w-3 h-3 text-white" /></div>}
-                                        </button>
-                                        <button onClick={() => setPaymentMethod("card")} className={`w-full p-4 rounded-2xl border-2 flex items-center justify-between transition-all ${paymentMethod === 'card' ? 'border-[#025864] bg-[#025864]/5' : 'border-slate-100 hover:border-slate-200'}`}>
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center"><Lock className="w-5 h-5 text-blue-600" /></div>
-                                                <div className="text-left">
-                                                    <p className="font-bold text-slate-900">Bank Card / Visa</p>
-                                                    <p className="text-[10px] text-slate-500 uppercase tracking-wider">Secure Card Entry</p>
+                                        )}
+
+                                        {(link.enabledMethods?.includes('card') || !link.enabledMethods) && (
+                                            <button onClick={() => setPaymentMethod("card")} className={`w-full p-4 rounded-2xl border-2 flex items-center justify-between transition-all ${paymentMethod === 'card' ? 'border-[#025864] bg-[#025864]/5' : 'border-slate-100 hover:border-slate-200'}`}>
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center"><Lock className="w-5 h-5 text-blue-600" /></div>
+                                                    <div className="text-left">
+                                                        <p className="font-bold text-slate-900">Bank Card / Visa</p>
+                                                        <p className="text-[10px] text-slate-500 uppercase tracking-wider">Secure Card Entry</p>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            {paymentMethod === 'card' && <div className="w-5 h-5 rounded-full bg-[#025864] flex items-center justify-center"><Check className="w-3 h-3 text-white" /></div>}
-                                        </button>
+                                                {paymentMethod === 'card' && <div className="w-5 h-5 rounded-full bg-[#025864] flex items-center justify-center"><Check className="w-3 h-3 text-white" /></div>}
+                                            </button>
+                                        )}
                                     </div>
                                     <div className="bg-emerald-50 rounded-2xl p-5 border border-emerald-100 flex gap-4">
                                         <ShieldCheck className="w-6 h-6 text-emerald-600 shrink-0 mt-0.5" />

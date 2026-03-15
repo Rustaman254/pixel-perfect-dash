@@ -32,6 +32,7 @@ import SystemSettings from "./pages/admin/SystemSettings";
 import ManageSupport from "./pages/admin/ManageSupport";
 import AdminNotificationsPage from "./pages/admin/AdminNotificationsPage";
 import ManageReferralCodes from "./pages/admin/ManageReferralCodes";
+import ManageApps from "./pages/admin/ManageApps";
 
 import { AppProvider, useAppContext } from "./contexts/AppContext";
 
@@ -86,9 +87,11 @@ const AppRoutes = () => {
         <Route path="/admin/support" element={<ProtectedRoute role="admin"><ManageSupport /></ProtectedRoute>} />
         <Route path="/admin/notifications" element={<ProtectedRoute role="admin"><AdminNotificationsPage /></ProtectedRoute>} />
         <Route path="/admin/referrals" element={<ProtectedRoute role="admin"><ManageReferralCodes /></ProtectedRoute>} />
+        <Route path="/admin/apps" element={<ProtectedRoute role="admin"><ManageApps /></ProtectedRoute>} />
 
         {/* Public Routes */}
         <Route path="/pay/:slug" element={<PublicPaymentPage />} />
+        <Route path="/pay/:slug/callback" element={<PublicPaymentPage />} />
 
         <Route path="*" element={<NotFound />} />
       </Routes>

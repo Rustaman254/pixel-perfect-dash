@@ -1,4 +1,6 @@
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import DashboardStats from "@/components/dashboard/DashboardStats";
+import usePageTitle from "@/hooks/usePageTitle";
 import BalanceCard from "@/components/dashboard/BalanceCard";
 import CashFlowChart from "@/components/dashboard/CashFlowChart";
 import IncomeExpenseCards from "@/components/dashboard/IncomeExpenseCards";
@@ -6,8 +8,8 @@ import StatsCards from "@/components/dashboard/StatsCards";
 import RecentActivity from "@/components/dashboard/RecentActivity";
 import MyCards from "@/components/dashboard/MyCards";
 import PaymentLinks from "@/components/dashboard/PaymentLinks";
-
 const Index = () => {
+  usePageTitle("Dashboard");
   return (
     <DashboardLayout>
       <BalanceCard />
