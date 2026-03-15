@@ -5,10 +5,11 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import NotFound from "./pages/NotFound";
-import InsightsOverview from "./pages/Overview";
+import WatchtowerOverview from "./pages/Overview";
 import EntityAnalytics from "./pages/EntityAnalytics";
 import SessionsPage from "./pages/Sessions";
 import SetupPage from "./pages/Setup";
+import AdminOverview from "./pages/AdminOverview";
 import Login from "./pages/auth/Login";
 import Signup from "./pages/auth/Signup";
 
@@ -40,16 +41,16 @@ const AppRoutes = () => {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
 
-        {/* Support both root and /insights prefix for deployment flexibility */}
-        <Route path="/insights" element={<ProtectedRoute><InsightsOverview /></ProtectedRoute>} />
-        <Route path="/insights/entity/:id" element={<ProtectedRoute><EntityAnalytics /></ProtectedRoute>} />
-        <Route path="/insights/sessions" element={<ProtectedRoute><SessionsPage /></ProtectedRoute>} />
+        <Route path="/watchtower" element={<ProtectedRoute><WatchtowerOverview /></ProtectedRoute>} />
+        <Route path="/watchtower/entity/:id" element={<ProtectedRoute><EntityAnalytics /></ProtectedRoute>} />
+        <Route path="/watchtower/sessions" element={<ProtectedRoute><SessionsPage /></ProtectedRoute>} />
 
-        {/* Insights - Standalone Product (Root) */}
+        {/* Watchtower - Standalone Product (Root) */}
         <Route path="/sessions" element={<ProtectedRoute><SessionsPage /></ProtectedRoute>} />
         <Route path="/entity/:id" element={<ProtectedRoute><EntityAnalytics /></ProtectedRoute>} />
         <Route path="/setup" element={<ProtectedRoute><SetupPage /></ProtectedRoute>} />
-        <Route path="/" element={<ProtectedRoute><InsightsOverview /></ProtectedRoute>} />
+        <Route path="/admin/platform" element={<ProtectedRoute><AdminOverview /></ProtectedRoute>} />
+        <Route path="/" element={<ProtectedRoute><WatchtowerOverview /></ProtectedRoute>} />
 
         <Route path="*" element={<RouteComponent />} />
       </Routes>

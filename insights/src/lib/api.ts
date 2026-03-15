@@ -5,7 +5,7 @@ export const fetchWithAuth = async (endpoint: string, options: RequestInit = {})
     const headers = {
         'Content-Type': 'application/json',
         'ngrok-skip-browser-warning': '69420',
-        'x-app-name': 'insights',
+        'x-app-name': 'watchtower',
         ...options.headers,
         ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
     };
@@ -34,7 +34,7 @@ export const publicFetch = async (endpoint: string, options: RequestInit = {}) =
         headers: {
             'Content-Type': 'application/json',
             'ngrok-skip-browser-warning': '69420',
-            'x-app-name': 'insights',
+            'x-app-name': 'watchtower',
             ...options.headers,
         },
     });

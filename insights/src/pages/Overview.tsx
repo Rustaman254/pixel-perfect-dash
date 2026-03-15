@@ -12,31 +12,31 @@ import usePageTitle from "@/hooks/usePageTitle";
 import HistoryTable from "@/components/dashboard/HistoryTable";
 import { useNavigate } from "react-router-dom";
 
-const InsightsOverview = () => {
+const WatchtowerOverview = () => {
   usePageTitle("Overview");
   const navigate = useNavigate();
 
   const { data: overview, isLoading: overviewLoading } = useQuery({
-    queryKey: ["insights-overview"],
-    queryFn: () => fetchWithAuth("/insights/overview"),
+    queryKey: ["watchtower-overview"],
+    queryFn: () => fetchWithAuth("/watchtower/overview"),
     refetchInterval: 5000,
   });
 
   const { data: features, isLoading: featuresLoading } = useQuery({
-    queryKey: ["insights-features"],
-    queryFn: () => fetchWithAuth("/insights/features"),
+    queryKey: ["watchtower-features"],
+    queryFn: () => fetchWithAuth("/watchtower/features"),
     refetchInterval: 5000,
   });
 
   const { data: sessions } = useQuery({
-    queryKey: ["insights-sessions"],
-    queryFn: () => fetchWithAuth("/insights/sessions?limit=200"),
+    queryKey: ["watchtower-sessions"],
+    queryFn: () => fetchWithAuth("/watchtower/sessions?limit=200"),
     refetchInterval: 5000,
   });
 
   const { data: products } = useQuery({
-    queryKey: ["insights-products"],
-    queryFn: () => fetchWithAuth("/insights/products"),
+    queryKey: ["watchtower-products"],
+    queryFn: () => fetchWithAuth("/watchtower/products"),
     refetchInterval: 5000,
   });
 
@@ -241,4 +241,4 @@ const InsightsOverview = () => {
   );
 };
 
-export default InsightsOverview;
+export default WatchtowerOverview;

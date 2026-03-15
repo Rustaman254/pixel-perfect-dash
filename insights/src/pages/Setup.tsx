@@ -21,12 +21,12 @@ const SetupPage = () => {
     // Fall back to localhost if not specified in .env
     const backendRoot = import.meta.env.VITE_BACKEND_URL || "http://localhost:3001";
     
-    const htmlSnippet = `<!-- Ripplify Insights -->
+    const htmlSnippet = `<!-- Ripplify Watchtower -->
 <script>
   window.ripplifyProjectId = "${projectId}";
 </script>
-<script src="${backendRoot}/insight.js" async></script>
-<!-- End Ripplify Insights -->`;
+<script src="${backendRoot}/watchtower.js" async></script>
+<!-- End Ripplify Watchtower -->`;
 
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
@@ -57,7 +57,7 @@ const SetupPage = () => {
                                 <div className="w-3 h-3 rounded-full bg-amber-400/20 group-hover:bg-amber-500 transition-colors"></div>
                                 <div className="w-3 h-3 rounded-full bg-emerald-400/20 group-hover:bg-emerald-500 transition-colors"></div>
                             </div>
-                            <span className="text-[10px] font-bold text-slate-500 ml-4 uppercase tracking-widest italic group-hover:text-indigo-400 transition-colors">insight.js v2.0-autonomous</span>
+                            <span className="text-[10px] font-bold text-slate-500 ml-4 uppercase tracking-widest italic group-hover:text-indigo-400 transition-colors">watchtower.js v2.0-autonomous</span>
                         </div>
                         <button 
                             onClick={() => copyToClipboard(htmlSnippet)}
@@ -103,7 +103,7 @@ const SetupPage = () => {
                     <div className="flex-1 text-center md:text-left">
                         <h3 className="text-2xl font-bold mb-2">Privacy & Compliance by Design</h3>
                         <p className="text-indigo-100 text-sm leading-relaxed max-w-md">
-                            Ripplify Insights masks all sensitive user input by default. No passwords or credit card numbers are ever stored on our servers.
+                             Ripplify Watchtower masks all sensitive user input by default. No passwords or credit card numbers are ever stored on our servers.
                         </p>
                     </div>
                     <button className="px-8 py-4 bg-white text-indigo-600 rounded-2xl text-sm font-black shadow-lg hover:shadow-xl transition-all active:scale-95">

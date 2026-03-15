@@ -1,12 +1,12 @@
 import { useState } from "react";
 import {
-  LayoutDashboard, BarChart3, Users, Clock, Settings, HelpCircle,
-  ChevronDown, X, LogOut, ArrowLeft
+  ChevronDown, X, LogOut, ArrowLeft, ShieldCheck, Globe
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useAppContext } from "@/contexts/AppContext";
 import { useToast } from "@/hooks/use-toast";
+import Logo from "@/components/Logo";
 
 const insightsItems = [
   { icon: LayoutDashboard, label: "Overview", to: "/" },
@@ -52,12 +52,9 @@ const Sidebar = ({ open, onClose }: SidebarProps) => {
         open ? "translate-x-0" : "-translate-x-full md:translate-x-0"
       )} style={{ backgroundColor: '#f5f7f9' }}>
         {/* Logo */}
-        <div className="flex items-center gap-2.5 px-5 pt-5 pb-6">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-indigo-600 shadow-sm shadow-indigo-200">
-            <BarChart3 className="text-white w-5 h-5" />
-          </div>
-          <span className="font-bold text-lg text-slate-800 tracking-tight">Insights</span>
-          <button className="ml-auto hover:opacity-70 md:hidden" style={{ color: '#333333' }} onClick={onClose}>
+        <div className="px-5 pt-5 pb-6">
+          <Logo size={32} textColor="#1e293b" />
+          <button className="absolute right-4 top-5 hover:opacity-70 md:hidden" style={{ color: '#333333' }} onClick={onClose}>
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -85,6 +82,29 @@ const Sidebar = ({ open, onClose }: SidebarProps) => {
               </NavLink>
             ))}
           </nav>
+
+          {userProfile?.role === 'admin' && (
+            <>
+              <p className="text-[10px] font-bold uppercase tracking-widest px-3 mb-3 mt-8 text-indigo-600/60">Governance</p>
+              <nav className="space-y-1">
+                <NavLink
+                  to="/admin/platform"
+                  onClick={onClose}
+                  className={() =>
+                    cn(
+                      "flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm transition-all duration-200",
+                      isActive("/admin/platform")
+                        ? "font-bold bg-indigo-50 text-indigo-600 shadow-sm shadow-indigo-50/50"
+                        : "text-slate-500 hover:bg-slate-100/80 hover:text-slate-900"
+                    )
+                  }
+                >
+                  <ShieldCheck className={cn("w-4 h-4 transition-colors", isActive("/admin/platform") ? "text-indigo-600" : "text-slate-400")} />
+                  <span>Platform Hub</span>
+                </NavLink>
+              </nav>
+            </>
+          )}
 
           <p className="text-[10px] font-bold uppercase tracking-widest px-3 mb-3 mt-8 text-slate-400">Ecosystem</p>
           <nav className="space-y-1">
@@ -122,7 +142,7 @@ const Sidebar = ({ open, onClose }: SidebarProps) => {
             </button>
           </div>
 
-          <p className="text-[10px] px-3 mt-6 font-medium text-slate-300">© 2025 Ripplify Insights</p>
+          <p className="text-[10px] px-3 mt-6 font-medium text-slate-300">© 2025 Ripplify Watchtower</p>
         </div>
       </aside>
     </>
