@@ -26,6 +26,29 @@ export const createTransaction = async (req, res) => {
             return res.status(400).json({ message: "Invalid transaction amount" });
         }
 
+        // Security: Validate amount against link price
+        if (link) {
+            if (link.linkType !== 'donation') {
+                let expectedAmount = parseFloat(link.price) || 0;
+                if (link.category === 'product') {
+                    expectedAmount += (parseFloat(link.shippingFee) || 0);
+                }
+                
+                // Use a small epsilon for float comparison if necessary, but prices are usually simple
+                if (Math.abs(numericAmount - expectedAmount) > 0.01) {
+                    return res.status(400).json({ 
+                        message: "Transaction amount mismatch. Please do not tamper with the price.",
+                        expected: expectedAmount,
+                        received: numericAmount
+                    });
+                }
+            } else if (link.minDonation > 0 && numericAmount < link.minDonation) {
+                return res.status(400).json({ 
+                    message: `Minimum donation amount is ${link.currency} ${link.minDonation}` 
+                });
+            }
+        }
+
         // Get platform fee
         const db = getDb();
         const settings = await db.get("SELECT value FROM system_settings WHERE key = 'platform_fee'");

@@ -88,6 +88,9 @@ export const registerUser = async (req, res) => {
                     businessName: user.businessName,
                     fullName: user.fullName,
                     phone: user.phone,
+                    location: user.location,
+                    payoutMethod: user.payoutMethod,
+                    payoutDetails: user.payoutDetails,
                     isVerified: user.isVerified
                 }
             });
@@ -128,6 +131,9 @@ export const loginUser = async (req, res) => {
                 businessName: user.businessName,
                 fullName: user.fullName,
                 phone: user.phone,
+                location: user.location,
+                payoutMethod: user.payoutMethod,
+                payoutDetails: user.payoutDetails,
                 isVerified: user.isVerified
             }
         });
@@ -153,6 +159,9 @@ export const getMe = async (req, res) => {
                     businessName: user.businessName,
                     fullName: user.fullName,
                     phone: user.phone,
+                    location: user.location,
+                    payoutMethod: user.payoutMethod,
+                    payoutDetails: user.payoutDetails,
                     isVerified: user.isVerified
                 }
             });

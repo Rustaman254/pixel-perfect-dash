@@ -41,7 +41,7 @@ const PaymentLink = {
     findBySlug: async (slug) => {
         const db = getDb();
         return await db.get(`
-            SELECT pl.*, u.businessName, u.fullName, u.email as sellerEmail 
+            SELECT pl.*, u.businessName, u.fullName, u.email as sellerEmail, u.businessLogo 
             FROM payment_links pl
             JOIN users u ON pl.userId = u.id
             WHERE pl.slug = ?

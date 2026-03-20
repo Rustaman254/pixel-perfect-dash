@@ -25,6 +25,7 @@ const connectDB = async () => {
         location TEXT DEFAULT '',
         payoutMethod TEXT DEFAULT 'mpesa',
         payoutDetails TEXT DEFAULT '',
+        businessLogo TEXT,
         isVerified BOOLEAN DEFAULT 0,
         createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
       )
@@ -85,6 +86,10 @@ const connectDB = async () => {
 
     try {
       await dbInstance.exec(`ALTER TABLE payment_links ADD COLUMN minDonation REAL DEFAULT 0`);
+    } catch (e) { }
+
+    try {
+      await dbInstance.exec(`ALTER TABLE users ADD COLUMN businessLogo TEXT`);
     } catch (e) { }
 
     // Create Transactions Table
