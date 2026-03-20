@@ -144,6 +144,49 @@ const connectDB = async () => {
       await dbInstance.exec(`ALTER TABLE transactions ADD COLUMN fee REAL DEFAULT 0`);
     } catch (e) { }
 
+    try { await dbInstance.exec(`ALTER TABLE transactions ADD COLUMN senderId INTEGER REFERENCES users(id)`); } catch(e){}
+    try { await dbInstance.exec(`ALTER TABLE transactions ADD COLUMN receiverId INTEGER REFERENCES users(id)`); } catch(e){}
+    try { await dbInstance.exec(`ALTER TABLE transactions ADD COLUMN network TEXT`); } catch(e){}
+    try { await dbInstance.exec(`ALTER TABLE transactions ADD COLUMN paymentMethod TEXT`); } catch(e){}
+    try { await dbInstance.exec(`ALTER TABLE transactions ADD COLUMN txHash TEXT`); } catch(e){}
+    try { await dbInstance.exec(`ALTER TABLE transactions ADD COLUMN metadata TEXT`); } catch(e){}
+
+    // Create Wallets Table
+    await dbInstance.exec(`
+      CREATE TABLE IF NOT EXISTS wallets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        userId INTEGER NOT NULL,
+        currency_code TEXT NOT NULL,
+        network TEXT NOT NULL,
+        balance REAL DEFAULT 0,
+        locked_balance REAL DEFAULT 0,
+        address TEXT,
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(userId, currency_code, network),
+        FOREIGN KEY (userId) REFERENCES users (id)
+      )
+    `);
+
+    // Create Payment Intents Table
+    await dbInstance.exec(`
+      CREATE TABLE IF NOT EXISTS payment_intents (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        userId INTEGER NOT NULL,
+        amount REAL NOT NULL,
+        currency TEXT NOT NULL,
+        paymentMethod TEXT NOT NULL,
+        status TEXT DEFAULT 'pending',
+        clientSecret TEXT,
+        txHash TEXT,
+        metadata TEXT,
+        expiresAt DATETIME,
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (userId) REFERENCES users (id)
+      )
+    `);
+
     // Create System Settings Table
     await dbInstance.exec(`
       CREATE TABLE IF NOT EXISTS system_settings (
@@ -302,7 +345,7 @@ const connectDB = async () => {
       await dbInstance.run(`
         INSERT INTO apps (name, slug, icon, url, isActive) 
         VALUES ('Ripplify', 'ripplify', 'Wallet', 'http://localhost:8080', 1),
-               ('Insights', 'insights', 'BarChart', 'http://localhost:5175', 1)
+               ('Watchtower', 'insights', 'BarChart', 'http://localhost:5175', 1)
       `);
     }
     try {
@@ -438,6 +481,157 @@ const connectDB = async () => {
         UNIQUE(entityId, entityType)
       )
     `);
+
+    // --- RBAC TABLES (Enterprise Extended) ---
+    
+    // Roles Table Additions
+    try { await dbInstance.exec(`ALTER TABLE roles ADD COLUMN parent_role_id INTEGER REFERENCES roles(id)`); } catch (e) {}
+    try { await dbInstance.exec(`ALTER TABLE roles ADD COLUMN is_deprecated BOOLEAN DEFAULT 0`); } catch (e) {}
+    try { await dbInstance.exec(`ALTER TABLE roles ADD COLUMN tenant_id TEXT DEFAULT 'global'`); } catch (e) {}
+
+    // Permissions Table Additions
+    try { await dbInstance.exec(`ALTER TABLE permissions ADD COLUMN category TEXT DEFAULT 'general'`); } catch (e) {}
+    try { await dbInstance.exec(`ALTER TABLE permissions ADD COLUMN is_deprecated BOOLEAN DEFAULT 0`); } catch (e) {}
+
+    // User Roles Table Additions/Fixes
+    // Since user_roles is a PK table (user_id, role_id, scope_id), we might need to recreate it if we want an 'id' PK.
+    // However, for portability and simplicity, we'll just add the new columns first.
+    try { await dbInstance.exec(`ALTER TABLE user_roles ADD COLUMN scope_type TEXT DEFAULT 'platform'`); } catch (e) {}
+    try { await dbInstance.exec(`ALTER TABLE user_roles ADD COLUMN expires_at DATETIME`); } catch (e) {}
+    try { await dbInstance.exec(`ALTER TABLE user_roles ADD COLUMN assigned_by INTEGER REFERENCES users(id)`); } catch (e) {}
+    try { await dbInstance.exec(`ALTER TABLE user_roles ADD COLUMN assigned_at DATETIME DEFAULT CURRENT_TIMESTAMP`); } catch (e) {}
+
+    // Audit Logs Table (Enhanced)
+    await dbInstance.exec(`
+      CREATE TABLE IF NOT EXISTS admin_audit_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        actor_id INTEGER NOT NULL,
+        target_id INTEGER,
+        target_type TEXT NOT NULL,
+        action TEXT NOT NULL,
+        changes TEXT,
+        ip_address TEXT,
+        user_agent TEXT,
+        tenant_id TEXT DEFAULT 'global',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (actor_id) REFERENCES users (id)
+      )
+    `);
+
+    // --- RBAC TABLES (Original) ---
+
+    // User-Role Link Table (Scoped)
+    await dbInstance.exec(`
+      CREATE TABLE IF NOT EXISTS user_roles (
+        user_id INTEGER NOT NULL,
+        role_id INTEGER NOT NULL,
+        scope_type TEXT DEFAULT 'platform',
+        scope_id TEXT DEFAULT 'global',
+        PRIMARY KEY (user_id, role_id, scope_id),
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+        FOREIGN KEY (role_id) REFERENCES roles (id) ON DELETE CASCADE
+      )
+    `);
+
+    // Role-Permission Link Table
+    await dbInstance.exec(`
+      CREATE TABLE IF NOT EXISTS role_permissions (
+        role_id INTEGER NOT NULL,
+        permission_id INTEGER NOT NULL,
+        PRIMARY KEY (role_id, permission_id),
+        FOREIGN KEY (role_id) REFERENCES roles (id) ON DELETE CASCADE,
+        FOREIGN KEY (permission_id) REFERENCES permissions (id) ON DELETE CASCADE
+      )
+    `);
+
+    // RBAC Audit Logs Table
+    await dbInstance.exec(`
+      CREATE TABLE IF NOT EXISTS audit_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        action TEXT NOT NULL,
+        entity_type TEXT NOT NULL,
+        entity_id TEXT NOT NULL,
+        changes TEXT,
+        ip_address TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id)
+      )
+    `);
+
+    // Create Indexes for RBAC
+    await dbInstance.exec(`CREATE INDEX IF NOT EXISTS idx_user_roles_user ON user_roles(user_id)`);
+    await dbInstance.exec(`CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id)`);
+
+    // --- SEED PERMISSIONS (Enterprise) ---
+    const enterprisePermissions = [
+        { resource: 'roles', action: 'view', desc: 'View administrative roles', cat: 'access-control' },
+        { resource: 'roles', action: 'create', desc: 'Create new roles', cat: 'access-control' },
+        { resource: 'roles', action: 'update', desc: 'Update role rules', cat: 'access-control' },
+        { resource: 'roles', action: 'delete', desc: 'Deprecate roles', cat: 'access-control' },
+        { resource: 'users', action: 'view_roles', desc: 'View user role assignments', cat: 'user-mgmt' },
+        { resource: 'users', action: 'assign_roles', desc: 'Assign roles to users', cat: 'user-mgmt' },
+        { resource: 'users', action: 'bulk_assign', desc: 'Bulk assign roles to teams', cat: 'user-mgmt' },
+        { resource: 'audit', action: 'view', desc: 'View security audit logs', cat: 'monitoring' },
+        { resource: 'system', action: 'settings', desc: 'Manage platform settings', cat: 'system' },
+        { resource: 'links', action: 'create', desc: 'Create payment links', cat: 'payments' },
+        { resource: 'links', action: 'view', desc: 'View payment links', cat: 'payments' },
+        { resource: 'transactions', action: 'view', desc: 'View transactions', cat: 'payments' },
+        { resource: 'payouts', action: 'request', desc: 'Request payouts', cat: 'payments' }
+    ];
+
+    for (const p of enterprisePermissions) {
+        await dbInstance.run(
+            `INSERT OR IGNORE INTO permissions (resource, action, description, category) VALUES (?, ?, ?, ?)`,
+            [p.resource, p.action, p.desc, p.cat]
+        );
+    }
+
+    console.log('RBAC Enterprise permissions seeded.');
+
+    // Final check for system roles (Super Admin, Seller)
+    const systemRoles = [
+        { name: 'Super Admin', desc: 'Full system access' },
+        { name: 'Seller', desc: 'Standard seller access' }
+    ];
+
+    for (const sr of systemRoles) {
+        let role = await dbInstance.get(`SELECT id FROM roles WHERE name = ?`, [sr.name]);
+        let roleId;
+        if (!role) {
+            const res = await dbInstance.run(
+                `INSERT INTO roles (name, description, is_system, tenant_id) VALUES (?, ?, ?, ?)`,
+                [sr.name, sr.desc, 1, 'global']
+            );
+            roleId = res.lastID;
+        } else {
+            roleId = role.id;
+        }
+            
+        // If Super Admin, link all perms
+        if (sr.name === 'Super Admin') {
+            const allPerms = await dbInstance.all(`SELECT id FROM permissions`);
+            for (const p of allPerms) {
+                await dbInstance.run(
+                    `INSERT OR REPLACE INTO role_permissions (role_id, permission_id) VALUES (?, ?)`,
+                    [roleId, p.id]
+                );
+            }
+        } else if (sr.name === 'Seller') {
+            // Link baseline seller perms
+            const sellerPerms = await dbInstance.all(
+                `SELECT id FROM permissions WHERE resource IN ('links', 'transactions', 'payouts', 'analytics', 'notifications', 'payment_link')`
+            );
+            for (const p of sellerPerms) {
+                await dbInstance.run(
+                    `INSERT OR REPLACE INTO role_permissions (role_id, permission_id) VALUES (?, ?)`,
+                    [roleId, p.id]
+                );
+            }
+        }
+    }
+
+    console.log('SQLite Connected & All tables checked (including RBAC Enterprise).');
 
     console.log("SQLite Connected & All tables checked.");
     return dbInstance;

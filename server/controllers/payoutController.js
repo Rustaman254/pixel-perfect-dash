@@ -2,7 +2,8 @@ import Payout from '../models/Payout.js';
 import User from '../models/User.js';
 import PaymentLink from '../models/PaymentLink.js';
 import Notification from '../models/Notification.js';
-import jengaService from '../utils/jengaService.js';
+import paystackService from '../utils/paystackService.js';
+import { getDb } from '../config/db.js';
 
 export const requestPayout = async (req, res) => {
     try {
@@ -37,8 +38,10 @@ export const requestPayout = async (req, res) => {
         // The user asked to make the platform profitable with good margins.
         const db = getDb();
         const settings = await db.get("SELECT value FROM system_settings WHERE key = 'payout_fee'");
-        const payoutFee = settings ? parseFloat(settings.value) : 50; // default 50 units (e.g. KES 50)
-        const netAmount = amount - payoutFee;
+        const flatFee = settings ? parseFloat(settings.value) : 50; 
+        const percentFee = amount * 0.02; // 2% platform margin
+        const totalFee = flatFee + percentFee;
+        const netAmount = amount - totalFee;
 
         if (netAmount <= 0) {
             return res.status(400).json({ message: "Payout amount too small after fees." });
@@ -53,32 +56,35 @@ export const requestPayout = async (req, res) => {
             status: 'Processing'
         });
 
-        // Trigger Jenga Payout
         try {
-            const payoutData = {
-                amount: netAmount,
-                currency: user.currency || 'KES',
-                reference: `PAY-${newPayout.id}`,
-                destination: {
-                    type: user.payoutMethod === 'mpesa' ? 'MobileMoney' : 'Bank',
-                    details: user.payoutDetails // This should be parsed based on method
-                }
+            // 1. Create a Transfer Recipient
+            const recipientResponse = await paystackService.createTransferRecipient({
+                type: "nuban",
+                name: user.fullName || user.email,
+                account_number: user.payoutDetails.accountNumber || "0000000000",
+                bank_code: user.payoutDetails.bankCode || "058", // Generic or specific bank code
+                currency: user.currency || 'NGN'
+            });
+
+            // 2. Initiate Transfer
+            const transferData = {
+                source: "balance",
+                amount: netAmount * 100, // Paystack uses subunit
+                recipient: recipientResponse.data.recipient_code,
+                reason: `Payout for ${user.email} - PAY-${newPayout.id}`
             };
             
-            const jengaResponse = await jengaService.sendMoney(payoutData);
-            console.log('Jenga Payout Response:', jengaResponse);
+            const transferResponse = await paystackService.initiateTransfer(transferData);
+            console.log('Paystack Payout Response:', transferResponse);
             
-            // If Jenga call is successful, we can auto-complete or wait for callback
-            // For now, let's keep it 'Processing' and let the admin know
             await Notification.create({
                 userId: null,
-                title: "Payout Request (Jenga)",
-                message: `Automated payout of ${netAmount} initiated for ${user.email}. Status: ${jengaResponse.status}`,
+                title: "Payout Request (Paystack)",
+                message: `Automated payout of ${netAmount} initiated for ${user.email}. Status: ${transferResponse.data.status}`,
                 type: 'info'
             });
-        } catch (jengaError) {
-            console.error('Jenga Payout Initiation Failed:', jengaError);
-            // Don't fail the request, admin can still process manually
+        } catch (paystackError) {
+            console.error('Paystack Payout Initiation Failed:', paystackError);
         }
 
         res.status(201).json(newPayout);

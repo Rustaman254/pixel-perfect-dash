@@ -78,16 +78,18 @@ export const getPublicLink = async (req, res) => {
         }
         // Donation links never expire automatically (like reusable links)
 
-        // Fetch enabled payment methods for this seller
+        // Fetch enabled payment methods for this seller — default to ALL if not configured
         const paymentMethods = await UserPaymentMethod.findAllByUserId(link.userId);
-        const enabledMethods = paymentMethods.filter(pm => pm.enabled).map(pm => pm.methodId);
+        const enabledMethods = paymentMethods.length > 0 
+            ? paymentMethods.filter(pm => pm.enabled).map(pm => pm.methodId)
+            : ['card', 'mpesa', 'bank', 'crypto'];
 
         res.json({ 
             ...link, 
             isExpired, 
             expirationReason, 
             enabledMethods,
-            publicKey: process.env.FLUTTERWAVE_PUBLIC_KEY
+            publicKey: process.env.PAYSTACK_PUBLIC_KEY
         });
     } catch (error) {
         res.status(500).json({ message: error.message });

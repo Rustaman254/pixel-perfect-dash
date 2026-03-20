@@ -1,5 +1,5 @@
 import asyncHandler from 'express-async-handler';
-import Insight from '../models/Insight.js';
+import Watchtower from '../models/Watchtower.js';
 import geoip from 'geoip-lite';
 import requestIp from 'request-ip';
 
@@ -7,7 +7,7 @@ import requestIp from 'request-ip';
 // @route   GET /api/insights/features
 // @access  Private (Seller)
 export const getFeatureInsights = asyncHandler(async (req, res) => {
-    const analysis = await Insight.getFeatureInsights(req.user.id);
+    const analysis = await Watchtower.getFeatureInsights(req.user.id);
     res.json(analysis);
 });
 
@@ -15,7 +15,7 @@ export const getFeatureInsights = asyncHandler(async (req, res) => {
 // @route   GET /api/insights/products
 // @access  Private (Seller)
 export const getProductAnalytics = asyncHandler(async (req, res) => {
-    const analysis = await Insight.getProductInsights(req.user.id);
+    const analysis = await Watchtower.getProductInsights(req.user.id);
     res.json(analysis);
 });
 
@@ -23,7 +23,7 @@ export const getProductAnalytics = asyncHandler(async (req, res) => {
 // @route   GET /api/insights/overview
 // @access  Private (Seller)
 export const getOverview = asyncHandler(async (req, res) => {
-    const overview = await Insight.getOverview(req.user.id);
+    const overview = await Watchtower.getOverview(req.user.id);
     res.json(overview);
 });
 
@@ -34,7 +34,7 @@ export const getEntityAnalytics = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { type } = req.query; // e.g., 'payment-link'
     
-    const analytics = await Insight.getEntityAnalytics(id, type || 'payment-link');
+    const analytics = await Watchtower.getEntityAnalytics(id, type || 'payment-link');
     
     if (!analytics) {
         res.status(404);
@@ -51,7 +51,7 @@ export const getSessions = asyncHandler(async (req, res) => {
     const limit = parseInt(req.query.limit) || 20;
     const offset = parseInt(req.query.offset) || 0;
     
-    const sessions = await Insight.getSessions(req.user.id, limit, offset);
+    const sessions = await Watchtower.getSessions(req.user.id, limit, offset);
     res.json(sessions);
 });
 
@@ -59,7 +59,7 @@ export const getSessions = asyncHandler(async (req, res) => {
 // @route   GET /api/insights/sessions/:id
 // @access  Private (Seller)
 export const getSessionDetail = asyncHandler(async (req, res) => {
-    const detail = await Insight.getSessionDetail(req.params.id);
+    const detail = await Watchtower.getSessionDetail(req.params.id);
     
     if (!detail) {
         res.status(404);
@@ -101,16 +101,24 @@ export const ingestData = asyncHandler(async (req, res) => {
     };
     
     // Check if session exists to update or create
-    const existing = await Insight.getSessionDetail(session.sessionId);
+    const existing = await Watchtower.getSessionDetail(session.sessionId);
     if (!existing) {
-        await Insight.createSession(sessionToCreate);
+        await Watchtower.createSession(sessionToCreate);
     }
     
     if (events && events.length > 0) {
         for (const event of events) {
-            await Insight.logEvent({ sessionId: session.sessionId, ...event });
+            await Watchtower.logEvent({ sessionId: session.sessionId, ...event });
         }
     }
     
     res.status(201).json({ message: 'Data ingested successfully', sessionId: session.sessionId });
+});
+
+// @desc    Get platform-wide overview (Admin)
+// @route   GET /api/watchtower/platform-overview
+// @access  Private (Admin)
+export const getPlatformOverview = asyncHandler(async (req, res) => {
+    const overview = await Watchtower.getPlatformOverview();
+    res.json(overview);
 });

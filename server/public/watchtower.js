@@ -1,10 +1,11 @@
 (function() {
     // Ripplify Insights - Autonomous Behavioral Crawler (Comprehensive)
-    const scriptTag = document.currentScript || Array.from(document.querySelectorAll('script')).find(s => s.src.includes('insight.js'));
+    const scriptTag = document.currentScript || Array.from(document.querySelectorAll('script')).find(s => s.src.includes('watchtower.js'));
     const backendUrl = scriptTag ? new URL(scriptTag.src).origin : 'http://localhost:3001';
+    const ENDPOINT = `${backendUrl}/api/watchtower/ingest`;
 
     const CONFIG = {
-        endpoint: `${backendUrl}/api/insights/ingest`,
+        endpoint: ENDPOINT,
         batchInterval: 5000,
         rageClickThreshold: 3,
         rageClickTime: 2000,

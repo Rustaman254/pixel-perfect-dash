@@ -14,8 +14,11 @@ import payoutRoutes from "./routes/payoutRoutes.js";
 import supportRoutes from "./routes/supportRoutes.js";
 import paymentMethodRoutes from "./routes/paymentMethodRoutes.js";
 import currencyRoutes from "./routes/currencyRoutes.js";
-import insightRoutes from "./routes/insightRoutes.js";
+import watchtowerRoutes from "./routes/watchtowerRoutes.js";
 import appRoutes from "./routes/appRoutes.js";
+import rbacRoutes from "./routes/rbacRoutes.js";
+import walletRoutes from "./routes/walletRoutes.js";
+import paymentRoutes from "./routes/paymentRoutes.js";
 
 dotenv.config();
 
@@ -45,14 +48,17 @@ app.use("/api/links", linkRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/admin", rbacRoutes);
 app.use("/api/checkout", checkoutRoutes);
 app.use("/api/oauth", oauthRoutes);
 app.use("/api/payouts", payoutRoutes);
 app.use("/api/support", supportRoutes);
 app.use("/api/payment-methods", paymentMethodRoutes);
 app.use("/api/currencies", currencyRoutes);
-app.use("/api/insights", insightRoutes);
+app.use("/api/watchtower", watchtowerRoutes);
 app.use("/api/apps", appRoutes);
+app.use("/api/wallets", walletRoutes);
+app.use("/api/payments", paymentRoutes);
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {

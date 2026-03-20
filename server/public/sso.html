@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Ripplify SSO Hub</title>
+</head>
+<body>
+    <script>
+        // Ripplify SSO Hub - Origins synchronized authentication
+        window.addEventListener('message', (event) => {
+            // In production, we should validate event.origin here
+            // For localhost development, we allow all for now
+            
+            const { type, token, userProfile } = event.data;
+
+            try {
+                if (type === 'GET_AUTH') {
+                    const savedToken = localStorage.getItem('auth_token');
+                    const savedProfile = localStorage.getItem('ripplify_profile');
+                    
+                    event.source.postMessage({
+                        type: 'AUTH_STATE',
+                        token: savedToken,
+                        userProfile: savedProfile ? JSON.parse(savedProfile) : null
+                    }, event.origin);
+                } 
+                else if (type === 'SET_AUTH') {
+                    if (token) localStorage.setItem('auth_token', token);
+                    if (userProfile) localStorage.setItem('ripplify_profile', JSON.stringify(userProfile));
+                } 
+                else if (type === 'CLEAR_AUTH') {
+                    localStorage.removeItem('auth_token');
+                    localStorage.removeItem('ripplify_profile');
+                }
+            } catch (e) {
+                console.error('SSO Hub Error:', e);
+            }
+        });
+    </script>
+</body>
+</html>

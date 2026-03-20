@@ -1,7 +1,7 @@
 import express from 'express';
 import { protect, admin } from '../middlewares/authMiddleware.js';
 import {
-    getPlatformStats, getAllUsers, deleteUser, updatePlatformStatus,
+    getPlatformStats, getAllUsers, createUser, deleteUser, updatePlatformStatus,
     getApiKeys, createApiKey, deleteApiKey, updateApiKeyStatus,
     getSystemSettings, updateSystemSetting,
     getSupportedCurrencies, createSupportedCurrency, updateSupportedCurrency, deleteSupportedCurrency,
@@ -15,6 +15,7 @@ router.get('/stats', protect, admin, getPlatformStats);
 
 // User Management
 router.get('/users', protect, admin, getAllUsers);
+router.post('/users', protect, admin, createUser);
 router.delete('/users/:id', protect, admin, deleteUser);
 router.patch('/users/:id/status', protect, admin, updatePlatformStatus);
 

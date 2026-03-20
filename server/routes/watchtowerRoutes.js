@@ -6,9 +6,10 @@ import {
     getSessionDetail,
     ingestData,
     getFeatureInsights,
-    getProductAnalytics
-} from '../controllers/insightController.js';
-import { protect } from '../middlewares/authMiddleware.js';
+    getProductAnalytics,
+    getPlatformOverview
+} from '../controllers/watchtowerController.js';
+import { protect, admin } from '../middlewares/authMiddleware.js';
 
 const router = express.Router();
 
@@ -19,6 +20,9 @@ router.get('/products', protect, getProductAnalytics);
 router.get('/entity/:id', protect, getEntityAnalytics);
 router.get('/sessions', protect, getSessions);
 router.get('/sessions/:id', protect, getSessionDetail);
+
+// Admin routes
+router.get('/platform-overview', protect, admin, getPlatformOverview);
 
 // Public route for data ingestion
 router.post('/ingest', ingestData);

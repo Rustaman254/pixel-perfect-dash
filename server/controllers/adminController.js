@@ -1,4 +1,6 @@
-import { getDb } from '../config/db.js';
+import bcrypt from 'bcryptjs';
+import User from '../models/User.js';
+import rbacService from '../utils/rbacService.js';
 import ApiKey from '../models/ApiKey.js';
 import Transaction from '../models/Transaction.js';
 import SupportedCurrency from '../models/SupportedCurrency.js';
@@ -32,7 +34,15 @@ export const getPlatformStats = async (req, res) => {
 export const getAllUsers = async (req, res) => {
     try {
         const db = getDb();
-        const users = await db.all(`SELECT id, email, fullName, role, businessName, isVerified, createdAt FROM users ORDER BY createdAt DESC`);
+        const users = await db.all(`
+            SELECT u.id, u.email, u.fullName, u.role, u.businessName, u.isVerified, u.createdAt,
+            GROUP_CONCAT(r.name) as rbacRoles
+            FROM users u
+            LEFT JOIN user_roles ur ON u.id = ur.user_id AND (ur.expires_at IS NULL OR ur.expires_at > CURRENT_TIMESTAMP)
+            LEFT JOIN roles r ON ur.role_id = r.id AND r.is_deprecated = 0
+            GROUP BY u.id
+            ORDER BY u.createdAt DESC
+        `);
         res.json(users);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -56,6 +66,43 @@ export const deleteUser = async (req, res) => {
         await db.run(`DELETE FROM users WHERE id = ?`, id);
 
         res.json({ message: "User and all related data deleted successfully" });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const createUser = async (req, res) => {
+    try {
+        const { email, password, fullName, role, businessName, roleId } = req.body;
+        const db = getDb();
+
+        const userExists = await User.findOne({ email });
+        if (userExists) return res.status(400).json({ message: "User already exists" });
+
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
+        const newUser = await User.create({
+            email,
+            password: hashedPassword,
+            fullName: fullName || "",
+            role: role || "seller", // Legacy role
+            businessName: businessName || (fullName ? `${fullName}'s Store` : "New Store"),
+            isVerified: 1
+        });
+
+        // Assign RBAC Role if provided
+        if (roleId) {
+            await rbacService.assignRoleToUser({
+                userId: newUser.id,
+                roleId: parseInt(roleId),
+                scopeId: 'global',
+                scopeType: 'platform',
+                assignedBy: req.user.id
+            });
+        }
+
+        res.status(201).json({ message: "User created successfully", user: newUser });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

@@ -38,10 +38,11 @@ const protect = async (req, res, next) => {
         } catch (error) {
             if (error.name === 'TokenExpiredError') {
                 console.warn("JWT Expired warning:", error.message);
+                return res.status(401).json({ message: "Token expired" });
             } else {
                 console.error("Auth Verification error:", error);
+                return res.status(401).json({ message: "Not authorized, token failed" });
             }
-            return res.status(401).json({ message: "Not authorized, token failed" });
         }
     }
 
@@ -50,12 +51,19 @@ const protect = async (req, res, next) => {
     }
 };
 
-const admin = (req, res, next) => {
-    if (req.user && req.user.role === 'admin') {
-        next();
-    } else {
-        res.status(403).json({ message: "Not authorized as an admin" });
+import rbacService from '../utils/rbacService.js';
+
+const admin = async (req, res, next) => {
+    if (req.user) {
+        // Legacy role check
+        if (req.user.role === 'admin') return next();
+
+        // RBAC-aware check: Check if user has 'admin:view' or 'Super Admin' role
+        const isSuperAdmin = await rbacService.userHasPermission(req.user.id, 'roles', 'view');
+        if (isSuperAdmin) return next();
     }
+    
+    res.status(403).json({ message: 'Not authorized as an admin' });
 };
 
 export { protect, admin };

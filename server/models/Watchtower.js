@@ -1,6 +1,6 @@
 import { getDb } from '../config/db.js';
 
-const Insight = {
+const Watchtower = {
     getOverview: async (userId) => {
         const db = getDb();
         
@@ -241,7 +241,45 @@ const Insight = {
         }
         
         return insights.sort((a, b) => b.revenue - a.revenue);
+    },
+
+    getPlatformOverview: async () => {
+        const db = getDb();
+        
+        // Platform-wide Behavioral Stats
+        const behavioralStats = await db.get(`
+            SELECT 
+                COUNT(*) as totalSessions,
+                SUM(pageViews) as totalPageViews,
+                AVG(duration) as avgDuration,
+                SUM(CASE WHEN isRageClick = 1 THEN 1 ELSE 0 END) as totalRageClicks
+            FROM insight_sessions
+        `);
+
+        // Platform-wide Business Stats
+        const businessStats = await db.get(`
+            SELECT 
+                SUM(CASE WHEN status IN ('Completed', 'Funds locked', 'Shipped') THEN amount ELSE 0 END) as totalRevenue,
+                COUNT(*) as totalTransactions,
+                COUNT(DISTINCT userId) as activeSellers
+            FROM transactions
+        `);
+
+        // App Status Aggregation
+        const apps = await db.all(`SELECT name, slug, isActive FROM apps`);
+
+        return {
+            platformStats: {
+                totalSessions: behavioralStats?.totalSessions || 0,
+                totalRevenue: businessStats?.totalRevenue || 0,
+                totalTransactions: businessStats?.totalTransactions || 0,
+                activeSellers: businessStats?.activeSellers || 0,
+                totalRageClicks: behavioralStats?.totalRageClicks || 0,
+                avgDuration: Math.round(behavioralStats?.avgDuration || 0)
+            },
+            apps: apps
+        };
     }
 };
 
-export default Insight;
+export default Watchtower;
