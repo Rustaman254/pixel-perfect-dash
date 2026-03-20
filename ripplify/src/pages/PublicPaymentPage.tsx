@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Check, ShieldCheck, Clock, AlertCircle, Package, Truck, CheckCircle2, ArrowRight, User, Mail, Phone, Lock, ChevronDown, ChevronUp, Image as ImageIcon, ChevronRight, Heart } from "lucide-react";
+import { Check, ShieldCheck, Clock, AlertCircle, Package, Truck, CheckCircle2, ArrowRight, User, Mail, Phone, Lock, ChevronDown, ChevronUp, Image as ImageIcon, ChevronRight, Heart, Copy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { publicFetch } from "@/lib/api";
 import Logo from "@/components/Logo";
@@ -24,11 +24,37 @@ const PublicPaymentPage = () => {
     const [isEditingInfo, setIsEditingInfo] = useState(false);
     const [showReceipt, setShowReceipt] = useState(false);
 
-    const [paymentMethod, setPaymentMethod] = useState("mpesa");
+    const [paymentMethod, setPaymentMethod] = useState("paystack");
     const [mpesaPhone, setMpesaPhone] = useState("");
     const [donationAmount, setDonationAmount] = useState("");
+    const [cryptoDepositInfo, setCryptoDepositInfo] = useState<any>(null);
 
     const [verifyingPayment, setVerifyingPayment] = useState(false);
+
+    // Paystack Raw API state
+    const [cardData, setCardData] = useState({
+        number: "",
+        expiryMonth: "",
+        expiryYear: "",
+        cvv: ""
+    });
+    const [paystackStep, setPaystackStep] = useState<string | null>(null); // 'otp', 'pin', 'birthday', 'address', '3ds'
+    const [paystackReference, setPaystackReference] = useState<string | null>(null);
+    const [paystackAuthUrl, setPaystackAuthUrl] = useState<string | null>(null);
+    const [otp, setOtp] = useState("");
+    const [pin, setPin] = useState("");
+    const [birthday, setBirthday] = useState("");
+    const [addressDetails, setAddressDetails] = useState({
+        address: "",
+        city: "",
+        state: "",
+        zipcode: ""
+    });
+    const [bankData, setBankData] = useState({
+        code: "",
+        accountNumber: ""
+    });
+    const [mpesaNumber, setMpesaNumber] = useState("");
 
     useEffect(() => {
         const searchParams = new URLSearchParams(window.location.search);
@@ -110,6 +136,9 @@ const PublicPaymentPage = () => {
                 publicFetch(`/links/public/${slug}`)
                     .then(data => {
                         setLink(data);
+                        if (data.linkType === 'donation' && data.price > 0) {
+                            setDonationAmount(data.price.toString());
+                        }
                         if (['Funds locked', 'Shipped', 'Completed'].includes(data.status)) {
                             setStep(4);
                         }
@@ -129,7 +158,7 @@ const PublicPaymentPage = () => {
                         <Clock className="w-8 h-8 text-[#025864] animate-spin" />
                     </div>
                     <h2 className="text-2xl font-bold text-slate-900 mb-2">Verifying Payment</h2>
-                    <p className="text-slate-500 text-sm">Please wait while we confirm your transaction with PesaPal...</p>
+                    <p className="text-slate-500 text-sm">Please wait while we confirm your transaction with Paystack...</p>
                 </div>
             </div>
         );
@@ -159,8 +188,8 @@ const PublicPaymentPage = () => {
     }
 
     // Resolve the seller display name — businessName defaults to '' in the DB so we trim+fallback to fullName
-    const sellerName = (link.businessName && link.businessName.trim()) 
-        || (link.fullName && link.fullName.trim()) 
+    const sellerName = (link.businessName && link.businessName.trim())
+        || (link.fullName && link.fullName.trim())
         || 'Private Seller';
 
     const handleNextStep = () => {
@@ -184,8 +213,9 @@ const PublicPaymentPage = () => {
                 });
                 return;
             }
-            if (paymentMethod === 'mpesa' && !mpesaPhone) {
-                setMpesaPhone(buyerInfo.phone);
+            // Initialize mpesaNumber from buyerInfo.phone if empty
+            if (!mpesaNumber && buyerInfo.phone) {
+                setMpesaNumber(buyerInfo.phone);
             }
             setStep(3);
         }
@@ -194,37 +224,91 @@ const PublicPaymentPage = () => {
     const handlePayment = async () => {
         try {
             const isDonation = link.linkType === 'donation';
-            const payAmount = isDonation 
+            const payAmount = isDonation
                 ? (parseFloat(donationAmount) || 0)
                 : link.price + (link.category === 'product' ? (link.shippingFee || 0) : 0);
 
             if (payAmount <= 0) {
                 toast({ title: "Invalid Amount", description: "Please enter a valid amount.", variant: "destructive" });
                 return;
+            }            // 1. Create a pending transaction
+            const body: any = {
+                buyerName: buyerInfo.fullName,
+                buyerEmail: buyerInfo.email,
+                buyerPhone: buyerInfo.phone,
+                amount: payAmount,
+                currency: link.currency,
+                type: isDonation ? 'Donation' : 'Payment',
+                paymentMethod,
+                network: link.currency === 'USDA' ? 'cardano' : 'polygon'
+            };
+
+            if (paymentMethod === 'paystack_card') {
+                body.paymentMethod = 'paystack';
+                body.card = {
+                    number: cardData.number.replace(/\s/g, ''),
+                    cvv: cardData.cvv,
+                    expiry_month: cardData.expiryMonth,
+                    expiry_year: cardData.expiryYear
+                };
+            } else if (paymentMethod === 'paystack_mpesa') {
+                body.paymentMethod = 'paystack';
+                body.mobile_money = {
+                    phone: mpesaNumber.replace(/\s/g, ''),
+                    provider: 'mpesa'
+                };
+            } else if (paymentMethod === 'paystack_bank') {
+                body.paymentMethod = 'paystack';
+                body.bank = {
+                    code: bankData.code,
+                    account_number: bankData.accountNumber
+                };
             }
 
-            // 1. Create a pending transaction and get PesaPal redirect URL
             const data = await publicFetch(`/transactions/public/${slug}`, {
                 method: 'POST',
-                body: JSON.stringify({
-                    buyerName: buyerInfo.fullName,
-                    buyerEmail: buyerInfo.email,
-                    buyerPhone: buyerInfo.phone,
-                    amount: payAmount,
-                    currency: link.currency,
-                    type: isDonation ? 'Donation' : 'Payment'
-                })
+                body: JSON.stringify(body)
             });
 
-            if (data.redirect_url) {
-                // Store buyer info for when they return
+            if (data.cryptoDepositInfo) {
+                setCryptoDepositInfo(data.cryptoDepositInfo);
+            } else if (data.paystackResponse) {
+                const ps = data.paystackResponse.data; // Use the inner data object
+                setPaystackReference(ps?.reference || data.transactionId);
+
+                if (ps?.status === 'success') {
+                    localStorage.setItem(`buyer_info_${slug}`, JSON.stringify(buyerInfo));
+                    setStep(4);
+                } else if (ps?.status === 'pay_offline' || ps?.status === 'pending') {
+                    // M-Pesa STK push sent — show waiting UI and poll for completion
+                    setPaystackStep('pay_offline');
+                    toast({
+                        title: "Check Your Phone",
+                        description: "An M-Pesa STK push has been sent to your phone. Please enter your PIN to complete the payment.",
+                    });
+                } else if (ps?.status === 'send_otp') {
+                    setPaystackStep('otp');
+                } else if (ps?.status === 'send_pin') {
+                    setPaystackStep('pin');
+                } else if (ps?.status === 'send_birthday') {
+                    setPaystackStep('birthday');
+                } else if (ps?.status === 'send_address') {
+                    setPaystackStep('address');
+                } else if (ps?.status === 'open_url') {
+                    setPaystackAuthUrl(ps.url);
+                    setPaystackStep('3ds');
+                } else if (data.paystackResponse.status === false) {
+                    throw new Error(data.paystackResponse.message || "Payment failed");
+                } else {
+                    console.log('Unhandled Paystack status:', ps?.status);
+                    throw new Error(ps?.message || "Unknown payment status");
+                }
+            } else if (data.redirect_url) {
                 localStorage.setItem(`buyer_info_${slug}`, JSON.stringify(buyerInfo));
-                // Redirect to PesaPal
                 window.location.href = data.redirect_url;
             } else {
-                throw new Error("Failed to get payment redirect URL");
+                throw new Error("Failed to initialize payment");
             }
-
         } catch (err: any) {
             toast({
                 title: "Payment Initialization Failed",
@@ -263,22 +347,27 @@ const PublicPaymentPage = () => {
     };
 
     return (
-        <div className="min-h-screen bg-[#F8FAFC] font-sans text-slate-900 pb-12">
-            <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-30">
-                <div>
-                    <Logo text="Ripplify" />
+        <div className="min-h-screen bg-[#F8FAFC] font-sans text-slate-900 pb-20 flex flex-col">
+            <main className="flex-grow max-w-4xl mx-auto px-4 pt-8 md:pt-16 w-full">
+                {/* Branding Section */}
+                <div className="flex flex-col items-center mb-10 text-center animate-in fade-in slide-in-from-top-4 duration-700">
+                    {link.businessLogo ? (
+                        <img
+                            src={link.businessLogo}
+                            alt={sellerName}
+                            className="h-16 w-auto object-contain mb-4 rounded-xl shadow-sm"
+                        />
+                    ) : (
+                        <div className="flex items-center gap-3">
+                            <Logo showText={false} size={40} />
+                            <h2 className="text-2xl font-black text-slate-900 tracking-tight">{sellerName}</h2>
+                        </div>
+                    )}
                 </div>
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 rounded-full">
-                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                    <span className="text-xs font-semibold text-emerald-700">Verified Secure Escrow</span>
-                </div>
-            </header>
-
-            <main className="max-w-4xl mx-auto px-4 pt-8 md:pt-12">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                     <div className="lg:col-span-7 space-y-6">
                         {step === 1 && (
-                            <div className="bg-white rounded-[24px] shadow-sm border border-slate-200 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            <div className="bg-white rounded-[32px] md:rounded-[24px] shadow-sm border border-slate-200 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
                                 <div className="p-6 md:p-8 space-y-6">
                                     <div className="space-y-2">
                                         <div className="flex items-center gap-2 mb-4">
@@ -295,7 +384,7 @@ const PublicPaymentPage = () => {
                                         <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 leading-tight">{link.name}</h1>
                                         <div className="flex items-center gap-4 pt-1">
                                             <div className="text-3xl font-black text-[#025864]">
-                                                {link.linkType === 'donation' 
+                                                {link.linkType === 'donation'
                                                     ? (link.price > 0 ? `${link.currency} ${link.price.toLocaleString()}` : 'Any Amount')
                                                     : `${link.currency} ${link.price.toLocaleString()}`
                                                 }
@@ -343,41 +432,41 @@ const PublicPaymentPage = () => {
                                         </div>
                                     )}
                                     {link.linkType !== 'donation' && (
-                                    <div className="space-y-4 py-2">
-                                        <div className="flex items-start gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center shrink-0">
-                                                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                                        <div className="space-y-4 py-2">
+                                            <div className="flex items-start gap-3">
+                                                <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center shrink-0">
+                                                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-bold text-slate-900">Secure Escrow Protection</p>
+                                                    <p className="text-xs text-slate-500">Your funds are held safely by RippliFy until you confirm receipt of the item.</p>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <p className="text-sm font-bold text-slate-900">Secure Escrow Protection</p>
-                                                <p className="text-xs text-slate-500">Your funds are held safely by RippliFy until you confirm receipt of the item.</p>
+                                            <div className="flex items-start gap-3">
+                                                <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
+                                                    <Truck className="w-4 h-4 text-blue-600" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-bold text-slate-900">Estimated Delivery</p>
+                                                    <p className="text-xs text-slate-500">The seller typically delivers within {link.deliveryDays || 3} days.</p>
+                                                </div>
                                             </div>
                                         </div>
-                                        <div className="flex items-start gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
-                                                <Truck className="w-4 h-4 text-blue-600" />
-                                            </div>
-                                            <div>
-                                                <p className="text-sm font-bold text-slate-900">Estimated Delivery</p>
-                                                <p className="text-xs text-slate-500">The seller typically delivers within {link.deliveryDays || 3} days.</p>
-                                            </div>
-                                        </div>
-                                    </div>
                                     )}
                                     {link.linkType === 'donation' && (
-                                    <div className="space-y-4 py-2">
-                                        <div className="flex items-start gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-pink-50 flex items-center justify-center shrink-0">
-                                                <Heart className="w-4 h-4 text-pink-500" />
-                                            </div>
-                                            <div>
-                                                <p className="text-sm font-bold text-slate-900">Support This Cause</p>
-                                                <p className="text-xs text-slate-500">Your donation goes directly to {sellerName}. Thank you for your generosity!</p>
+                                        <div className="space-y-4 py-2">
+                                            <div className="flex items-start gap-3">
+                                                <div className="w-8 h-8 rounded-full bg-pink-50 flex items-center justify-center shrink-0">
+                                                    <Heart className="w-4 h-4 text-pink-500" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-bold text-slate-900">Support This Cause</p>
+                                                    <p className="text-xs text-slate-500">Your donation goes directly to {sellerName}. Thank you for your generosity!</p>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
                                     )}
-                                    <button onClick={handleNextStep} className={`w-full font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all group text-white ${link.linkType === 'donation' ? 'bg-pink-500 hover:bg-pink-600' : 'bg-[#025864] hover:bg-[#014751]'}`}>
+                                    <button onClick={handleNextStep} className={`w-full font-bold py-4 rounded-2xl flex md:flex items-center justify-center gap-2 transition-all group text-white ${link.linkType === 'donation' ? 'bg-pink-500 hover:bg-pink-600' : 'bg-[#025864] hover:bg-[#014751]'} ${step === 1 ? 'md:flex hidden' : ''}`}>
                                         {link.linkType === 'donation' ? 'Donate Now' : 'Buy Now with Escrow'}
                                         <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                                     </button>
@@ -386,7 +475,7 @@ const PublicPaymentPage = () => {
                         )}
 
                         {step === 2 && (
-                            <div className="bg-white rounded-[24px] shadow-sm border border-slate-200 overflow-hidden animate-in fade-in slide-in-from-right-4 duration-500">
+                            <div className="bg-white rounded-[32px] md:rounded-[24px] shadow-sm border border-slate-200 overflow-hidden animate-in fade-in slide-in-from-right-4 duration-500">
                                 <div className="p-6 md:p-8 space-y-6">
                                     <div className="flex items-center gap-4 mb-2">
                                         <button onClick={() => setStep(1)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
@@ -458,19 +547,29 @@ const PublicPaymentPage = () => {
                                             <div>
                                                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">Phone Number</label>
                                                 <div className="relative">
-                                                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5 pointer-events-none border-r border-slate-200 pr-3">
+                                                        <span className="text-sm font-bold text-slate-400">+254</span>
+                                                    </div>
                                                     <input
-                                                        type="tel"
-                                                        placeholder="+254 7XX XXX XXX"
-                                                        className="w-full pl-11 pr-4 py-4 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#025864]/20 focus:border-[#025864] text-sm"
-                                                        value={buyerInfo.phone}
-                                                        onChange={(e) => setBuyerInfo(p => ({ ...p, phone: e.target.value }))}
+                                                        type="text"
+                                                        placeholder="712 345 678"
+                                                        className="w-full pl-24 pr-4 py-4 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#025864]/20 focus:border-[#025864] text-sm font-bold text-slate-900"
+                                                        value={buyerInfo.phone.startsWith('+254') ? buyerInfo.phone.slice(4) : buyerInfo.phone}
+                                                        onChange={(e) => {
+                                                            let val = e.target.value.replace(/\D/g, '');
+                                                            if (val.startsWith('0')) val = val.slice(1);
+                                                            if (val.startsWith('254')) val = val.slice(3);
+                                                            if (val.length <= 9) {
+                                                                setBuyerInfo(prev => ({ ...prev, phone: val ? `+254${val}` : '' }));
+                                                                if (!mpesaNumber) setMpesaNumber(val ? `+254${val}` : '');
+                                                            }
+                                                        }}
                                                     />
                                                 </div>
                                             </div>
                                         </div>
                                     )}
-                                    <button onClick={handleNextStep} className="w-full bg-[#025864] hover:bg-[#014751] text-white font-bold py-4 rounded-2xl transition-all">
+                                    <button onClick={handleNextStep} className={`w-full bg-[#025864] hover:bg-[#014751] text-white font-bold py-4 rounded-2xl transition-all ${step === 2 ? 'md:block hidden' : ''}`}>
                                         {link.buyerName && !isEditingInfo ? "Confirm & Continue" : "Continue to Payment"}
                                     </button>
                                 </div>
@@ -478,7 +577,7 @@ const PublicPaymentPage = () => {
                         )}
 
                         {step === 3 && (
-                            <div className="bg-white rounded-[24px] shadow-sm border border-slate-200 overflow-hidden animate-in fade-in slide-in-from-right-4 duration-500">
+                            <div className="bg-white rounded-[32px] md:rounded-[24px] shadow-sm border border-slate-200 overflow-hidden animate-in fade-in slide-in-from-right-4 duration-500">
                                 <div className="p-6 md:p-8 space-y-6">
                                     <div className="flex items-center gap-4 mb-2">
                                         <button onClick={() => setStep(2)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
@@ -490,70 +589,450 @@ const PublicPaymentPage = () => {
                                         </div>
                                     </div>
                                     <div className="space-y-3">
-                                        {(link.enabledMethods?.includes('mpesa') || !link.enabledMethods) && (
-                                            <div className="space-y-3">
-                                                <button onClick={() => setPaymentMethod("mpesa")} className={`w-full p-4 rounded-2xl border-2 flex items-center justify-between transition-all ${paymentMethod === 'mpesa' ? 'border-[#025864] bg-[#025864]/5' : 'border-slate-100 hover:border-slate-200'}`}>
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center font-bold text-emerald-600 italic">M</div>
-                                                        <div className="text-left">
-                                                            <p className="font-bold text-slate-900">M-PESA / Mobile Money</p>
-                                                            <p className="text-[10px] text-slate-500 uppercase tracking-wider">Fast & Direct</p>
-                                                        </div>
-                                                    </div>
-                                                    {paymentMethod === 'mpesa' && <div className="w-5 h-5 rounded-full bg-[#025864] flex items-center justify-center"><Check className="w-3 h-3 text-white" /></div>}
-                                                </button>
-
-                                                {paymentMethod === 'mpesa' && (
-                                                    <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 animate-in fade-in slide-in-from-top-2 duration-300">
-                                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Confirm M-PESA Number</label>
-                                                        <div className="relative">
-                                                            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                                            <input 
-                                                                type="tel"
-                                                                value={mpesaPhone}
-                                                                onChange={(e) => setMpesaPhone(e.target.value)}
-                                                                placeholder="2547XXXXXXXX"
-                                                                className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#025864]/20 focus:border-[#025864]"
-                                                            />
-                                                        </div>
-                                                        <p className="text-[10px] text-slate-500 mt-2">The STK push will be sent to this number.</p>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
-
                                         {(link.enabledMethods?.includes('card') || !link.enabledMethods) && (
-                                            <button onClick={() => setPaymentMethod("card")} className={`w-full p-4 rounded-2xl border-2 flex items-center justify-between transition-all ${paymentMethod === 'card' ? 'border-[#025864] bg-[#025864]/5' : 'border-slate-100 hover:border-slate-200'}`}>
+                                            <button onClick={() => setPaymentMethod("paystack_card")} className={`w-full p-4 rounded-2xl border-2 flex items-center justify-between transition-all ${paymentMethod === 'paystack_card' ? 'border-[#025864] bg-[#025864]/5' : 'border-slate-100 hover:border-slate-200'}`}>
                                                 <div className="flex items-center gap-4">
-                                                    <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center"><Lock className="w-5 h-5 text-blue-600" /></div>
+                                                    <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center"><Lock className="w-5 h-5 text-indigo-600" /></div>
                                                     <div className="text-left">
-                                                        <p className="font-bold text-slate-900">Bank Card / Visa</p>
-                                                        <p className="text-[10px] text-slate-500 uppercase tracking-wider">Secure Card Entry</p>
+                                                        <p className="font-bold text-slate-900">Card Payment</p>
+                                                        <p className="text-[10px] text-slate-500 uppercase tracking-wider">Visa, Mastercard, Amex</p>
                                                     </div>
                                                 </div>
-                                                {paymentMethod === 'card' && <div className="w-5 h-5 rounded-full bg-[#025864] flex items-center justify-center"><Check className="w-3 h-3 text-white" /></div>}
+                                                {paymentMethod === 'paystack_card' && <div className="w-5 h-5 rounded-full bg-[#025864] flex items-center justify-center"><Check className="w-3 h-3 text-white" /></div>}
+                                            </button>
+                                        )}
+
+                                        {(link.enabledMethods?.includes('mpesa') || !link.enabledMethods) && (
+                                            <button onClick={() => setPaymentMethod("paystack_mpesa")} className={`w-full p-4 rounded-2xl border-2 flex items-center justify-between transition-all ${paymentMethod === 'paystack_mpesa' ? 'border-[#025864] bg-[#025864]/5' : 'border-slate-100 hover:border-slate-200'}`}>
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center font-bold text-emerald-600 font-mono text-xs">M</div>
+                                                    <div className="text-left">
+                                                        <p className="font-bold text-slate-900">M-Pesa</p>
+                                                        <p className="text-[10px] text-slate-500 uppercase tracking-wider">Mobile Money Transfer</p>
+                                                    </div>
+                                                </div>
+                                                {paymentMethod === 'paystack_mpesa' && <div className="w-5 h-5 rounded-full bg-[#025864] flex items-center justify-center"><Check className="w-3 h-3 text-white" /></div>}
+                                            </button>
+                                        )}
+
+                                        {(link.enabledMethods?.includes('bank') || !link.enabledMethods) && (
+                                            <button onClick={() => setPaymentMethod("paystack_bank")} className={`w-full p-4 rounded-2xl border-2 flex items-center justify-between transition-all ${paymentMethod === 'paystack_bank' ? 'border-[#025864] bg-[#025864]/5' : 'border-slate-100 hover:border-slate-200'}`}>
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center"><ImageIcon className="w-5 h-5 text-blue-600" /></div>
+                                                    <div className="text-left">
+                                                        <p className="font-bold text-slate-900">Bank Transfer</p>
+                                                        <p className="text-[10px] text-slate-500 uppercase tracking-wider">Direct Bank Deposit</p>
+                                                    </div>
+                                                </div>
+                                                {paymentMethod === 'paystack_bank' && <div className="w-5 h-5 rounded-full bg-[#025864] flex items-center justify-center"><Check className="w-3 h-3 text-white" /></div>}
+                                            </button>
+                                        )}
+
+                                        {(link.enabledMethods?.includes('crypto') || !link.enabledMethods) && (
+                                            <button onClick={() => setPaymentMethod("crypto")} className={`w-full p-4 rounded-2xl border-2 flex items-center justify-between transition-all ${paymentMethod === 'crypto' ? 'border-[#025864] bg-[#025864]/5' : 'border-slate-100 hover:border-slate-200'}`}>
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center font-bold text-purple-600">₿</div>
+                                                    <div className="text-left">
+                                                        <p className="font-bold text-slate-900">Crypto (Stablecoins)</p>
+                                                        <p className="text-[10px] text-slate-500 uppercase tracking-wider">USDC / USDA</p>
+                                                    </div>
+                                                </div>
+                                                {paymentMethod === 'crypto' && <div className="w-5 h-5 rounded-full bg-[#025864] flex items-center justify-center"><Check className="w-3 h-3 text-white" /></div>}
                                             </button>
                                         )}
                                     </div>
+
+                                    {paymentMethod === 'paystack_card' && !paystackStep && (
+                                        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <Lock className="w-3.5 h-3.5 text-slate-400" />
+                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Secure Card Payment</span>
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-bold text-slate-500 uppercase mb-1.5 block">Card Number</label>
+                                                <div className="relative">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="0000 0000 0000 0000"
+                                                        className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#025864]/20 focus:border-[#025864] outline-none transition-all font-mono"
+                                                        value={cardData.number}
+                                                        onChange={(e) => {
+                                                            const val = e.target.value.replace(/\D/g, '').replace(/(.{4})/g, '$1 ').trim().slice(0, 19);
+                                                            setCardData(prev => ({ ...prev, number: val }));
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-1.5 block">Expiry (MM/YY)</label>
+                                                    <div className="flex gap-2">
+                                                        <input
+                                                            type="text"
+                                                            placeholder="MM"
+                                                            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#025864]/20 focus:border-[#025864] outline-none transition-all text-center"
+                                                            value={cardData.expiryMonth}
+                                                            maxLength={2}
+                                                            onChange={(e) => setCardData(prev => ({ ...prev, expiryMonth: e.target.value.replace(/\D/g, '') }))}
+                                                        />
+                                                        <input
+                                                            type="text"
+                                                            placeholder="YY"
+                                                            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#025864]/20 focus:border-[#025864] outline-none transition-all text-center"
+                                                            value={cardData.expiryYear}
+                                                            maxLength={2}
+                                                            onChange={(e) => setCardData(prev => ({ ...prev, expiryYear: e.target.value.replace(/\D/g, '') }))}
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-1.5 block">CVV</label>
+                                                    <input
+                                                        type="text"
+                                                        placeholder="123"
+                                                        className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#025864]/20 focus:border-[#025864] outline-none transition-all text-center"
+                                                        value={cardData.cvv}
+                                                        maxLength={4}
+                                                        onChange={(e) => setCardData(prev => ({ ...prev, cvv: e.target.value.replace(/\D/g, '') }))}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {paymentMethod === 'paystack_mpesa' && !paystackStep && (
+                                        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                                            <div>
+                                                <label className="text-[10px] font-bold text-slate-500 uppercase mb-1.5 block">M-Pesa Phone Number</label>
+                                                <div className="relative">
+                                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5 pointer-events-none border-r border-slate-200 pr-3">
+                                                        <span className="text-sm font-bold text-slate-400">+254</span>
+                                                    </div>
+                                                    <input
+                                                        type="text"
+                                                        placeholder="712 345 678"
+                                                        className="w-full bg-white border border-slate-200 rounded-xl pl-24 pr-4 py-3 text-sm focus:ring-2 focus:ring-[#025864]/20 focus:border-[#025864] outline-none transition-all font-bold text-slate-900"
+                                                        value={mpesaNumber.startsWith('+254') ? mpesaNumber.slice(4) : mpesaNumber}
+                                                        onChange={(e) => {
+                                                            let val = e.target.value.replace(/\D/g, '');
+                                                            if (val.startsWith('0')) val = val.slice(1);
+                                                            if (val.startsWith('254')) val = val.slice(3);
+                                                            if (val.length <= 9) {
+                                                                setMpesaNumber(val ? `+254${val}` : '');
+                                                            }
+                                                        }}
+                                                    />
+                                                </div>
+                                                <p className="text-[10px] text-slate-400 mt-2">You will receive an STK push on your phone to complete payment.</p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {paymentMethod === 'paystack_bank' && !paystackStep && (
+                                        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                                            <div>
+                                                <label className="text-[10px] font-bold text-slate-500 uppercase mb-1.5 block">Select Bank</label>
+                                                <select
+                                                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#025864]/20 focus:border-[#025864] outline-none transition-all"
+                                                    value={bankData.code}
+                                                    onChange={(e) => setBankData(prev => ({ ...prev, code: e.target.value }))}
+                                                >
+                                                    <option value="">Select a bank</option>
+                                                    <option value="057">GT Bank</option>
+                                                    <option value="058">Zenith Bank</option>
+                                                    <option value="044">Access Bank</option>
+                                                    <option value="011">First Bank</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-bold text-slate-500 uppercase mb-1.5 block">Account Number</label>
+                                                <input
+                                                    type="text"
+                                                    placeholder="0000000000"
+                                                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#025864]/20 focus:border-[#025864] outline-none transition-all"
+                                                    value={bankData.accountNumber}
+                                                    onChange={(e) => setBankData(prev => ({ ...prev, accountNumber: e.target.value.replace(/\D/g, '') }))}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+
                                     <div className="bg-emerald-50 rounded-2xl p-5 border border-emerald-100 flex gap-4">
                                         <ShieldCheck className="w-6 h-6 text-emerald-600 shrink-0 mt-0.5" />
                                         <div className="space-y-1">
                                             <p className="text-sm font-bold text-emerald-900 leading-none">Safe Trade Active</p>
-                                            <p className="text-xs text-emerald-700 leading-relaxed">Money is held by RippliFy Escrow. The seller is only paid after you receive your item and confirm it's as described.</p>
+                                            {/* <p className="text-xs text-emerald-700 leading-relaxed">Money is held by RippliFy Escrow. The seller is only paid after you receive your item and confirm it's as described.</p> */}
                                         </div>
                                     </div>
-                                    <button onClick={handlePayment} className={`w-full font-bold py-4 rounded-2xl transition-all shadow-lg text-white ${link.linkType === 'donation' ? 'bg-pink-500 hover:bg-pink-600 shadow-pink-200' : 'bg-[#025864] hover:bg-[#014751] shadow-[#025864]/20'}`}>
-                                        {link.linkType === 'donation' 
-                                            ? `Donate ${link.currency} ${(parseFloat(donationAmount) || 0).toLocaleString()}`
-                                            : `Pay ${link.currency} ${(link.price + (link.category === 'product' ? (link.shippingFee || 0) : 0)).toLocaleString()} Securely`
-                                        }
-                                    </button>
+
+                                    {!cryptoDepositInfo ? (
+                                        <button onClick={handlePayment} className={`w-full font-bold py-4 rounded-2xl transition-all shadow-lg text-white ${link.linkType === 'donation' ? 'bg-pink-500 hover:bg-pink-600 shadow-pink-200' : 'bg-[#025864] hover:bg-[#014751] shadow-[#025864]/20'} ${step === 3 && !cryptoDepositInfo ? 'md:block hidden' : ''}`}>
+                                            {link.linkType === 'donation'
+                                                ? `Donate ${link.currency} ${(parseFloat(donationAmount) || 0).toLocaleString()}`
+                                                : `Pay ${link.currency} ${(link.price + (link.category === 'product' ? (link.shippingFee || 0) : 0)).toLocaleString()} Securely`
+                                            }
+                                        </button>
+                                    ) : (
+                                        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 text-center space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                            <h3 className="font-bold text-slate-900">Send Payment via {cryptoDepositInfo.network.toUpperCase()}</h3>
+                                            <p className="text-sm text-slate-600">Please send exactly <strong className="text-slate-900">{link.currency} {(link.price + (link.category === 'product' ? (link.shippingFee || 0) : 0)).toLocaleString()}</strong></p>
+                                            <div className="bg-white border shadow-sm p-4 rounded-lg break-all font-mono text-sm text-slate-700">
+                                                {cryptoDepositInfo.address}
+                                            </div>
+                                            <button
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(cryptoDepositInfo.address);
+                                                    toast({ title: "Address copied to clipboard" });
+                                                }}
+                                                className="flex items-center justify-center gap-2 w-full py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold hover:bg-slate-50 transition-colors text-slate-700"
+                                            >
+                                                <Copy className="w-4 h-4" /> Copy Deposit Address
+                                            </button>
+                                            <p className="text-[10px] text-slate-400">Your payment will be automatically detected once confirmed on the blockchain.</p>
+                                        </div>
+                                    )}
+
+                                    {paystackStep && (
+                                        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 text-center space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                            {paystackStep === 'otp' && (
+                                                <>
+                                                    <h3 className="font-bold text-slate-900">Enter OTP</h3>
+                                                    <p className="text-sm text-slate-600">Please enter the One-Time Password sent to your phone or email.</p>
+                                                    <input
+                                                        type="text"
+                                                        placeholder="123456"
+                                                        className="w-full bg-white border border-slate-200 rounded-xl px-4 py-4 text-center text-xl font-bold tracking-[0.5em] focus:ring-2 focus:ring-[#025864]/20 focus:border-[#025864] outline-none transition-all"
+                                                        value={otp}
+                                                        onChange={(e) => setOtp(e.target.value)}
+                                                    />
+                                                    <button
+                                                        onClick={async () => {
+                                                            setActionLoading(true);
+                                                            try {
+                                                                const res = await publicFetch('/transactions/paystack/submit-otp', {
+                                                                    method: 'POST',
+                                                                    body: JSON.stringify({ otp, reference: paystackReference })
+                                                                });
+                                                                if (res.data.status === 'success') {
+                                                                    setStep(4);
+                                                                } else if (res.data.status === 'open_url') {
+                                                                    setPaystackAuthUrl(res.data.url);
+                                                                    setPaystackStep('3ds');
+                                                                } else {
+                                                                    toast({ title: "Update", description: res.data.message || res.data.status });
+                                                                }
+                                                            } catch (err: any) {
+                                                                toast({ title: "Error", description: err.message, variant: "destructive" });
+                                                            } finally {
+                                                                setActionLoading(false);
+                                                            }
+                                                        }}
+                                                        disabled={actionLoading}
+                                                        className="w-full bg-[#025864] text-white font-bold py-4 rounded-2xl hover:bg-[#014751] transition-all disabled:opacity-50"
+                                                    >
+                                                        {actionLoading ? "Verifying..." : "Verify OTP"}
+                                                    </button>
+                                                </>
+                                            )}
+                                            {paystackStep === 'pin' && (
+                                                <>
+                                                    <h3 className="font-bold text-slate-900">Enter Card PIN</h3>
+                                                    <p className="text-sm text-slate-600">Please enter your 4-digit card PIN to authorize this transaction.</p>
+                                                    <div className="max-w-[200px] mx-auto">
+                                                        <input
+                                                            type="password"
+                                                            placeholder="••••"
+                                                            maxLength={4}
+                                                            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-4 text-center text-3xl font-bold tracking-[0.5em] focus:ring-2 focus:ring-[#025864]/20 focus:border-[#025864] outline-none transition-all"
+                                                            value={pin}
+                                                            onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+                                                        />
+                                                    </div>
+                                                    <button
+                                                        onClick={async () => {
+                                                            setActionLoading(true);
+                                                            try {
+                                                                const res = await publicFetch('/transactions/paystack/submit-pin', {
+                                                                    method: 'POST',
+                                                                    body: JSON.stringify({ pin, reference: paystackReference })
+                                                                });
+                                                                if (res.data.status === 'send_otp') {
+                                                                    setPaystackStep('otp');
+                                                                } else if (res.data.status === 'success') {
+                                                                    setStep(4);
+                                                                } else {
+                                                                    toast({ title: "Update", description: res.data.message || res.data.status });
+                                                                }
+                                                            } catch (err: any) {
+                                                                toast({ title: "Error", description: err.message, variant: "destructive" });
+                                                            } finally {
+                                                                setActionLoading(false);
+                                                            }
+                                                        }}
+                                                        disabled={actionLoading}
+                                                        className="w-full bg-[#025864] text-white font-bold py-4 rounded-2xl hover:bg-[#014751] transition-all disabled:opacity-50"
+                                                    >
+                                                        {actionLoading ? "Authorizing..." : "Continue"}
+                                                    </button>
+                                                </>
+                                            )}
+                                            {paystackStep === 'birthday' && (
+                                                <>
+                                                    <h3 className="font-bold text-slate-900">Enter Birthday</h3>
+                                                    <p className="text-sm text-slate-600">Please enter your birthday as registered with the bank.</p>
+                                                    <input
+                                                        type="date"
+                                                        className="w-full bg-white border border-slate-200 rounded-xl px-4 py-4 text-center text-lg focus:ring-2 focus:ring-[#025864]/20 focus:border-[#025864] outline-none transition-all"
+                                                        value={birthday}
+                                                        onChange={(e) => setBirthday(e.target.value)}
+                                                    />
+                                                    <button
+                                                        onClick={async () => {
+                                                            setActionLoading(true);
+                                                            try {
+                                                                const res = await publicFetch('/transactions/paystack/submit-birthday', {
+                                                                    method: 'POST',
+                                                                    body: JSON.stringify({ birthday, reference: paystackReference })
+                                                                });
+                                                                if (res.data.status === 'success') {
+                                                                    setStep(4);
+                                                                } else if (res.data.status === 'send_otp') {
+                                                                    setPaystackStep('otp');
+                                                                } else {
+                                                                    toast({ title: "Update", description: res.data.message || res.data.status });
+                                                                }
+                                                            } catch (err: any) {
+                                                                toast({ title: "Error", description: err.message, variant: "destructive" });
+                                                            } finally {
+                                                                setActionLoading(false);
+                                                            }
+                                                        }}
+                                                        disabled={actionLoading}
+                                                        className="w-full bg-[#025864] text-white font-bold py-4 rounded-2xl hover:bg-[#014751] transition-all disabled:opacity-50"
+                                                    >
+                                                        {actionLoading ? "Verifying..." : "Continue"}
+                                                    </button>
+                                                </>
+                                            )}
+                                            {paystackStep === 'address' && (
+                                                <>
+                                                    <h3 className="font-bold text-slate-900">Enter Billing Address</h3>
+                                                    <p className="text-sm text-slate-600">Please enter your billing address as registered with the bank.</p>
+                                                    <div className="space-y-3">
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Address"
+                                                            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#025864]/20 focus:border-[#025864] outline-none transition-all"
+                                                            value={addressDetails.address}
+                                                            onChange={(e) => setAddressDetails(prev => ({ ...prev, address: e.target.value }))}
+                                                        />
+                                                        <div className="grid grid-cols-2 gap-3">
+                                                            <input
+                                                                type="text"
+                                                                placeholder="City"
+                                                                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#025864]/20 focus:border-[#025864] outline-none transition-all"
+                                                                value={addressDetails.city}
+                                                                onChange={(e) => setAddressDetails(prev => ({ ...prev, city: e.target.value }))}
+                                                            />
+                                                            <input
+                                                                type="text"
+                                                                placeholder="State"
+                                                                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#025864]/20 focus:border-[#025864] outline-none transition-all"
+                                                                value={addressDetails.state}
+                                                                onChange={(e) => setAddressDetails(prev => ({ ...prev, state: e.target.value }))}
+                                                            />
+                                                        </div>
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Zipcode"
+                                                            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#025864]/20 focus:border-[#025864] outline-none transition-all"
+                                                            value={addressDetails.zipcode}
+                                                            onChange={(e) => setAddressDetails(prev => ({ ...prev, zipcode: e.target.value }))}
+                                                        />
+                                                    </div>
+                                                    <button
+                                                        onClick={async () => {
+                                                            setActionLoading(true);
+                                                            try {
+                                                                const res = await publicFetch('/transactions/paystack/submit-address', {
+                                                                    method: 'POST',
+                                                                    body: JSON.stringify({ ...addressDetails, reference: paystackReference })
+                                                                });
+                                                                if (res.data.status === 'success') {
+                                                                    setStep(4);
+                                                                } else if (res.data.status === 'send_otp') {
+                                                                    setPaystackStep('otp');
+                                                                } else {
+                                                                    toast({ title: "Update", description: res.data.message || res.data.status });
+                                                                }
+                                                            } catch (err: any) {
+                                                                toast({ title: "Error", description: err.message, variant: "destructive" });
+                                                            } finally {
+                                                                setActionLoading(false);
+                                                            }
+                                                        }}
+                                                        disabled={actionLoading}
+                                                        className="w-full bg-[#025864] text-white font-bold py-4 rounded-2xl hover:bg-[#014751] transition-all disabled:opacity-50"
+                                                    >
+                                                        {actionLoading ? "Verifying..." : "Continue"}
+                                                    </button>
+                                                </>
+                                            )}
+                                            {paystackStep === 'pay_offline' && (
+                                                <>
+                                                    <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center mx-auto">
+                                                        <Phone className="w-8 h-8 text-emerald-600 animate-pulse" />
+                                                    </div>
+                                                    <h3 className="font-bold text-slate-900">Waiting for M-Pesa Payment</h3>
+                                                    <p className="text-sm text-slate-600">An STK push has been sent to your phone. Please enter your M-Pesa PIN to complete the transaction.</p>
+                                                    <div className="flex items-center justify-center gap-2 text-xs text-slate-400">
+                                                        <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
+                                                        Listening for payment confirmation...
+                                                    </div>
+                                                    <button
+                                                        onClick={async () => {
+                                                            if (!paystackReference) return;
+                                                            setActionLoading(true);
+                                                            try {
+                                                                const res = await publicFetch(`/transactions/paystack/verify/${paystackReference}`);
+                                                                if (res.data?.status === 'success') {
+                                                                    localStorage.setItem(`buyer_info_${slug}`, JSON.stringify(buyerInfo));
+                                                                    setStep(4);
+                                                                    toast({ title: "Payment Confirmed!", description: "Your M-Pesa payment was successful." });
+                                                                } else {
+                                                                    toast({ title: "Still Waiting", description: "Payment not yet confirmed. Please complete the STK push on your phone." });
+                                                                }
+                                                            } catch (err: any) {
+                                                                toast({ title: "Error", description: err.message, variant: "destructive" });
+                                                            } finally {
+                                                                setActionLoading(false);
+                                                            }
+                                                        }}
+                                                        disabled={actionLoading}
+                                                        className="w-full bg-[#025864] text-white font-bold py-4 rounded-2xl hover:bg-[#014751] transition-all disabled:opacity-50"
+                                                    >
+                                                        {actionLoading ? "Checking..." : "I've Completed Payment — Verify"}
+                                                    </button>
+                                                </>
+                                            )}
+                                            {paystackStep === '3ds' && paystackAuthUrl && (
+                                                <>
+                                                    <h3 className="font-bold text-slate-900">3D Secure Verification</h3>
+                                                    <p className="text-sm text-slate-600">Please complete the verification in the window that opens.</p>
+                                                    <div className="w-full aspect-video border rounded-xl overflow-hidden bg-white">
+                                                        <iframe src={paystackAuthUrl} className="w-full h-full border-none" title="3DS Verification"></iframe>
+                                                    </div>
+                                                    <p className="text-[10px] text-slate-400">Once verified, this page will update automatically.</p>
+                                                </>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )}
 
                         {step === 4 && (
-                            <div className="bg-white rounded-[24px] shadow-sm border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-500">
+                            <div className="bg-white rounded-[32px] md:rounded-[24px] shadow-sm border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-500">
                                 <div className="p-8 md:p-12 text-center space-y-6">
                                     <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-2">
                                         {link.status === 'Completed' ? <CheckCircle2 className="w-10 h-10 text-emerald-600" /> : <Package className="w-10 h-10 text-emerald-600" />}
@@ -727,6 +1206,45 @@ const PublicPaymentPage = () => {
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            <footer className="mt-auto py-12 px-6 flex flex-col items-center bg-transparent">
+                <div className="flex flex-col items-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Powered by</span>
+                        <Logo size={20} textClassName="text-xs font-black" />
+                    </div>
+                </div>
+                <p className="mt-4 text-[9px] text-[#025864] font-bold uppercase tracking-[0.3em] opacity-40">
+                    By sokoStack
+                </p>
+            </footer>
+
+            {/* Mobile Sticky Action Bar */}
+            {step < 4 && !cryptoDepositInfo && (
+                <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-slate-100 p-4 pb-8 md:hidden z-40 animate-in slide-in-from-bottom duration-500">
+                    <div className="max-w-md mx-auto">
+                        {step === 1 && (
+                            <button onClick={handleNextStep} className={`w-full font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all text-white ${link.linkType === 'donation' ? 'bg-pink-500' : 'bg-[#025864]'}`}>
+                                {link.linkType === 'donation' ? 'Donate Now' : 'Buy Now with Escrow'}
+                                <ArrowRight className="w-5 h-5" />
+                            </button>
+                        )}
+                        {step === 2 && (
+                            <button onClick={handleNextStep} className="w-full bg-[#025864] text-white font-bold py-4 rounded-2xl">
+                                {link.buyerName && !isEditingInfo ? "Confirm & Continue" : "Continue to Payment"}
+                            </button>
+                        )}
+                        {step === 3 && (
+                            <button onClick={handlePayment} className={`w-full font-bold py-4 rounded-2xl text-white ${link.linkType === 'donation' ? 'bg-pink-500' : 'bg-[#025864]'}`}>
+                                {link.linkType === 'donation'
+                                    ? `Donate ${link.currency} ${(parseFloat(donationAmount) || 0).toLocaleString()}`
+                                    : `Pay ${link.currency} ${(link.price + (link.category === 'product' ? (link.shippingFee || 0) : 0)).toLocaleString()}`
+                                }
+                            </button>
+                        )}
                     </div>
                 </div>
             )}

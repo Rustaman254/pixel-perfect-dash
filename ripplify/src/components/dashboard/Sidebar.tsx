@@ -21,12 +21,13 @@ const generalItems = [
 
 const manageItems = [
   { icon: BarChart3, label: "Statistics", to: "/statistics" },
+  // { icon: Wallet, label: "Wallets", to: "/wallets" },
   { icon: Wallet, label: "Payouts", to: "/payouts" },
   { icon: Users, label: "Customers", to: "/customers" },
 ];
 
 const externalLinks = [
-  { icon: BarChart3, label: "Insights", href: "http://localhost:5175" },
+  { icon: BarChart3, label: "Watchtower", href: "http://localhost:5175" },
 ];
 
 const bottomItems = [
@@ -144,7 +145,7 @@ const Sidebar = ({ open, onClose }: SidebarProps) => {
             ))}
           </nav>
 
-          <p className="text-[11px] font-medium uppercase tracking-wider px-2 mb-2 mt-6" style={{ color: '#999999' }}>Products</p>
+          {/* <p className="text-[11px] font-medium uppercase tracking-wider px-2 mb-2 mt-6" style={{ color: '#999999' }}>Products</p>
           <nav className="space-y-0.5">
             {externalLinks.map((item) => (
               <a
@@ -157,7 +158,7 @@ const Sidebar = ({ open, onClose }: SidebarProps) => {
                 <span>{item.label}</span>
               </a>
             ))}
-          </nav>
+          </nav> */}
         </div>
 
         {/* Bottom */}
@@ -203,7 +204,7 @@ const Sidebar = ({ open, onClose }: SidebarProps) => {
               </div>
               <ArrowLeftRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors" />
             </div>
-            
+
             <button
               onClick={handleLogout}
               className="flex items-center gap-3 w-full px-3 py-2.5 mt-1 rounded-lg text-sm text-red-500 hover:bg-red-50 transition-colors"
@@ -235,8 +236,8 @@ const Sidebar = ({ open, onClose }: SidebarProps) => {
                   <p className="text-xs text-slate-500">Current Workspace</p>
                 </div>
               </div>
-              
-              <button 
+
+              <button
                 onClick={() => {
                   toast({ title: "Coming Soon", description: "Creating a new business will be available in the next update." });
                   setShowWorkspaceModal(false);

@@ -1,9 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Search, Filter, MoreHorizontal, UserCheck, UserMinus, Trash2, Mail, Phone, Shield, Loader2, Building2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { fetchWithAuth } from "@/lib/api";
-import { useEffect } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,12 +12,17 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import UserRoleManager from "@/components/admin/UserRoleManager";
 
 const ManageUsers = () => {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const { toast } = useToast();
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [roleManagerOpen, setRoleManagerOpen] = useState(false);
+
+  const [createUserOpen, setCreateUserOpen] = useState(false);
 
   const loadUsers = async () => {
     try {
@@ -79,8 +83,11 @@ const ManageUsers = () => {
           <h1 className="text-2xl font-bold text-slate-900">User Management</h1>
           <p className="text-slate-500">Manage all registered sellers and their account statuses.</p>
         </div>
-        <button className="bg-[#025864] text-white px-6 py-3 rounded-xl font-bold hover:bg-[#013a42] transition-colors flex items-center gap-2">
-          <Shield className="w-4 h-4" /> Add Admin
+        <button 
+          onClick={() => setCreateUserOpen(true)}
+          className="bg-[#025864] text-white px-6 py-3 rounded-xl font-bold hover:bg-[#013a42] transition-colors flex items-center gap-2"
+        >
+          <Shield className="w-4 h-4" /> Add User
         </button>
       </div>
 
@@ -163,7 +170,15 @@ const ManageUsers = () => {
                     )}>
                       {user.isVerified ? "Verified" : "Pending Verification"}
                     </span>
-                    <p className="text-[9px] text-slate-400 mt-1 uppercase font-bold tracking-tighter">{user.role}</p>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {user.rbacRoles ? user.rbacRoles.split(',').map((r: string, idx: number) => (
+                        <span key={idx} className="text-[9px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-black uppercase tracking-tighter">
+                          {r}
+                        </span>
+                      )) : (
+                        <span className="text-[9px] text-slate-400 uppercase font-bold tracking-tighter italic">No Roles</span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-4 text-xs text-slate-500">
                     {new Date(user.createdAt).toLocaleDateString()}
@@ -178,6 +193,12 @@ const ManageUsers = () => {
                       <DropdownMenuContent align="end" className="w-48">
                         <DropdownMenuLabel>User Actions</DropdownMenuLabel>
                         <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => {
+                          setSelectedUser(user);
+                          setRoleManagerOpen(true);
+                        }}>
+                          <Shield className="w-4 h-4 mr-2" /> Manage Roles
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleStatus(user.id, !user.isVerified)} className={user.isVerified ? "text-orange-600" : "text-emerald-600"}>
                           <UserCheck className="w-4 h-4 mr-2" /> {user.isVerified ? "Unverify Account" : "Verify Account"}
                         </DropdownMenuItem>
@@ -194,7 +215,128 @@ const ManageUsers = () => {
           </table>
         </div>
       </div>
+
+      {selectedUser && (
+        <UserRoleManager 
+          userId={selectedUser.id}
+          userName={selectedUser.fullName || selectedUser.email}
+          isOpen={roleManagerOpen}
+          onClose={() => setRoleManagerOpen(false)}
+          onUpdate={loadUsers}
+        />
+      )}
+
+      <AddUserModal 
+        isOpen={createUserOpen} 
+        onClose={() => setCreateUserOpen(false)} 
+        onSuccess={loadUsers} 
+      />
     </AdminLayout>
+  );
+};
+
+// Internal AddUserModal component
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+const AddUserModal = ({ isOpen, onClose, onSuccess }: { isOpen: boolean, onClose: () => void, onSuccess: () => void }) => {
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    fullName: '',
+    businessName: '',
+    role: 'seller',
+    roleId: ''
+  });
+  const [roles, setRoles] = useState<any[]>([]);
+  const [saving, setSaving] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchWithAuth('/admin/roles').then(setRoles).catch(console.error);
+    }
+  }, [isOpen]);
+
+  const handleSubmit = async () => {
+    if (!formData.email || !formData.password) return;
+    try {
+      setSaving(true);
+      await fetchWithAuth('/admin/users', {
+        method: 'POST',
+        body: JSON.stringify(formData)
+      });
+      toast({ title: "Success", description: "User created successfully" });
+      onSuccess();
+      onClose();
+      setFormData({ email: '', password: '', fullName: '', businessName: '', role: 'seller', roleId: '' });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-md bg-white">
+        <DialogHeader>
+          <DialogTitle>Add New User</DialogTitle>
+          <DialogDescription>Create a new platform user and assign an initial role.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label>Full Name</Label>
+            <Input value={formData.fullName} onChange={e => setFormData({...formData, fullName: e.target.value})} placeholder="John Doe" />
+          </div>
+          <div className="space-y-2">
+            <Label>Email</Label>
+            <Input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} placeholder="john@example.com" />
+          </div>
+          <div className="space-y-2">
+            <Label>Password</Label>
+            <Input type="password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} placeholder="••••••••" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Legacy Role</Label>
+              <Select value={formData.role} onValueChange={v => setFormData({...formData, role: v})}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="seller">Seller</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>RBAC Role (Primary)</Label>
+              <Select value={formData.roleId} onValueChange={v => setFormData({...formData, roleId: v})}>
+                <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
+                <SelectContent>
+                  {roles.map(r => <SelectItem key={r.id} value={r.id.toString()}>{r.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Business Name (Optional)</Label>
+            <Input value={formData.businessName} onChange={e => setFormData({...formData, businessName: e.target.value})} placeholder="Acme Corp" />
+          </div>
+        </div>
+        <DialogFooter>
+          <button onClick={onClose} className="px-4 py-2 text-slate-500 font-medium">Cancel</button>
+          <button 
+            onClick={handleSubmit} 
+            disabled={saving}
+            className="bg-[#025864] text-white px-6 py-2 rounded-xl font-bold hover:bg-[#013a42] disabled:opacity-50"
+          >
+            {saving ? "Creating..." : "Create User"}
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 

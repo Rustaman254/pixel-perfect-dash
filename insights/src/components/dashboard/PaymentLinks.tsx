@@ -1,7 +1,7 @@
 import { Copy, ExternalLink, MoreHorizontal, Share2, Trash2, Edit2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
-import { useAppContext } from "@/contexts/AppContext";
+import { useAppContext } from "@/contexts/useAppContext";
 import { fetchWithAuth } from "@/lib/api";
 import {
   DropdownMenu,

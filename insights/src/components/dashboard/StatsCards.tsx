@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { useAppContext } from "@/contexts/AppContext";
+import { useAppContext } from "@/contexts/useAppContext";
 
 const StatsCards = () => {
   const navigate = useNavigate();

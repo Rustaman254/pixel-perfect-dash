@@ -4,7 +4,7 @@ import {
   Settings, LogOut, ShieldCheck, Menu, X, CreditCard, Bell, Ticket, AppWindow
 } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { useAppContext } from "@/contexts/AppContext";
+import { useAppContext } from "@/contexts/useAppContext";
 import { fetchWithAuth } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";

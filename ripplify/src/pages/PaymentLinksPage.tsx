@@ -187,7 +187,7 @@ const PaymentLinksPage = () => {
                 </div>
                 <button onClick={() => setShowModal(true)} className="flex items-center gap-2 text-sm font-medium text-white px-4 py-2.5 rounded-lg transition-colors hover:opacity-90" style={{ backgroundColor: '#025864' }}>
                     <Plus className="w-4 h-4" />
-                    New Deal
+                    New Page
                 </button>
             </div>
 
@@ -235,7 +235,7 @@ const PaymentLinksPage = () => {
                     <table className="w-full">
                         <thead>
                             <tr className="text-[11px] text-muted-foreground uppercase tracking-wider">
-                                <th className="text-left font-medium pb-3">Deal</th>
+                                <th className="text-left font-medium pb-3">Page</th>
                                 <th className="text-left font-medium pb-3 hidden md:table-cell">Amount</th>
                                 <th className="text-left font-medium pb-3">Clicks</th>
                                 <th className="text-left font-medium pb-3 hidden md:table-cell">Type / Expiry</th>
@@ -301,7 +301,7 @@ const PaymentLinksPage = () => {
                                     <td className="py-3">
                                         {(() => {
                                             let currentStatus = link.status;
-                                            
+
                                             // Handle dynamically determined statuses for one-time links
                                             if (link.linkType === 'one-time') {
                                                 if (link.paymentCount > 0) {
@@ -494,8 +494,8 @@ const PaymentLinksPage = () => {
                                         </button>
                                         {/* Donation - Only show for service/digital */}
                                         {form.category !== "product" && (
-                                            <button 
-                                                type="button" 
+                                            <button
+                                                type="button"
                                                 onClick={() => setForm(p => ({ ...p, linkType: "donation", hasExpiry: false, expiryDate: "" }))}
                                                 className={`p-3 rounded-xl border-2 text-left transition-all ${form.linkType === "donation" ? "border-pink-500" : "border-border hover:border-gray-300"}`}
                                                 style={form.linkType === "donation" ? { backgroundColor: 'rgba(236,72,153,0.04)' } : undefined}>
@@ -523,7 +523,7 @@ const PaymentLinksPage = () => {
                                             </select>
                                         </div>
                                     </div>
-                                    
+
                                     {form.category === "product" && (
                                         <div className="animate-in fade-in slide-in-from-top-2 duration-300">
                                             <label className="text-sm font-medium text-foreground block mb-1.5 flex items-center justify-between">

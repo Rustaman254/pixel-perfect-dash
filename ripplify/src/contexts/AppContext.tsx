@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { fetchWithAuth } from '@/lib/api';
+import { useSSOSync } from '@/hooks/useSSOSync';
 
 // Common Types
 export type LinkType = "reusable" | "one-time" | "donation";
@@ -64,6 +65,18 @@ export interface Payout {
     createdAt: string;
 }
 
+export interface Wallet {
+    id: number;
+    userId: number;
+    currency_code: string;
+    network: string;
+    balance: number;
+    locked_balance: number;
+    address: string | null;
+    createdAt: string;
+    updatedAt: string;
+}
+
 export interface UserProfile {
     id: number;
     businessName: string;
@@ -89,6 +102,8 @@ interface AppContextType {
     setLinks: React.Dispatch<React.SetStateAction<PaymentLink[]>>;
     payouts: Payout[];
     setPayouts: React.Dispatch<React.SetStateAction<Payout[]>>;
+    wallets: Wallet[];
+    setWallets: React.Dispatch<React.SetStateAction<Wallet[]>>;
     transactions: Transaction[];
     setTransactions: React.Dispatch<React.SetStateAction<Transaction[]>>;
     isAuthenticated: boolean;
@@ -104,6 +119,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     const [links, setLinks] = useState<PaymentLink[]>([]);
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [payouts, setPayouts] = useState<Payout[]>([]);
+    const [wallets, setWallets] = useState<Wallet[]>([]);
     const [userProfile, setUserProfile] = useState<UserProfile | null>(() => {
         const saved = localStorage.getItem('ripplify_profile');
         return saved ? JSON.parse(saved) : null;
@@ -112,13 +128,26 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         return !!localStorage.getItem('auth_token');
     });
 
+    const { setAuth: syncToSSO } = useSSOSync((token, profile) => {
+        // Sync FROM SSO Hub on initial load
+        if (token && !localStorage.getItem('auth_token')) {
+            localStorage.setItem('auth_token', token);
+            if (profile) {
+                localStorage.setItem('ripplify_profile', JSON.stringify(profile));
+                setUserProfile(profile);
+            }
+            setIsAuthenticated(true);
+        }
+    });
+
     const refreshData = async () => {
         if (!isAuthenticated) return;
         try {
-            const [linksData, transactionsData, payoutsData, profileData] = await Promise.all([
+            const [linksData, transactionsData, payoutsData, walletsData, profileData] = await Promise.all([
                 fetchWithAuth('/links/my'),
                 fetchWithAuth('/transactions/my'),
                 fetchWithAuth('/payouts'),
+                fetchWithAuth('/wallets').catch(() => []),
                 fetchWithAuth('/auth/me').catch(() => null)
             ]);
 
@@ -132,6 +161,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
             setLinks(formattedLinks);
             setTransactions(transactionsData);
             setPayouts(payoutsData);
+            setWallets(walletsData);
             if (profileData && profileData.user) {
                 setUserProfile(profileData.user);
             } else if (profileData) {
@@ -139,6 +169,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
             }
         } catch (error) {
             console.error("Error refreshing data:", error);
+            if (String(error).includes('401')) {
+                logout();
+            }
         }
     };
 
@@ -155,6 +188,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
             setLinks([]);
             setTransactions([]);
             setPayouts([]);
+            setWallets([]);
         }
     }, [isAuthenticated]);
 
@@ -171,6 +205,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         setUserProfile(userData);
         if (token) {
             localStorage.setItem('auth_token', token);
+            syncToSSO(token, userData);
         }
     };
 
@@ -180,8 +215,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         setLinks([]);
         setTransactions([]);
         setPayouts([]);
+        setWallets([]);
         localStorage.removeItem('auth_token');
         localStorage.removeItem('ripplify_profile');
+        syncToSSO(null, null);
     };
 
     return (
@@ -189,6 +226,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
             links, setLinks,
             transactions, setTransactions,
             payouts, setPayouts,
+            wallets, setWallets,
             userProfile, setUserProfile,
             isAuthenticated, setIsAuthenticated,
             login, logout, refreshData

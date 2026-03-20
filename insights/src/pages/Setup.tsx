@@ -6,7 +6,7 @@ import {
     Sparkles, Activity, Wand2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useAppContext } from "@/contexts/AppContext";
+import { useAppContext } from "@/contexts/useAppContext";
 import { cn } from "@/lib/utils";
 import usePageTitle from "@/hooks/usePageTitle";
 

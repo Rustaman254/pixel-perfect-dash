@@ -13,7 +13,8 @@ import AdminOverview from "./pages/AdminOverview";
 import Login from "./pages/auth/Login";
 import Signup from "./pages/auth/Signup";
 
-import { AppProvider, useAppContext } from "./contexts/AppContext";
+import { AppProvider } from "./contexts/AppContext";
+import { useAppContext } from "./contexts/useAppContext";
 
 const queryClient = new QueryClient();
 

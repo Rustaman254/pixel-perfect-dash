@@ -1,7 +1,7 @@
 import { Link2, Send, ArrowDownLeft, MoreHorizontal } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import { useAppContext } from "@/contexts/AppContext";
+import { useAppContext } from "@/contexts/useAppContext";
 
 const BalanceCard = () => {
   const navigate = useNavigate();

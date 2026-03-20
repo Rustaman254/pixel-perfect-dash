@@ -1,6 +1,6 @@
 import { Search, Calendar, ChevronDown, Download, Menu, LogOut, Bell, ExternalLink, Clock, LayoutGrid, CheckCircle2, LineChart } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useAppContext } from "@/contexts/AppContext";
+import { useAppContext } from "@/contexts/useAppContext";
 import { useState, useEffect } from "react";
 import { fetchWithAuth, publicFetch } from "@/lib/api";
 import { Link, useNavigate } from "react-router-dom";

@@ -3,7 +3,7 @@ import { Filter, ArrowUpDown, MoreHorizontal } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { useAppContext } from "@/contexts/AppContext";
+import { useAppContext } from "@/contexts/useAppContext";
 
 const RecentActivity = () => {
   const { transactions } = useAppContext();

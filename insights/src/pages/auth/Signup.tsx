@@ -2,8 +2,9 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, Check, Phone, Mail, User, Lock, Building, MapPin, CreditCard } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useAppContext } from "@/contexts/AppContext";
+import { useAppContext } from "@/contexts/useAppContext";
 import { cn } from "@/lib/utils";
+import { BASE_URL } from "@/lib/api";
 
 const Signup = () => {
   const [step, setStep] = useState(1);
@@ -32,7 +33,7 @@ const Signup = () => {
   const handleSignup = async () => {
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:3001/api/auth/register", {
+      const res = await fetch(`${BASE_URL}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -67,7 +68,7 @@ const Signup = () => {
     }
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:3001/api/auth/send-otp", {
+      const res = await fetch(`${BASE_URL}/auth/send-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone: formData.phone })
@@ -96,7 +97,7 @@ const Signup = () => {
     }
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:3001/api/auth/verify-otp", {
+      const res = await fetch(`${BASE_URL}/auth/verify-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone: formData.phone, otp: formData.otp })

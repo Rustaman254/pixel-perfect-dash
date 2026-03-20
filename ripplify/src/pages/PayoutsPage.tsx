@@ -15,17 +15,24 @@ const PayoutsPage = () => {
     const [showModal, setShowModal] = useState(false);
     const [withdrawAmount, setWithdrawAmount] = useState("");
     const [submitting, setSubmitting] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     // Initial load handled by AppContext
 
     const handleWithdrawRequest = async () => {
         const amount = parseFloat(withdrawAmount);
         if (!amount || amount <= 0) {
-            toast({ title: "Invalid Amount", description: "Please enter a valid amount to withdraw.", variant: "destructive" });
+            setError("Please enter a valid amount to withdraw.");
+            return;
+        }
+
+        if (amount > available) {
+            setError("Insufficient balance for this withdrawal.");
             return;
         }
 
         setSubmitting(true);
+        setError(null);
         try {
             await fetchWithAuth('/payouts', {
                 method: 'POST',
@@ -38,7 +45,7 @@ const PayoutsPage = () => {
             setWithdrawAmount("");
             toast({ title: "Payout Requested", description: `Your request for ${userProfile?.currency || 'KES'} ${amount.toLocaleString()} is being processed.` });
         } catch (err: any) {
-            toast({ title: "Request Failed", description: err.message, variant: "destructive" });
+            setError(err.message || "Failed to process withdrawal. Please try again.");
         } finally {
             setSubmitting(false);
         }
@@ -182,8 +189,17 @@ const PayoutsPage = () => {
                         <div className="p-6 md:p-8 space-y-6">
                             <div className="flex items-center justify-between">
                                 <h2 className="text-xl font-bold text-foreground">Withdraw Funds</h2>
-                                <button onClick={() => setShowModal(false)} className="text-muted-foreground hover:text-foreground">✕</button>
+                                <button onClick={() => { setShowModal(false); setError(null); }} className="text-muted-foreground hover:text-foreground">✕</button>
                             </div>
+
+                            {(!userProfile?.payoutDetails || error) && (
+                                <div className="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-start gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                                    <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                                    <p className="text-sm text-red-700 font-medium leading-relaxed">
+                                        {error || "Please set your payout details in Settings first."}
+                                    </p>
+                                </div>
+                            )}
 
                             <div className="bg-emerald-50 rounded-2xl p-4 border border-emerald-100 flex items-center gap-3">
                                 <Wallet className="w-5 h-5 text-emerald-600" />
@@ -203,15 +219,35 @@ const PayoutsPage = () => {
                                             className="w-full pl-14 pr-4 py-4 rounded-xl border border-border focus:outline-none focus:ring-2 focus:ring-[#025864]/20 focus:border-[#025864] text-lg font-bold"
                                             placeholder="0.00"
                                             value={withdrawAmount}
-                                            onChange={(e) => setWithdrawAmount(e.target.value)}
+                                            onChange={(e) => {
+                                                setWithdrawAmount(e.target.value);
+                                                if (error) setError(null);
+                                            }}
                                         />
                                     </div>
                                     <p className="text-[10px] text-muted-foreground mt-2">Funds will be sent to your {userProfile?.payoutMethod || 'M-Pesa'} account: <strong>{userProfile?.payoutDetails || 'Not set'}</strong></p>
                                 </div>
 
-                                <div className="p-4 bg-slate-50 rounded-xl border border-border flex items-start gap-3">
+                                {parseFloat(withdrawAmount) > 0 && (
+                                    <div className="bg-slate-50 rounded-2xl p-4 border border-border space-y-2">
+                                        <div className="flex justify-between text-xs">
+                                            <span className="text-muted-foreground">Withdrawal Amount</span>
+                                            <span className="font-bold text-foreground">KES {parseFloat(withdrawAmount).toLocaleString()}</span>
+                                        </div>
+                                        <div className="flex justify-between text-xs">
+                                            <span className="text-muted-foreground">Platform Fee (2% + KES 50)</span>
+                                            <span className="font-bold text-red-500">-KES {((parseFloat(withdrawAmount) * 0.02) + 50).toLocaleString()}</span>
+                                        </div>
+                                        <div className="pt-2 border-t border-border flex justify-between text-sm font-black">
+                                            <span className="text-foreground">You will receive</span>
+                                            <span className="text-[#025864]">KES {Math.max(0, parseFloat(withdrawAmount) - ((parseFloat(withdrawAmount) * 0.02) + 50)).toLocaleString()}</span>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="p-4 bg-emerald-50/50 rounded-xl border border-emerald-100 flex items-start gap-3">
                                     <ShieldCheck className="w-5 h-5 text-[#025864] shrink-0 mt-0.5" />
-                                    <p className="text-xs text-muted-foreground leading-relaxed">Withdrawals are processed within 24 hours. A transaction fee of KES 50 may apply.</p>
+                                    <p className="text-xs text-muted-foreground leading-relaxed">Withdrawals are processed within 24 hours. A transaction fee of 2% + KES 50 applies to cover processing costs.</p>
                                 </div>
 
                                 <button 
@@ -222,12 +258,6 @@ const PayoutsPage = () => {
                                     {submitting ? "Processing..." : "Confirm Withdrawal"}
                                 </button>
 
-                                {!userProfile?.payoutDetails && (
-                                    <div className="flex items-center gap-2 p-3 bg-red-50 text-red-600 rounded-xl border border-red-100 italic text-[11px]">
-                                        <AlertCircle className="w-4 h-4" />
-                                        Please set your payout details in Settings first.
-                                    </div>
-                                )}
                             </div>
                         </div>
                     </div>

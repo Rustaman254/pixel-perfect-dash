@@ -1,7 +1,7 @@
 import { useState, ReactNode, useEffect } from "react";
 import {
   LayoutDashboard, Users, Building2, BarChart3,
-  Settings, LogOut, ShieldCheck, Menu, X, CreditCard, Bell, Ticket, AppWindow
+  Settings, LogOut, ShieldCheck, Menu, X, CreditCard, Bell, Ticket, AppWindow, Shield
 } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAppContext } from "@/contexts/AppContext";
@@ -57,6 +57,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     { icon: LayoutDashboard, label: "Platform Overview", to: "/admin" },
     { icon: Users, label: "User Management", to: "/admin/users" },
     { icon: Building2, label: "Company Management", to: "/admin/companies" },
+    { icon: Shield, label: "RBAC & Permissions", to: "/admin/roles" },
     { icon: ShieldCheck, label: "API Key Management", to: "/admin/api-keys" },
     { icon: BarChart3, label: "Revenue & Stats", to: "/admin/revenue" },
     { icon: CreditCard, label: "Global Payouts", to: "/admin/payouts" },

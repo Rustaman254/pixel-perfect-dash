@@ -11,6 +11,7 @@ import PaymentMethodsPage from "./pages/PaymentMethodsPage";
 import CurrenciesPage from "./pages/CurrenciesPage";
 import AnalyticsPage from "./pages/AnalyticsPage";
 import PayoutsPage from "./pages/PayoutsPage";
+import WalletsPage from "./pages/WalletsPage";
 import StatisticsPage from "./pages/StatisticsPage";
 import CustomersPage from "./pages/CustomersPage";
 import SettingsPage from "./pages/SettingsPage";
@@ -33,6 +34,7 @@ import ManageSupport from "./pages/admin/ManageSupport";
 import AdminNotificationsPage from "./pages/admin/AdminNotificationsPage";
 import ManageReferralCodes from "./pages/admin/ManageReferralCodes";
 import ManageApps from "./pages/admin/ManageApps";
+import ManageRoles from "./pages/admin/ManageRoles";
 
 import { AppProvider, useAppContext } from "./contexts/AppContext";
 
@@ -68,6 +70,8 @@ const AppRoutes = () => {
         <Route path="/analytics" element={<ProtectedRoute role="seller"><StatisticsPage /></ProtectedRoute>} />
         <Route path="/statistics" element={<ProtectedRoute role="seller"><StatisticsPage /></ProtectedRoute>} />
         <Route path="/payouts" element={<ProtectedRoute role="seller"><PayoutsPage /></ProtectedRoute>} />
+        <Route path="/wallets" element={<ProtectedRoute role="seller"><WalletsPage /></ProtectedRoute>} />
+        <Route path="/wallet" element={<Navigate to="/wallets" replace />} />
         <Route path="/customers" element={<ProtectedRoute role="seller"><CustomersPage /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute role="seller"><SettingsPage /></ProtectedRoute>} />
         <Route path="/help-center" element={<ProtectedRoute role="seller"><HelpCenterPage /></ProtectedRoute>} />
@@ -88,6 +92,7 @@ const AppRoutes = () => {
         <Route path="/admin/notifications" element={<ProtectedRoute role="admin"><AdminNotificationsPage /></ProtectedRoute>} />
         <Route path="/admin/referrals" element={<ProtectedRoute role="admin"><ManageReferralCodes /></ProtectedRoute>} />
         <Route path="/admin/apps" element={<ProtectedRoute role="admin"><ManageApps /></ProtectedRoute>} />
+        <Route path="/admin/roles" element={<ProtectedRoute role="admin"><ManageRoles /></ProtectedRoute>} />
 
         {/* Public Routes */}
         <Route path="/pay/:slug" element={<PublicPaymentPage />} />

@@ -19,6 +19,7 @@ const ManageCompanies = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const { toast } = useToast();
+  const [addCompanyOpen, setAddCompanyOpen] = useState(false);
 
   const loadCompanies = async () => {
     try {
@@ -83,7 +84,10 @@ const ManageCompanies = () => {
           <button className="bg-white text-slate-600 border border-slate-200 px-6 py-3 rounded-xl font-bold hover:bg-slate-50 transition-colors">
             Export List
           </button>
-          <button className="bg-[#025864] text-white px-6 py-3 rounded-xl font-bold hover:bg-[#013a42] transition-colors flex items-center gap-2">
+          <button 
+            onClick={() => setAddCompanyOpen(true)}
+            className="bg-[#025864] text-white px-6 py-3 rounded-xl font-bold hover:bg-[#013a42] transition-colors flex items-center gap-2"
+          >
             <Building2 className="w-4 h-4" /> Add Company
           </button>
         </div>
@@ -185,7 +189,91 @@ const ManageCompanies = () => {
           </table>
         </div>
       </div>
+
+      <AddCompanyModal 
+        isOpen={addCompanyOpen}
+        onClose={() => setAddCompanyOpen(false)}
+        onSuccess={loadCompanies}
+      />
     </AdminLayout>
+  );
+};
+
+// Internal AddCompanyModal component
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
+const AddCompanyModal = ({ isOpen, onClose, onSuccess }: { isOpen: boolean, onClose: () => void, onSuccess: () => void }) => {
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    fullName: '',
+    businessName: '',
+    role: 'seller'
+  });
+  const [saving, setSaving] = useState(false);
+  const { toast } = useToast();
+
+  const handleSubmit = async () => {
+    if (!formData.email || !formData.password || !formData.businessName) {
+      toast({ title: "Validation Error", description: "Email, Password, and Business Name are required.", variant: "destructive" });
+      return;
+    }
+    try {
+      setSaving(true);
+      await fetchWithAuth('/admin/users', {
+        method: 'POST',
+        body: JSON.stringify(formData)
+      });
+      toast({ title: "Success", description: "Company created successfully" });
+      onSuccess();
+      onClose();
+      setFormData({ email: '', password: '', fullName: '', businessName: '', role: 'seller' });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-md bg-white">
+        <DialogHeader>
+          <DialogTitle>Add New Company</DialogTitle>
+          <DialogDescription>Register a new business account on the platform.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label>Business Name</Label>
+            <Input value={formData.businessName} onChange={e => setFormData({...formData, businessName: e.target.value})} placeholder="Acme Corporation" />
+          </div>
+          <div className="space-y-2">
+            <Label>Owner Full Name</Label>
+            <Input value={formData.fullName} onChange={e => setFormData({...formData, fullName: e.target.value})} placeholder="Jane Smith" />
+          </div>
+          <div className="space-y-2">
+            <Label>Business Email</Label>
+            <Input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} placeholder="contact@acme.com" />
+          </div>
+          <div className="space-y-2">
+            <Label>Initial Password</Label>
+            <Input type="password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} placeholder="••••••••" />
+          </div>
+        </div>
+        <DialogFooter>
+          <button onClick={onClose} className="px-4 py-2 text-slate-500 font-medium">Cancel</button>
+          <button 
+            onClick={handleSubmit} 
+            disabled={saving}
+            className="bg-[#025864] text-white px-6 py-2 rounded-xl font-bold hover:bg-[#013a42] disabled:opacity-50"
+          >
+            {saving ? "Creating..." : "Create Company"}
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 

@@ -1,28 +1,7 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { fetchWithAuth } from '@/lib/api';
-
-// Common Types
-export type LinkType = "reusable" | "one-time" | "donation";
-export type DealStatus = "Active" | "Waiting for payment" | "Funds locked" | "Shipped" | "Completed" | "Disputed" | "Expired" | "Used";
-export type UserRole = "seller" | "admin";
-
-export interface UserProfile {
-    id: number;
-    businessName: string;
-    fullName: string;
-    email: string;
-    phone: string;
-    website: string;
-    description: string;
-    country: string;
-    currency: string;
-    profilePictureUrl: string | null;
-    role: UserRole;
-    location: string;
-    payoutMethod: string;
-    payoutDetails: string;
-    isVerified: boolean;
-}
+import { useSSOSync } from '@/hooks/useSSOSync';
+import { UserProfile } from './types';
 
 interface AppContextType {
     userProfile: UserProfile | null;
@@ -34,7 +13,7 @@ interface AppContextType {
     refreshData: () => Promise<void>;
 }
 
-const AppContext = createContext<AppContextType | undefined>(undefined);
+export const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
     const [userProfile, setUserProfile] = useState<UserProfile | null>(() => {
@@ -55,6 +34,18 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         }
     });
 
+    const { setAuth: syncToSSO } = useSSOSync((token, profile) => {
+        // Sync FROM SSO Hub on initial load
+        if (token && !localStorage.getItem('auth_token')) {
+            localStorage.setItem('auth_token', token);
+            if (profile) {
+                localStorage.setItem('ripplify_profile', JSON.stringify(profile));
+                setUserProfile(profile);
+            }
+            setIsAuthenticated(true);
+        }
+    });
+
     const refreshData = async () => {
         if (!isAuthenticated) return;
         try {
@@ -66,8 +57,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
             }
         } catch (error) {
             console.error("Error refreshing profile data:", error);
-            // If fetching me fails with auth error, logout
-            if (String(error).includes('401') || String(error).includes('Unauthorized')) {
+            if (String(error).includes('401')) {
                 logout();
             }
         }
@@ -96,6 +86,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         setUserProfile(userData);
         if (token) {
             localStorage.setItem('auth_token', token);
+            syncToSSO(token, userData);
         }
     };
 
@@ -104,6 +95,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         setUserProfile(null);
         localStorage.removeItem('auth_token');
         localStorage.removeItem('ripplify_profile');
+        syncToSSO(null, null);
     };
 
     return (
@@ -115,12 +107,4 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
             {children}
         </AppContext.Provider>
     );
-};
-
-export const useAppContext = () => {
-    const context = useContext(AppContext);
-    if (context === undefined) {
-        throw new Error('useAppContext must be used within an AppProvider');
-    }
-    return context;
 };

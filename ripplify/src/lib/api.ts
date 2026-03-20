@@ -1,4 +1,14 @@
-const BASE_URL = "http://localhost:3001/api";
+const getBaseUrl = () => {
+    if (typeof window !== "undefined") {
+        const hostname = window.location.hostname;
+        if (hostname === "localhost" || hostname === "127.0.0.1") {
+            return "http://localhost:3001/api";
+        }
+    }
+    return import.meta.env.VITE_API_URL || "https://sokostack.ddns.net/api";
+};
+
+export const BASE_URL = getBaseUrl();
 
 export const fetchWithAuth = async (endpoint: string, options: RequestInit = {}) => {
     const token = localStorage.getItem('auth_token');
@@ -18,7 +28,10 @@ export const fetchWithAuth = async (endpoint: string, options: RequestInit = {})
         if (response.status === 401) {
             localStorage.removeItem('auth_token');
             localStorage.removeItem('ripplify_profile');
-            window.location.href = '/login';
+            // Prevent redirect loop if already on login page
+            if (window.location.pathname !== '/login') {
+                window.location.href = '/login';
+            }
         }
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.message || `API request failed with status ${response.status}`);

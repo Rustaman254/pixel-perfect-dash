@@ -97,7 +97,7 @@ const TopBar = ({ onMenuToggle }: TopBarProps) => {
                 <div className="w-6 h-6 rounded bg-slate-100 text-slate-600 flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
                   {app.icon === 'BarChart' ? <LineChart className="w-3.5 h-3.5" /> : <LayoutGrid className="w-3.5 h-3.5" />}
                 </div>
-                <span className="text-sm font-semibold text-slate-700 group-hover:text-primary whitespace-nowrap">{app.name}</span>
+                <span className="text-sm font-semibold text-slate-700 group-hover:text-primary whitespace-nowrap">{app.name === 'Insights' ? 'Watchtower' : app.name}</span>
              </a>
           ))}
         </div>
