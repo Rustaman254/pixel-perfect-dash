@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
-import { TerminalSquare, Key, Link2, Copy, Check, ChevronRight, Layout, Code2, Globe, ShieldCheck, ShoppingBag } from "lucide-react";
+import { TerminalSquare, Key, Link2, Copy, Check, ChevronRight, Layout, Code2, Globe, ShieldCheck, ShoppingBag, Terminal, ExternalLink, Zap, Shield, Code } from "lucide-react";
+import { BASE_URL } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { fetchWithAuth } from "@/lib/api";
 import usePageTitle from "@/hooks/usePageTitle";
@@ -30,7 +31,7 @@ const DeveloperDocsPage = () => {
     const [copiedStates, setCopiedStates] = useState<{ [key: string]: boolean }>({});
     const [apiKeys, setApiKeys] = useState<{ id: number, name: string, key: string, status: string }[]>([]);
     
-    const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
+    const API_BASE_URL = BASE_URL;
 
     useEffect(() => {
         const loadApiKeys = async () => {

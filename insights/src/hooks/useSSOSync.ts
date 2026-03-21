@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
+import { BACKEND_URL } from "@/lib/api";
 
-const SSO_HUB_URL = (import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL?.replace('/api', '') || "http://localhost:3001") + "/sso.html";
+const SSO_HUB_URL = BACKEND_URL + "/sso.html";
 
 export const useSSOSync = (onSync?: (token: string | null, userProfile: any | null) => void) => {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);

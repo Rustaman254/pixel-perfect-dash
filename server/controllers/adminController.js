@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs';
+import { getDb } from '../config/db.js';
 import User from '../models/User.js';
 import rbacService from '../utils/rbacService.js';
 import ApiKey from '../models/ApiKey.js';

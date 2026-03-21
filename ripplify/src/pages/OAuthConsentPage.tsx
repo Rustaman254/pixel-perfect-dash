@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { fetchWithAuth, publicFetch, BASE_URL } from "@/lib/api";
 import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -10,7 +11,7 @@ const OAuthConsentPage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
+    const API_URL = BASE_URL;
 
     useEffect(() => {
         fetchAuthorizeData();

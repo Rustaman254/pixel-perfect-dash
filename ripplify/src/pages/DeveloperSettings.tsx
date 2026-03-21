@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Sidebar from "@/components/dashboard/Sidebar";
 import TopBar from "@/components/dashboard/TopBar";
+import { fetchWithAuth, BASE_URL } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -13,7 +14,7 @@ const DeveloperSettings = () => {
     const [redirectUri, setRedirectUri] = useState("");
     const [loading, setLoading] = useState(false);
 
-    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
+    const API_URL = BASE_URL;
 
     useEffect(() => {
         fetchClients();
