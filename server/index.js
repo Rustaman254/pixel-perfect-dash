@@ -57,14 +57,13 @@ const allowedOrigins = process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split
     'http://127.0.0.1:8080'
 ];
 
+// Watchtower routes (public ingest endpoint)
+app.use("/api/watchtower", watchtowerRoutes);
+
 app.use(cors({
-    origin: function(origin, req, callback) {
+    origin: function(origin, callback) {
         // Allow requests with no origin (like mobile apps or curl requests)
         if (!origin) return callback(null, true);
-        // Allow any origin for watchtower ingest endpoint (public tracking)
-        if (req.path && req.path.startsWith('/api/watchtower/ingest')) {
-            return callback(null, true);
-        }
         if (allowedOrigins.indexOf(origin) !== -1) {
             callback(null, true);
         } else {
@@ -101,7 +100,7 @@ app.use("/api/payouts", payoutRoutes);
 app.use("/api/support", supportRoutes);
 app.use("/api/payment-methods", paymentMethodRoutes);
 app.use("/api/currencies", currencyRoutes);
-app.use("/api/watchtower", watchtowerRoutes);
+// watchtower routes moved before CORS middleware
 app.use("/api/apps", appRoutes);
 app.use("/api/wallets", walletRoutes);
 app.use("/api/payments", paymentRoutes);
