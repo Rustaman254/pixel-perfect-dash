@@ -96,14 +96,42 @@ const Watchtower = {
         };
     },
 
-    getSessions: async (userId, limit = 20, offset = 0) => {
+    getSessions: async (userId, limit = 20, offset = 0, startDate = null, endDate = null) => {
         const db = getDb();
-        return await db.all(`
-            SELECT * FROM insight_sessions 
-            WHERE userId = ? 
-            ORDER BY createdAt DESC 
-            LIMIT ? OFFSET ?
-        `, [userId, limit, offset]);
+        let query = `SELECT * FROM insight_sessions WHERE userId = ?`;
+        const params = [userId];
+        
+        if (startDate) {
+            query += ` AND createdAt >= ?`;
+            params.push(startDate);
+        }
+        if (endDate) {
+            query += ` AND createdAt <= ?`;
+            params.push(endDate);
+        }
+        
+        query += ` ORDER BY createdAt DESC LIMIT ? OFFSET ?`;
+        params.push(limit, offset);
+        
+        return await db.all(query, params);
+    },
+
+    getSessionCount: async (userId, startDate = null, endDate = null) => {
+        const db = getDb();
+        let query = `SELECT COUNT(*) as count FROM insight_sessions WHERE userId = ?`;
+        const params = [userId];
+        
+        if (startDate) {
+            query += ` AND createdAt >= ?`;
+            params.push(startDate);
+        }
+        if (endDate) {
+            query += ` AND createdAt <= ?`;
+            params.push(endDate);
+        }
+        
+        const result = await db.get(query, params);
+        return result?.count || 0;
     },
 
     getSessionDetail: async (sessionId) => {

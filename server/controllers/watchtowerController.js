@@ -50,8 +50,16 @@ export const getEntityAnalytics = asyncHandler(async (req, res) => {
 export const getSessions = asyncHandler(async (req, res) => {
     const limit = parseInt(req.query.limit) || 20;
     const offset = parseInt(req.query.offset) || 0;
+    const startDate = req.query.startDate || null;
+    const endDate = req.query.endDate || null;
+    const countOnly = req.query.countOnly === 'true';
     
-    const sessions = await Watchtower.getSessions(req.user.id, limit, offset);
+    if (countOnly) {
+        const count = await Watchtower.getSessionCount(req.user.id, startDate, endDate);
+        return res.json({ count });
+    }
+    
+    const sessions = await Watchtower.getSessions(req.user.id, limit, offset, startDate, endDate);
     res.json(sessions);
 });
 
