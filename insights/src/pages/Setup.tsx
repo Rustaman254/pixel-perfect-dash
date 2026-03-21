@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAppContext } from "@/contexts/useAppContext";
+import { fetchWithAuth, BACKEND_URL } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import usePageTitle from "@/hooks/usePageTitle";
 
@@ -18,8 +19,7 @@ const SetupPage = () => {
 
     const projectId = userProfile?.id || '...';
     
-    // Fall back to localhost if not specified in .env
-    const backendRoot = import.meta.env.VITE_BACKEND_URL || "http://localhost:3001";
+    const backendRoot = BACKEND_URL;
     
     const htmlSnippet = `<!-- Ripplify Watchtower -->
 <script>

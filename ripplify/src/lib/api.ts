@@ -9,6 +9,7 @@ const getBaseUrl = () => {
 };
 
 export const BASE_URL = getBaseUrl();
+export const BACKEND_URL = BASE_URL.replace('/api', '');
 
 export const fetchWithAuth = async (endpoint: string, options: RequestInit = {}) => {
     const token = localStorage.getItem('auth_token');
