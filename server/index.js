@@ -32,7 +32,7 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-      "frame-ancestors": ["'self'", "http://localhost:3000", "http://localhost:3001", "http://localhost:5173", "http://localhost:5174", "http://localhost:5175", "http://localhost:8080"],
+      "frame-ancestors": ["'self'", "http://localhost:3000", "http://localhost:3001", "http://localhost:5173", "http://localhost:5174", "http://localhost:5175", "http://localhost:8080", "https://pixel-perfect-dash.vercel.app"],
       "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
     },
   },
@@ -42,6 +42,7 @@ app.use(helmet({
 const allowedOrigins = process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : [
     'https://sokostack.ddns.net',
     'http://sokostack.ddns.net',
+    'https://pixel-perfect-dash.vercel.app',
     'http://localhost:3000',
     'http://localhost:3001',
     'http://localhost:5173',
