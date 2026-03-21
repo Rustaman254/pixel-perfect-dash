@@ -24,7 +24,7 @@ const ManageCompanies = () => {
   const loadCompanies = async () => {
     try {
       setLoading(true);
-      const data = await fetchWithAuth('/admin/users');
+      const data = await fetchWithAuth('/admin/companies');
       // Filter for users that have a business name
       setCompanies(data.filter((u: any) => u.businessName && u.businessName.trim() !== ""));
     } catch (error: any) {
@@ -116,6 +116,9 @@ const ManageCompanies = () => {
               <tr className="bg-slate-50/50">
                 <th className="text-left px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-slate-400">Company</th>
                 <th className="text-left px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-slate-400">Owner / Email</th>
+                <th className="text-left px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-slate-400">Revenue</th>
+                <th className="text-left px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-slate-400">Fees</th>
+                <th className="text-left px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-slate-400">Transactions</th>
                 <th className="text-left px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-slate-400">Status</th>
                 <th className="text-left px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-slate-400">Joined</th>
                 <th className="text-right px-6 py-4 text-[10px] uppercase tracking-widest font-bold text-slate-400">Actions</th>
@@ -124,14 +127,14 @@ const ManageCompanies = () => {
             <tbody className="divide-y divide-slate-50">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="py-20 text-center">
+                  <td colSpan={8} className="py-20 text-center">
                     <Loader2 className="w-8 h-8 animate-spin text-[#025864] mx-auto mb-2" />
                     <p className="text-sm text-slate-500 font-medium">Loading registered companies...</p>
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-20 text-center">
+                  <td colSpan={8} className="py-20 text-center">
                     <p className="text-sm text-slate-500 font-medium">No companies found matching your search.</p>
                   </td>
                 </tr>
@@ -148,10 +151,20 @@ const ManageCompanies = () => {
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
-                    <p className="text-sm font-medium text-slate-600">{company.fullName || "Unnamed Owner"}</p>
-                    <p className="text-[10px] text-slate-400">{company.email}</p>
-                  </td>
+                   <td className="px-6 py-4">
+                     <p className="text-sm font-medium text-slate-600">{company.fullName || "Unnamed Owner"}</p>
+                     <p className="text-[10px] text-slate-400">{company.email}</p>
+                   </td>
+                   <td className="px-6 py-4">
+                     <p className="text-sm font-bold text-slate-900">KES {(company.totalVolume || 0).toLocaleString()}</p>
+                     <p className="text-[10px] text-emerald-600 font-medium">{company.volumePercentage}% of total</p>
+                   </td>
+                   <td className="px-6 py-4">
+                     <p className="text-sm font-medium text-slate-600">KES {(company.totalFees || 0).toLocaleString()}</p>
+                   </td>
+                   <td className="px-6 py-4">
+                     <p className="text-sm font-medium text-slate-600">{company.txCount || 0}</p>
+                   </td>
                   <td className="px-6 py-4">
                     <span className={cn(
                       "text-[10px] px-2 py-0.5 rounded-full font-bold",
