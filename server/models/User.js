@@ -4,7 +4,7 @@ import { getDb } from '../config/db.js';
 const ALLOWED_COLUMNS = [
     'id', 'email', 'password', 'role', 'fullName', 'phone', 'businessName',
     'idType', 'idNumber', 'location', 'payoutMethod', 'payoutDetails',
-    'isVerified', 'createdAt', 'updatedAt'
+    'isVerified', 'kycStatus', 'kybStatus', 'transactionLimit', 'createdAt', 'updatedAt'
 ];
 
 // User Model Methods for SQLite

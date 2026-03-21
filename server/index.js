@@ -34,6 +34,16 @@ emailService.initialize().catch(err => {
 
 const app = express();
 app.set('trust proxy', 1);
+
+// Request Logger at the very top
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.originalUrl || req.url} - ${res.statusCode} (${duration}ms)`);
+  });
+  next();
+});
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
@@ -81,15 +91,6 @@ app.use(cors({
 app.use(express.static("public"));
 app.use(express.json({ type: ['application/json', 'text/plain'] }));
 
-// Request Logger
-app.use((req, res, next) => {
-  const start = Date.now();
-  res.on('finish', () => {
-    const duration = Date.now() - start;
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.url} - ${res.statusCode} (${duration}ms)`);
-  });
-  next();
-});
 
 const server = http.createServer(app);
 

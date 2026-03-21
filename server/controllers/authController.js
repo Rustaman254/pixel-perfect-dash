@@ -280,7 +280,7 @@ export const sendOTP = async (req, res) => {
         // Generate a random 4-digit code
         const otpCode = Math.floor(1000 + Math.random() * 9000).toString();
 
-        await db.run("INSERT INTO otps (email, otp) VALUES (?, ?)", [email, otpCode]);
+        await db.run("INSERT INTO otps (email, otp, phone) VALUES (?, ?, ?)", [email, otpCode, ""]);
 
         try {
             await emailService.sendOTPEmail(email, otpCode);
