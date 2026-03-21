@@ -19,15 +19,63 @@ const SessionsPage = () => {
     const [loading, setLoading] = useState(true);
     const [sessionDetail, setSessionDetail] = useState<any>(null);
     const [loadingDetail, setLoadingDetail] = useState(false);
+    const [filter, setFilter] = useState<'today' | 'week' | 'month' | 'year' | 'all'>('all');
+    const [totalVisits, setTotalVisits] = useState(0);
     
     const [isReplaying, setIsReplaying] = useState(false);
     const replayContainerRef = useRef<HTMLDivElement>(null);
     const playerRef = useRef<any>(null);
 
+    const getDateRange = (filter: string) => {
+        const now = new Date();
+        let startDate: string | null = null;
+        let endDate: string | null = null;
+        
+        switch (filter) {
+            case 'today':
+                startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+                endDate = now.toISOString();
+                break;
+            case 'week':
+                const startOfWeek = new Date(now);
+                startOfWeek.setDate(now.getDate() - now.getDay());
+                startOfWeek.setHours(0, 0, 0, 0);
+                startDate = startOfWeek.toISOString();
+                endDate = now.toISOString();
+                break;
+            case 'month':
+                startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+                endDate = now.toISOString();
+                break;
+            case 'year':
+                startDate = new Date(now.getFullYear(), 0, 1).toISOString();
+                endDate = now.toISOString();
+                break;
+            case 'all':
+            default:
+                break;
+        }
+        return { startDate, endDate };
+    };
+
     const fetchSessions = async () => {
         try {
-            const response = await fetchWithAuth('/insights/sessions');
+            const { startDate, endDate } = getDateRange(filter);
+            const params = new URLSearchParams();
+            if (startDate) params.append('startDate', startDate);
+            if (endDate) params.append('endDate', endDate);
+            params.append('limit', '100');
+            
+            const response = await fetchWithAuth(`/insights/sessions?${params.toString()}`);
             setSessions(response || []);
+            
+            // Fetch total visits count
+            const countParams = new URLSearchParams();
+            if (startDate) countParams.append('startDate', startDate);
+            if (endDate) countParams.append('endDate', endDate);
+            countParams.append('countOnly', 'true');
+            const countResponse = await fetchWithAuth(`/insights/sessions?${countParams.toString()}`);
+            setTotalVisits(countResponse?.count || 0);
         } catch (err: any) {
             console.error("Failed to fetch sessions:", err);
         } finally {
@@ -49,7 +97,9 @@ const SessionsPage = () => {
 
     useEffect(() => {
         fetchSessions();
-    }, []);
+        const interval = setInterval(fetchSessions, 10000); // Auto-refresh every 10 seconds
+        return () => clearInterval(interval);
+    }, [filter]);
 
     useEffect(() => {
         if (selectedSession) {
@@ -129,7 +179,22 @@ const SessionsPage = () => {
                         <h1 className="text-2xl font-bold text-slate-900 tracking-tight">User Sessions</h1>
                         <p className="text-slate-500 text-sm">Monitor user behavior and replay interactions.</p>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-4 py-2">
+                            <span className="text-sm font-bold text-slate-700">Total Visits:</span>
+                            <span className="text-lg font-black text-indigo-600">{totalVisits}</span>
+                        </div>
+                        <select
+                            value={filter}
+                            onChange={(e) => setFilter(e.target.value as any)}
+                            className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                        >
+                            <option value="today">Today</option>
+                            <option value="week">This Week</option>
+                            <option value="month">This Month</option>
+                            <option value="year">This Year</option>
+                            <option value="all">All Time</option>
+                        </select>
                         <div className="relative group">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
                             <input 
@@ -138,10 +203,6 @@ const SessionsPage = () => {
                                 className="pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all w-64"
                             />
                         </div>
-                        <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-50 transition-all">
-                            <Filter className="w-4 h-4" />
-                            Filters
-                        </button>
                     </div>
                 </div>
 
@@ -179,7 +240,15 @@ const SessionsPage = () => {
                                                         {getDeviceIcon(session.device)}
                                                     </div>
                                                     <div>
-                                                        <p className="text-sm font-bold text-slate-900">{session.sessionId.substring(0, 8)}</p>
+                                                        <div className="flex items-center gap-2">
+                                                            <p className="text-sm font-bold text-slate-900">{session.sessionId.substring(0, 8)}</p>
+                                                            {new Date() - new Date(session.createdAt) < 5 * 60 * 1000 && (
+                                                                <span className="flex items-center gap-1 px-1.5 py-0.5 bg-green-100 text-green-700 text-[10px] font-bold rounded-full animate-pulse">
+                                                                    <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
+                                                                    LIVE
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                         <p className="text-[10px] text-slate-400 font-medium capitalize">{session.city || 'Unknown'}, {session.country}</p>
                                                     </div>
                                                 </div>
