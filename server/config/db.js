@@ -41,11 +41,17 @@ const connectDB = async () => {
     await dbInstance.exec(`
       CREATE TABLE IF NOT EXISTS otps (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        phone TEXT NOT NULL,
+        phone TEXT,
+        email TEXT,
         otp TEXT NOT NULL,
         createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
+
+    // Migration: add email to otps if missing
+    try {
+      await dbInstance.exec(`ALTER TABLE otps ADD COLUMN email TEXT`);
+    } catch (e) { }
 
     // Create Password Reset Tokens Table
     await dbInstance.exec(`

@@ -84,6 +84,13 @@ class EmailService {
             );
             this.templates.notification = handlebars.compile(notificationTemplate);
 
+            // OTP template
+            const otpTemplate = fs.readFileSync(
+                path.join(templatesDir, 'otp.hbs'),
+                'utf8'
+            );
+            this.templates.otp = handlebars.compile(otpTemplate);
+
             console.log('Email templates loaded successfully');
         } catch (error) {
             console.error('Error loading email templates:', error.message);
@@ -167,7 +174,7 @@ class EmailService {
         const data = {
             name: user.fullName || user.email.split('@')[0],
             email: user.email,
-            resetUrl: `${process.env.FRONTEND_URL || 'https://sokostack.ddns.net'}/reset-password?token=${resetToken}`,
+            resetToken,
             expiresIn: '1 hour'
         };
 
@@ -175,6 +182,20 @@ class EmailService {
             user.email,
             'Password Reset Request - RippliFy',
             this.templates.passwordReset,
+            data
+        );
+    }
+
+    async sendOTPEmail(email, otpCode) {
+        const data = {
+            currentYear: new Date().getFullYear(),
+            otpCode
+        };
+
+        return this.sendEmail(
+            email,
+            'Your Verification Code',
+            this.templates.otp,
             data
         );
     }

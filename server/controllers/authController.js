@@ -269,23 +269,26 @@ export const deleteMyApiKey = async (req, res) => {
 // @access  Public
 export const sendOTP = async (req, res) => {
     try {
-        const { phone } = req.body;
-        if (!phone) return res.status(400).json({ message: "Phone number is required." });
+        const { email } = req.body;
+        if (!email) return res.status(400).json({ message: "Email is required." });
 
         const db = getDb();
 
-        // Check if an OTP already exists for this phone recently, delete it to prevent spam
-        await db.run("DELETE FROM otps WHERE phone = ?", phone);
+        // Check if an OTP already exists for this email recently, delete it to prevent spam
+        await db.run("DELETE FROM otps WHERE email = ?", email);
 
         // Generate a random 4-digit code
         const otpCode = Math.floor(1000 + Math.random() * 9000).toString();
 
-        await db.run("INSERT INTO otps (phone, otp) VALUES (?, ?)", [phone, otpCode]);
+        await db.run("INSERT INTO otps (email, otp) VALUES (?, ?)", [email, otpCode]);
 
-        // In a real app, integrate Twilio/Africa's Talking here to send the SMS
-        // In a real app, integrate Twilio/Africa's Talking here to send the SMS
+        try {
+            await emailService.sendOTPEmail(email, otpCode);
+        } catch (emailError) {
+            console.error('Failed to send OTP email:', emailError.message);
+        }
 
-        res.json({ message: "OTP sent successfully", otp: otpCode });
+        res.json({ message: "OTP sent successfully via email" });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: "Server error" });
@@ -297,14 +300,14 @@ export const sendOTP = async (req, res) => {
 // @access  Public
 export const verifyOTP = async (req, res) => {
     try {
-        const { phone, otp } = req.body;
-        if (!phone || !otp) return res.status(400).json({ message: "Phone and OTP are required." });
+        const { email, otp } = req.body;
+        if (!email || !otp) return res.status(400).json({ message: "Email and OTP are required." });
 
         const db = getDb();
-        const record = await db.get("SELECT * FROM otps WHERE phone = ? ORDER BY createdAt DESC LIMIT 1", phone);
+        const record = await db.get("SELECT * FROM otps WHERE email = ? ORDER BY createdAt DESC LIMIT 1", email);
 
         if (!record) {
-            return res.status(400).json({ message: "No OTP request found for this number.", success: false });
+            return res.status(400).json({ message: "No OTP request found for this email.", success: false });
         }
 
         // Add an expiry check here if desired (e.g. 5 minutes)
@@ -312,7 +315,7 @@ export const verifyOTP = async (req, res) => {
 
         if (record.otp === otp) {
             // Success, remove the OTP
-            await db.run("DELETE FROM otps WHERE phone = ?", phone);
+            await db.run("DELETE FROM otps WHERE email = ?", email);
             res.json({ message: "OTP verified successfully", success: true });
         } else {
             res.status(400).json({ message: "Invalid OTP", success: false });
@@ -369,8 +372,8 @@ export const forgotPassword = async (req, res) => {
             return res.json({ message: "If an account with that email exists, a password reset link has been sent." });
         }
 
-        // Generate reset token
-        const resetToken = crypto.randomBytes(32).toString('hex');
+        // Generate reset OTP
+        const otpCode = Math.floor(1000 + Math.random() * 9000).toString();
         const expiresAt = new Date(Date.now() + 3600000); // 1 hour from now
 
         const db = getDb();
@@ -380,12 +383,12 @@ export const forgotPassword = async (req, res) => {
         // Store new token
         await db.run(
             "INSERT INTO password_reset_tokens (userId, token, expiresAt) VALUES (?, ?, ?)",
-            [user.id, resetToken, expiresAt.toISOString()]
+            [user.id, otpCode, expiresAt.toISOString()]
         );
 
         // Send reset email
         try {
-            await emailService.sendPasswordResetEmail(user, resetToken);
+            await emailService.sendPasswordResetEmail(user, otpCode);
             console.log('Password reset email sent to:', user.email);
         } catch (emailError) {
             console.error('Failed to send password reset email:', emailError.message);
@@ -404,10 +407,10 @@ export const forgotPassword = async (req, res) => {
 // @access  Public
 export const resetPassword = async (req, res) => {
     try {
-        const { token, password } = req.body;
+        const { otp, password } = req.body;
         
-        if (!token || !password) {
-            return res.status(400).json({ message: "Token and new password are required" });
+        if (!otp || !password) {
+            return res.status(400).json({ message: "OTP and new password are required" });
         }
 
         if (password.length < 6) {
@@ -419,11 +422,11 @@ export const resetPassword = async (req, res) => {
         // Find token and check expiration
         const resetTokenRecord = await db.get(
             "SELECT * FROM password_reset_tokens WHERE token = ? AND used = 0 AND expiresAt > datetime('now')",
-            [token]
+            [otp]
         );
 
         if (!resetTokenRecord) {
-            return res.status(400).json({ message: "Invalid or expired reset token" });
+            return res.status(400).json({ message: "Invalid or expired OTP" });
         }
 
         // Get user

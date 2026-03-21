@@ -12,6 +12,7 @@ import SetupPage from "./pages/Setup";
 import AdminOverview from "./pages/AdminOverview";
 import Login from "./pages/auth/Login";
 import Signup from "./pages/auth/Signup";
+import ForgotPassword from "./pages/auth/ForgotPassword";
 
 import { AppProvider } from "./contexts/AppContext";
 import { useAppContext } from "./contexts/useAppContext";
@@ -41,6 +42,7 @@ const AppRoutes = () => {
         {/* Auth */}
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
 
         <Route path="/watchtower" element={<ProtectedRoute><WatchtowerOverview /></ProtectedRoute>} />
         <Route path="/watchtower/entity/:id" element={<ProtectedRoute><EntityAnalytics /></ProtectedRoute>} />
