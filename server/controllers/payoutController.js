@@ -5,6 +5,7 @@ import Notification from '../models/Notification.js';
 import paystackService from '../utils/paystackService.js';
 import { getDb } from '../config/db.js';
 
+
 export const requestPayout = async (req, res) => {
     try {
         const { amount } = req.body;
@@ -43,7 +44,7 @@ export const requestPayout = async (req, res) => {
         // The user asked to make the platform profitable with good margins.
         const db = getDb();
         const settings = await db.get("SELECT value FROM system_settings WHERE key = 'payout_fee'");
-        const flatFee = settings ? parseFloat(settings.value) : 50; 
+        const flatFee = settings ? parseFloat(settings.value) : 50;
         const percentFee = amount * 0.02; // 2% platform margin
         const totalFee = flatFee + percentFee;
         const netAmount = amount - totalFee;
@@ -78,10 +79,10 @@ export const requestPayout = async (req, res) => {
                 recipient: recipientResponse.data.recipient_code,
                 reason: `Payout for ${user.email} - PAY-${newPayout.id}`
             };
-            
+
             const transferResponse = await paystackService.initiateTransfer(transferData);
             console.log('Paystack Payout Response:', transferResponse);
-            
+
             await Notification.create({
                 userId: null,
                 title: "Payout Request (Paystack)",
