@@ -14,9 +14,7 @@ const protect = async (req, res, next) => {
 
             if (token.startsWith("rf_")) {
                 // API Key Authentication
-                console.log("Checking API Key:", token);
                 const apiKeyRecord = await ApiKey.findByKey(token);
-                console.log("ApiKey Record:", apiKeyRecord);
                 if (!apiKeyRecord) {
                     return res.status(401).json({ message: "Invalid or inactive API Key" });
                 }
@@ -27,7 +25,7 @@ const protect = async (req, res, next) => {
                 }
             } else {
                 // Standard JWT Authentication
-                const decoded = jwt.verify(token, process.env.JWT_SECRET || "super_secret_ripplify_key_2025");
+                const decoded = jwt.verify(token, process.env.JWT_SECRET);
                 req.user = await User.findById(decoded.id);
                 if (!req.user) {
                     return res.status(401).json({ message: "Not authorized, user not found" });
