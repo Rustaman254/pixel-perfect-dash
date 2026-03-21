@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{title}}</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8fafc;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .header {
+            background: linear-gradient(135deg, #025864 0%, #013a42 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .logo {
+            font-size: 28px;
+            font-weight: 800;
+            margin: 0;
+            letter-spacing: -0.5px;
+        }
+        .tagline {
+            opacity: 0.9;
+            margin-top: 8px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .notification-title {
+            color: #025864;
+            font-size: 24px;
+            font-weight: 700;
+            margin-top: 0;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .notification-box {
+            background: #f1f5f9;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 25px 0;
+        }
+        .notification-message {
+            color: #1e293b;
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        .cta-button {
+            display: inline-block;
+            background: #025864;
+            color: white;
+            text-decoration: none;
+            padding: 14px 28px;
+            border-radius: 8px;
+            font-weight: 600;
+            text-align: center;
+            margin: 25px 0;
+            transition: background 0.2s;
+        }
+        .cta-button:hover {
+            background: #013a42;
+        }
+        .date-info {
+            text-align: center;
+            color: #64748b;
+            font-size: 14px;
+            margin: 20px 0;
+        }
+        .footer {
+            background: #f8fafc;
+            padding: 25px 30px;
+            text-align: center;
+            font-size: 12px;
+            color: #64748b;
+            border-top: 1px solid #e2e8f0;
+        }
+        .divider {
+            height: 1px;
+            background: #e2e8f0;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="logo">RippliFy</h1>
+            <div class="tagline">Secure Payment Links for Modern Businesses</div>
+        </div>
+        
+        <div class="content">
+            <h2 class="notification-title">{{title}}</h2>
+            
+            <p>Hello {{name}},</p>
+            
+            <div class="notification-box">
+                <div class="notification-message">
+                    {{{message}}}
+                </div>
+                
+                {{#if actionUrl}}
+                <div style="text-align: center;">
+                    <a href="{{actionUrl}}" class="cta-button">{{actionLabel}}</a>
+                </div>
+                {{/if}}
+            </div>
+            
+            <div class="date-info">
+                <p>This notification was sent on {{date}}.</p>
+            </div>
+            
+            <div class="divider"></div>
+            
+            <p>If you have any questions about this notification, please contact our support team or reply to this email.</p>
+            
+            <p>Best regards,<br>
+            <strong>The RippliFy Team</strong></p>
+        </div>
+        
+        <div class="footer">
+            <p>© {{currentYear}} RippliFy. All rights reserved.</p>
+            <p>RippliFy Inc. | Nairobi, Kenya</p>
+            
+            <div style="margin-top: 15px; font-size: 11px;">
+                <p>You received this email because of activity on your RippliFy account.</p>
+                <p><a href="#" style="color: #64748b;">Unsubscribe</a> | <a href="#" style="color: #64748b;">Privacy Policy</a> | <a href="#" style="color: #64748b;">Terms of Service</a></p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

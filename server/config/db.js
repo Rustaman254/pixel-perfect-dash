@@ -47,6 +47,19 @@ const connectDB = async () => {
       )
     `);
 
+    // Create Password Reset Tokens Table
+    await dbInstance.exec(`
+      CREATE TABLE IF NOT EXISTS password_reset_tokens (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        userId INTEGER NOT NULL,
+        token TEXT UNIQUE NOT NULL,
+        expiresAt DATETIME NOT NULL,
+        used BOOLEAN DEFAULT 0,
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (userId) REFERENCES users (id)
+      )
+    `);
+
     // Create Payment Links Table
     await dbInstance.exec(`
       CREATE TABLE IF NOT EXISTS payment_links (

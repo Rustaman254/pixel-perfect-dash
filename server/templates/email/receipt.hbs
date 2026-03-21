@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Receipt</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8fafc;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .header {
+            background: linear-gradient(135deg, #025864 0%, #013a42 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .logo {
+            font-size: 28px;
+            font-weight: 800;
+            margin: 0;
+            letter-spacing: -0.5px;
+        }
+        .tagline {
+            opacity: 0.9;
+            margin-top: 8px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .receipt-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .receipt-title {
+            color: #025864;
+            font-size: 24px;
+            font-weight: 700;
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+        .receipt-subtitle {
+            color: #64748b;
+            font-size: 14px;
+        }
+        .receipt-details {
+            background: #f1f5f9;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 25px 0;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .detail-row:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+        .detail-label {
+            font-weight: 600;
+            color: #475569;
+            font-size: 14px;
+        }
+        .detail-value {
+            color: #1e293b;
+            font-weight: 500;
+            text-align: right;
+        }
+        .amount-display {
+            font-size: 32px;
+            font-weight: 800;
+            color: #025864;
+            text-align: center;
+            margin: 30px 0;
+        }
+        .amount-currency {
+            font-size: 18px;
+            font-weight: 600;
+            color: #475569;
+            vertical-align: super;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .status-completed {
+            background: #dcfce7;
+            color: #166534;
+        }
+        .status-pending {
+            background: #fef9c3;
+            color: #854d0e;
+        }
+        .status-failed {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .cta-button {
+            display: inline-block;
+            background: #025864;
+            color: white;
+            text-decoration: none;
+            padding: 14px 28px;
+            border-radius: 8px;
+            font-weight: 600;
+            text-align: center;
+            margin: 25px 0;
+            transition: background 0.2s;
+        }
+        .cta-button:hover {
+            background: #013a42;
+        }
+        .footer {
+            background: #f8fafc;
+            padding: 25px 30px;
+            text-align: center;
+            font-size: 12px;
+            color: #64748b;
+            border-top: 1px solid #e2e8f0;
+        }
+        .divider {
+            height: 1px;
+            background: #e2e8f0;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="logo">RippliFy</h1>
+            <div class="tagline">Secure Payment Links for Modern Businesses</div>
+        </div>
+        
+        <div class="content">
+            <div class="receipt-header">
+                <h2 class="receipt-title">Payment Receipt</h2>
+                <p class="receipt-subtitle">Thank you for your payment!</p>
+            </div>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <span class="amount-currency">{{currency}}</span>
+                <span class="amount-display">{{amount}}</span>
+            </div>
+            
+            <div class="receipt-details">
+                <div class="detail-row">
+                    <span class="detail-label">Transaction ID</span>
+                    <span class="detail-value">{{transactionId}}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Product/Service</span>
+                    <span class="detail-value">{{productName}}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Date</span>
+                    <span class="detail-value">{{date}}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Time</span>
+                    <span class="detail-value">{{time}}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Status</span>
+                    <span class="detail-value">
+                        <span class="status-badge status-{{status}}">{{status}}</span>
+                    </span>
+                </div>
+            </div>
+            
+            <p>Hello {{name}},</p>
+            
+            <p>This email confirms your payment has been successfully processed. Your payment is secure with RippliFy's escrow protection.</p>
+            
+            <div style="text-align: center;">
+                <a href="{{receiptUrl}}" class="cta-button">View Full Receipt</a>
+            </div>
+            
+            <div class="divider"></div>
+            
+            <h3 style="color: #025864; font-size: 18px;">What happens next?</h3>
+            
+            <ul style="color: #475569; padding-left: 20px;">
+                <li><strong>Payment Confirmation</strong> - The seller has been notified of your payment</li>
+                <li><strong>Delivery</strong> - The seller will process your order and mark it as shipped</li>
+                <li><strong>Confirmation</strong> - Once you receive the product/service, confirm delivery to release funds</li>
+                <li><strong>Support</strong> - If there are any issues, you can open a dispute within 7 days</li>
+            </ul>
+            
+            <p>If you have any questions about this transaction, please contact our support team.</p>
+            
+            <p>Thank you for choosing RippliFy!</p>
+            
+            <p>Best regards,<br>
+            <strong>The RippliFy Team</strong></p>
+        </div>
+        
+        <div class="footer">
+            <p>© {{currentYear}} RippliFy. All rights reserved.</p>
+            <p>RippliFy Inc. | Nairobi, Kenya</p>
+            
+            <div style="margin-top: 15px; font-size: 11px;">
+                <p>This email was sent to {{email}} regarding transaction {{transactionId}}.</p>
+                <p><a href="#" style="color: #64748b;">Unsubscribe</a> | <a href="#" style="color: #64748b;">Privacy Policy</a> | <a href="#" style="color: #64748b;">Terms of Service</a></p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

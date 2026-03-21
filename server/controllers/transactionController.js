@@ -4,6 +4,7 @@ import Notification from '../models/Notification.js';
 import { getDb } from '../config/db.js';
 import paystackService from '../utils/paystackService.js';
 import crypto from 'crypto';
+import emailService from '../services/emailService.js';
 
 export const createTransaction = async (req, res) => {
     console.log('Create Transaction Request:', { params: req.params, body: req.body });
@@ -222,6 +223,18 @@ export const handlePaystackIPN = async (req, res) => {
                     message: `You received ${transaction.amount} ${transaction.currency} from ${transaction.buyerName}. Funds are held in escrow.`,
                     type: 'success'
                 });
+
+                // Send receipt email to buyer
+                try {
+                    const buyer = {
+                        email: transaction.buyerEmail,
+                        fullName: transaction.buyerName
+                    };
+                    await emailService.sendReceiptEmail(buyer, transaction);
+                    console.log('Receipt email sent to:', transaction.buyerEmail);
+                } catch (emailError) {
+                    console.error('Failed to send receipt email:', emailError.message);
+                }
             }
         }
 
@@ -332,6 +345,18 @@ export const verifyPaystackPayment = async (req, res) => {
                     message: `You received ${transaction.amount} ${transaction.currency} from ${transaction.buyerName}. Funds are held in escrow.`,
                     type: 'success'
                 });
+
+                // Send receipt email to buyer
+                try {
+                    const buyer = {
+                        email: transaction.buyerEmail,
+                        fullName: transaction.buyerName
+                    };
+                    await emailService.sendReceiptEmail(buyer, transaction);
+                    console.log('Receipt email sent to:', transaction.buyerEmail);
+                } catch (emailError) {
+                    console.error('Failed to send receipt email:', emailError.message);
+                }
             }
         }
         

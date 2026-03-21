@@ -4,6 +4,7 @@ import cors from "cors";
 import helmet from "helmet";
 import dotenv from "dotenv";
 import connectDB from "./config/db.js";
+import emailService from "./services/emailService.js";
 import authRoutes from "./routes/authRoutes.js";
 import linkRoutes from "./routes/linkRoutes.js";
 import transactionRoutes from "./routes/transactionRoutes.js";
@@ -25,6 +26,11 @@ dotenv.config();
 
 // Connect to MongoDB
 connectDB();
+
+// Initialize email service
+emailService.initialize().catch(err => {
+    console.error('Failed to initialize email service:', err.message);
+});
 
 const app = express();
 app.set('trust proxy', 1);

@@ -1,6 +1,6 @@
 import express from "express";
 import rateLimit from "express-rate-limit";
-import { registerUser, loginUser, getMe, sendOTP, verifyOTP, getMyApiKeys, updateProfile, createMyApiKey, deleteMyApiKey } from "../controllers/authController.js";
+import { registerUser, loginUser, getMe, sendOTP, verifyOTP, getMyApiKeys, updateProfile, createMyApiKey, deleteMyApiKey, forgotPassword, resetPassword } from "../controllers/authController.js";
 import { protect } from "../middlewares/authMiddleware.js";
 
 const authLimiter = rateLimit({
@@ -20,5 +20,7 @@ router.delete("/api-keys/:id", protect, deleteMyApiKey);
 router.put("/profile", protect, updateProfile);
 router.post("/send-otp", authLimiter, sendOTP);
 router.post("/verify-otp", authLimiter, verifyOTP);
+router.post("/forgot-password", authLimiter, forgotPassword);
+router.post("/reset-password", authLimiter, resetPassword);
 
 export default router;
