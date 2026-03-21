@@ -132,7 +132,14 @@ export const updateLinkStatus = async (req, res) => {
 // Public: buyer confirms delivery (sets status to Completed)
 export const confirmDelivery = async (req, res) => {
     try {
-        const link = await PaymentLink.findBySlug(req.params.slug);
+        const { slug } = req.params;
+        const { sig } = req.query;
+        if (!sig) return res.status(403).json({ message: "Missing signature" });
+        
+        const expected = crypto.createHash('sha256').update(slug + process.env.JWT_SECRET).digest('hex');
+        if (expected !== sig) return res.status(403).json({ message: "Invalid signature" });
+        
+        const link = await PaymentLink.findBySlug(slug);
         if (!link) return res.status(404).json({ message: "Link not found" });
 
         const updated = await PaymentLink.updateStatus(link.id, 'Completed');
@@ -145,7 +152,14 @@ export const confirmDelivery = async (req, res) => {
 // Public: buyer reports a problem (sets status to Disputed)
 export const reportDispute = async (req, res) => {
     try {
-        const link = await PaymentLink.findBySlug(req.params.slug);
+        const { slug } = req.params;
+        const { sig } = req.query;
+        if (!sig) return res.status(403).json({ message: "Missing signature" });
+        
+        const expected = crypto.createHash('sha256').update(slug + process.env.JWT_SECRET).digest('hex');
+        if (expected !== sig) return res.status(403).json({ message: "Invalid signature" });
+        
+        const link = await PaymentLink.findBySlug(slug);
         if (!link) return res.status(404).json({ message: "Link not found" });
 
         const updated = await PaymentLink.updateStatus(link.id, 'Disputed');

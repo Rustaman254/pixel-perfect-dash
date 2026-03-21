@@ -1,5 +1,12 @@
 import { getDb } from '../config/db.js';
 
+// Allowed columns for user table
+const ALLOWED_COLUMNS = [
+    'id', 'email', 'password', 'role', 'fullName', 'phone', 'businessName',
+    'idType', 'idNumber', 'location', 'payoutMethod', 'payoutDetails',
+    'isVerified', 'createdAt', 'updatedAt'
+];
+
 // User Model Methods for SQLite
 const User = {
     create: async (userData) => {
@@ -35,6 +42,12 @@ const User = {
 
         if (keys.length === 0) return null;
 
+        // Validate keys against allowed columns
+        const invalidKeys = keys.filter(k => !ALLOWED_COLUMNS.includes(k));
+        if (invalidKeys.length > 0) {
+            throw new Error(`Invalid column(s) in query: ${invalidKeys.join(', ')}`);
+        }
+
         const conditions = keys.map(k => `${k} = ?`).join(' AND ');
         return await db.get(`SELECT * FROM users WHERE ${conditions}`, values);
     },
@@ -55,6 +68,12 @@ const User = {
         const values = Object.values(userData);
 
         if (keys.length === 0) return null;
+
+        // Validate keys against allowed columns (excluding id)
+        const invalidKeys = keys.filter(k => !ALLOWED_COLUMNS.includes(k));
+        if (invalidKeys.length > 0) {
+            throw new Error(`Invalid column(s) in update: ${invalidKeys.join(', ')}`);
+        }
 
         const setClause = keys.map(k => `${k} = ?`).join(', ');
         await db.run(`UPDATE users SET ${setClause} WHERE id = ?`, [...values, id]);

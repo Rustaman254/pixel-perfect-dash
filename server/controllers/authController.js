@@ -5,7 +5,7 @@ import ApiKey from "../models/ApiKey.js";
 import Notification from "../models/Notification.js";
 import { getDb } from "../config/db.js";
 
-const JWT_SECRET = process.env.JWT_SECRET || "super_secret_ripplify_key_2025";
+const JWT_SECRET = process.env.JWT_SECRET;
 
 const generateToken = (id, email, role) => {
     return jwt.sign({ id, email, role }, JWT_SECRET, { expiresIn: '1d' });
@@ -270,7 +270,7 @@ export const sendOTP = async (req, res) => {
         await db.run("INSERT INTO otps (phone, otp) VALUES (?, ?)", [phone, otpCode]);
 
         // In a real app, integrate Twilio/Africa's Talking here to send the SMS
-        console.log(`REAL OTP GENERATED: Sending ${otpCode} to ${phone}`);
+        // In a real app, integrate Twilio/Africa's Talking here to send the SMS
 
         res.json({ message: "OTP sent successfully", otp: otpCode });
     } catch (error) {
@@ -295,7 +295,7 @@ export const verifyOTP = async (req, res) => {
         }
 
         // Add an expiry check here if desired (e.g. 5 minutes)
-        console.log(`Verify OTP API: Phone=${phone}, UserSent=${otp}, DBRecord=${record.otp}`);
+        // Add an expiry check here if desired (e.g. 5 minutes)
 
         if (record.otp === otp) {
             // Success, remove the OTP
