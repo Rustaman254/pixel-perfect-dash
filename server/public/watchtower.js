@@ -78,6 +78,7 @@
             },
             events: [...events]
         };
+        console.log('[Ripplify Watchtower] Sending data:', payload);
 
         events = [];
 
@@ -128,6 +129,7 @@
     }
 
     function init() {
+        console.log('[Ripplify Watchtower] Initializing on', window.location.href, 'Project ID:', window.ripplifyProjectId || 'default');
         trackEvent('pageview', { title: document.title, referrer: document.referrer });
 
         // Reliable rrweb initialization

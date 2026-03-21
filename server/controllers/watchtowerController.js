@@ -72,12 +72,20 @@ export const getSessionDetail = asyncHandler(async (req, res) => {
 // @desc    Ingest clarity-like data (Simulated)
 // @route   POST /api/insights/ingest
 // @access  Public (from frontend tracking)
+const generateId = () => Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+
 export const ingestData = asyncHandler(async (req, res) => {
     const { session, events } = req.body;
     
     if (!session || !session.projectId) {
         console.error('Missing session or projectId in ingestData');
         return res.status(400).json({ error: 'Missing session or projectId' });
+    }
+
+    // Ensure sessionId exists
+    if (!session.sessionId) {
+        console.warn('Missing sessionId in payload, generating one');
+        session.sessionId = generateId();
     }
 
     const clientIp = requestIp.getClientIp(req);

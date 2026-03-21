@@ -1,12 +1,15 @@
 import sqlite3 from 'sqlite3';
 import { open } from 'sqlite';
+import path from 'path';
 
 let dbInstance = null;
 
 const connectDB = async () => {
   try {
+    const dbPath = path.resolve('./ripplify.db');
+    console.log('Database path:', dbPath);
     dbInstance = await open({
-      filename: './ripplify.db',
+      filename: dbPath,
       driver: sqlite3.Database
     });
 
