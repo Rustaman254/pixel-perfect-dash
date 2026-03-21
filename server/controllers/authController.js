@@ -5,9 +5,11 @@ import ApiKey from "../models/ApiKey.js";
 import Notification from "../models/Notification.js";
 import { getDb } from "../config/db.js";
 
-const JWT_SECRET = process.env.JWT_SECRET;
-
 const generateToken = (id, email, role) => {
+    const JWT_SECRET = process.env.JWT_SECRET;
+    if (!JWT_SECRET) {
+        throw new Error('JWT_SECRET environment variable is not set');
+    }
     return jwt.sign({ id, email, role }, JWT_SECRET, { expiresIn: '1d' });
 };
 
