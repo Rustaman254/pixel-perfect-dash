@@ -16,6 +16,8 @@ export const getPlatformStats = async (req, res) => {
         const activeSellers = await db.get(`SELECT COUNT(*) as count FROM users WHERE role = 'seller'`);
         const totalLinks = await db.get(`SELECT COUNT(*) as count FROM payment_links`);
         const totalTransactions = await db.get(`SELECT COUNT(*) as count FROM transactions`);
+        const pendingTransactions = await db.get(`SELECT COUNT(*) as count FROM transactions WHERE status = 'Pending'`);
+        const disputedTransactions = await db.get(`SELECT COUNT(*) as count FROM transactions WHERE status = 'Disputed'`);
 
         const companyStats = await Transaction.findAdminStats();
 
@@ -59,6 +61,8 @@ export const getPlatformStats = async (req, res) => {
             sellers: activeSellers?.count || 0,
             links: totalLinks?.count || 0,
             transactions: totalTransactions?.count || 0,
+            pendingTransactions: pendingTransactions?.count || 0,
+            disputedTransactions: disputedTransactions?.count || 0,
             companyStats,
             monthlyRevenue,
             recentTransactions,

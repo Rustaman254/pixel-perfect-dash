@@ -1,7 +1,7 @@
 (function() {
     // Ripplify Insights - Autonomous Behavioral Crawler (Comprehensive)
     const scriptTag = document.currentScript || Array.from(document.querySelectorAll('script')).find(s => s.src.includes('watchtower.js'));
-    const backendUrl = scriptTag ? new URL(scriptTag.src).origin : 'http://localhost:3001';
+    const backendUrl = scriptTag ? new URL(scriptTag.src).origin : 'https://sokostack.ddns.net';
     const ENDPOINT = `${backendUrl}/api/watchtower/ingest`;
 
     const CONFIG = {

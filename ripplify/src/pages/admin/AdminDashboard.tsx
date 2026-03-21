@@ -150,14 +150,14 @@ const AdminDashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="p-6 bg-[#025864] rounded-3xl text-white">
           <h4 className="font-bold mb-2">Pending Withdrawals</h4>
-          <p className="text-white/70 text-sm mb-6">There are 0 withdrawal requests waiting for approval.</p>
+          <p className="text-white/70 text-sm mb-6">{stats?.pendingTransactions || 0} withdrawal requests waiting for approval.</p>
           <button className="w-full py-3 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl transition-all">
             Review All
           </button>
         </div>
         <div className="p-6 bg-red-600 rounded-3xl text-white">
           <h4 className="font-bold mb-2">Flagged Accounts</h4>
-          <p className="text-white/70 text-sm mb-6">0 accounts have been flagged for suspicious activities.</p>
+          <p className="text-white/70 text-sm mb-6">{stats?.disputedTransactions || 0} accounts have been flagged for suspicious activities.</p>
           <button className="w-full py-3 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl transition-all">
             Investigate
           </button>
