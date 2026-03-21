@@ -25,7 +25,8 @@ import paymentRoutes from "./routes/paymentRoutes.js";
 dotenv.config();
 
 // Connect to MongoDB
-connectDB();
+await connectDB();
+
 
 // Initialize email service
 emailService.initialize().catch(err => {
@@ -48,7 +49,7 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-      "frame-ancestors": ["'self'", "http://localhost:3000", "http://localhost:3001", "http://localhost:5173", "http://localhost:5174", "http://localhost:5175", "http://localhost:8080", "https://pixel-perfect-dash.vercel.app"],
+      "frame-ancestors": ["'self'", "http://localhost:3000", "http://localhost:3001", "http://localhost:5173", "http://localhost:5174", "http://localhost:5175", "http://localhost:8080", "https://pixel-perfect-dash.vercel.app", "https://sokostack.ddns.net", "http://sokostack.ddns.net", "*.ddns.net"],
       "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
     },
   },
@@ -108,9 +109,17 @@ app.use("/api/support", supportRoutes);
 app.use("/api/payment-methods", paymentMethodRoutes);
 app.use("/api/currencies", currencyRoutes);
 // watchtower routes moved before CORS middleware
-app.use("/api/apps", appRoutes);
-app.use("/api/wallets", walletRoutes);
 app.use("/api/payments", paymentRoutes);
+app.use("/api/apps", appRoutes);
+
+// Global Error Handler
+app.use((err, req, res, next) => {
+  console.error(`[ERROR] ${new Date().toISOString()} - ${req.method} ${req.url} - ${err.stack}`);
+  res.status(500).json({
+    message: process.env.NODE_ENV === 'production' ? 'Internal Server Error' : err.message,
+    error: process.env.NODE_ENV === 'production' ? {} : err
+  });
+});
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {

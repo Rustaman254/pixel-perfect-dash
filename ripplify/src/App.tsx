@@ -25,6 +25,7 @@ import NotificationsPage from "./pages/NotificationsPage";
 // Auth & Admin
 import Login from "./pages/auth/Login";
 import Signup from "./pages/auth/Signup";
+import ForgotPassword from "./pages/auth/ForgotPassword";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import ManageUsers from "./pages/admin/ManageUsers";
 import ManageCompanies from "./pages/admin/ManageCompanies";
@@ -59,6 +60,7 @@ const AppRoutes = () => {
         {/* Auth */}
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
 
         {/* Seller Dashboard */}
         <Route path="/" element={<ProtectedRoute role="seller"><Index /></ProtectedRoute>} />

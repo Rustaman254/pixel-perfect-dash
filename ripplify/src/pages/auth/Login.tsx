@@ -105,6 +105,16 @@ const Login = () => {
               />
             </div>
 
+            <div className="flex justify-end">
+              <button 
+                type="button" 
+                onClick={() => navigate("/forgot-password")}
+                className="text-sm font-medium text-[#025864] hover:underline"
+              >
+                Forgot Password?
+              </button>
+            </div>
+
             <button
               type="submit"
               disabled={loading}

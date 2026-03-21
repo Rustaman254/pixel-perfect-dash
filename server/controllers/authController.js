@@ -268,11 +268,18 @@ export const deleteMyApiKey = async (req, res) => {
 // @route   POST /api/auth/send-otp
 // @access  Public
 export const sendOTP = async (req, res) => {
+    console.log('Received OTP request for:', req.body.email);
     try {
+
         const { email } = req.body;
         if (!email) return res.status(400).json({ message: "Email is required." });
 
         const db = getDb();
+        if (!db) {
+            console.error("Database connection not ready");
+            return res.status(500).json({ message: "Database connection not ready" });
+        }
+
 
         // Check if an OTP already exists for this email recently, delete it to prevent spam
         await db.run("DELETE FROM otps WHERE email = ?", email);
@@ -283,15 +290,16 @@ export const sendOTP = async (req, res) => {
         await db.run("INSERT INTO otps (email, otp, phone) VALUES (?, ?, ?)", [email, otpCode, ""]);
 
         try {
+            console.log('Attempting to send OTP email to:', email);
             await emailService.sendOTPEmail(email, otpCode);
         } catch (emailError) {
-            console.error('Failed to send OTP email:', emailError.message);
+            console.error('[sendOTP] Failed to send OTP email:', emailError.stack || emailError.message);
         }
 
         res.json({ message: "OTP sent successfully via email" });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: "Server error" });
+        console.error('[sendOTP] Fatal error in sendOTP controller:', error.stack || error.message);
+        res.status(500).json({ message: "Server error", error: error.message });
     }
 };
 

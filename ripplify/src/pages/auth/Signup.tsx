@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowRight, Check, Phone, Mail, User, Lock, Building, MapPin, CreditCard } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAppContext } from "@/contexts/AppContext";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { cn } from "@/lib/utils";
 import Logo from "@/components/Logo";
 import { BASE_URL } from "@/lib/api";
@@ -63,8 +64,8 @@ const Signup = () => {
   };
 
   const handleSendOTP = async () => {
-    if (!formData.phone) {
-      toast({ title: "Error", description: "Please enter your phone number.", variant: "destructive" });
+    if (!formData.email) {
+      toast({ title: "Error", description: "Please enter your email address.", variant: "destructive" });
       return;
     }
     setLoading(true);
@@ -72,15 +73,15 @@ const Signup = () => {
       const res = await fetch(`${BASE_URL}/auth/send-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: formData.phone })
+        body: JSON.stringify({ email: formData.email })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to send OTP");
 
       toast({
-        title: "Mock SMS Received",
-        description: `Your RippliFy verification code is: ${data.otp}`,
-        duration: 10000
+        title: "Code Sent",
+        description: `Your verification code has been sent to ${formData.email}`,
+        duration: 5000
       });
       nextStep();
     } catch (err: unknown) {
@@ -101,7 +102,7 @@ const Signup = () => {
       const res = await fetch(`${BASE_URL}/auth/verify-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: formData.phone, otp: formData.otp })
+        body: JSON.stringify({ email: formData.email, otp: formData.otp })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to verify OTP");
@@ -196,17 +197,22 @@ const Signup = () => {
           {step === 2 && (
             <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
               <div className="text-center">
-                <h2 className="text-2xl font-bold text-slate-900">Verify Phone</h2>
-                <p className="text-slate-500 text-sm mt-1">Enter the 4-digit code sent to {formData.phone}</p>
+                <h2 className="text-2xl font-bold text-slate-900">Verify Email</h2>
+                <p className="text-slate-500 text-sm mt-1">Enter the 4-digit code sent to {formData.email}</p>
               </div>
-              <div className="flex justify-center gap-3">
-                <input
-                  type="text" maxLength={4}
-                  placeholder="Enter 4-digit code"
-                  className="w-full py-4 text-center tracking-[1em] text-2xl font-bold bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#025864]/20 focus:border-[#025864] outline-none transition-all"
+              <div className="flex justify-center gap-3 my-8 scale-150 transform origin-center">
+                <InputOTP 
+                  maxLength={4} 
                   value={formData.otp}
-                  onChange={e => setFormData({ ...formData, otp: e.target.value.replace(/[^0-9]/g, '') })}
-                />
+                  onChange={(val) => setFormData({ ...formData, otp: val })}
+                >
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} className="w-12 h-14 text-2xl font-bold" />
+                    <InputOTPSlot index={1} className="w-12 h-14 text-2xl font-bold" />
+                    <InputOTPSlot index={2} className="w-12 h-14 text-2xl font-bold" />
+                    <InputOTPSlot index={3} className="w-12 h-14 text-2xl font-bold" />
+                  </InputOTPGroup>
+                </InputOTP>
               </div>
               <button
                 onClick={handleVerifyOTP}
@@ -215,7 +221,7 @@ const Signup = () => {
               >
                 {loading ? "Verifying..." : "Verify & Continue"}
               </button>
-              <button onClick={prevStep} className="w-full text-slate-500 font-medium text-sm">Change phone number</button>
+              <button onClick={prevStep} className="w-full text-slate-500 font-medium text-sm">Change email address</button>
             </div>
           )}
 
