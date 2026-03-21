@@ -5,7 +5,6 @@ import Notification from '../models/Notification.js';
 import paystackService from '../utils/paystackService.js';
 import { getDb } from '../config/db.js';
 
-
 export const requestPayout = async (req, res) => {
     try {
         const { amount } = req.body;
