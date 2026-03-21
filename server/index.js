@@ -58,9 +58,13 @@ const allowedOrigins = process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split
 ];
 
 app.use(cors({
-    origin: function(origin, callback) {
+    origin: function(origin, req, callback) {
         // Allow requests with no origin (like mobile apps or curl requests)
         if (!origin) return callback(null, true);
+        // Allow any origin for watchtower ingest endpoint (public tracking)
+        if (req.path && req.path.startsWith('/api/watchtower/ingest')) {
+            return callback(null, true);
+        }
         if (allowedOrigins.indexOf(origin) !== -1) {
             callback(null, true);
         } else {

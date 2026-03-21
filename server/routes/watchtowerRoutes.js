@@ -24,7 +24,9 @@ router.get('/sessions/:id', protect, getSessionDetail);
 // Admin routes
 router.get('/platform-overview', protect, admin, getPlatformOverview);
 
-// Public route for data ingestion
-router.post('/ingest', ingestData);
+// Public route for data ingestion (allow any origin)
+import cors from 'cors';
+const ingestCors = cors({ origin: true, credentials: true });
+router.post('/ingest', ingestCors, ingestData);
 
 export default router;
