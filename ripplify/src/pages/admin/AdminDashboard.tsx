@@ -4,14 +4,10 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, 
 import { useToast } from "@/hooks/use-toast";
 import { fetchWithAuth } from "@/lib/api";
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
-const data = [
-  { name: "Jan", revenue: 45000 }, { name: "Feb", revenue: 52000 }, { name: "Mar", revenue: 48000 },
-  { name: "Apr", revenue: 61000 }, { name: "May", revenue: 55000 }, { name: "Jun", revenue: 67000 },
-  { name: "Jul", revenue: 72000 }, { name: "Aug", revenue: 69000 }, { name: "Sep", revenue: 81000 },
-  { name: "Oct", revenue: 85000 }, { name: "Nov", revenue: 92000 }, { name: "Dec", revenue: 105000 },
-];
+const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 const recentActivities = [
   { company: "Global Tech Solutions", action: "New Registration", date: "2 mins ago", status: "Active" },
@@ -23,6 +19,15 @@ const AdminDashboard = () => {
   const { toast } = useToast();
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  const chartData = stats?.monthlyRevenue?.map((item: any) => {
+    const [year, month] = item.month.split('-');
+    const monthIndex = parseInt(month, 10) - 1;
+    return {
+      name: monthNames[monthIndex] || item.month,
+      revenue: item.revenue
+    };
+  }) || [];
 
   const loadStats = async () => {
     try {
@@ -92,7 +97,7 @@ const AdminDashboard = () => {
           </div>
           <div className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={data}>
+              <AreaChart data={chartData}>
                 <defs>
                   <linearGradient id="adminRevenue" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#025864" stopOpacity={0.1} />
@@ -101,7 +106,7 @@ const AdminDashboard = () => {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#64748b" }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#64748b" }} tickFormatter={(v) => `$${v / 1000}k`} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#64748b" }} tickFormatter={(v) => `KES ${(v / 1000).toFixed(0)}k`} />
                 <Tooltip />
                 <Area type="monotone" dataKey="revenue" stroke="#025864" strokeWidth={3} fill="url(#adminRevenue)" />
               </AreaChart>
@@ -135,9 +140,9 @@ const AdminDashboard = () => {
                 ))
             )}
           </div>
-          <button className="w-full mt-6 py-3 bg-slate-50 text-slate-600 font-bold text-sm rounded-xl hover:bg-slate-100 transition-colors">
+          <Link to="/admin/companies" className="block w-full mt-6 py-3 bg-slate-50 text-slate-600 font-bold text-sm rounded-xl hover:bg-slate-100 transition-colors text-center">
             View All Companies
-          </button>
+          </Link>
         </div>
       </div>
 

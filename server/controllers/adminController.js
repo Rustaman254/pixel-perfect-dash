@@ -19,14 +19,66 @@ export const getPlatformStats = async (req, res) => {
 
         const companyStats = await Transaction.findAdminStats();
 
+        // Monthly revenue for the past 12 months
+        const monthlyRevenue = await db.all(`
+            SELECT 
+                strftime('%Y-%m', createdAt) as month,
+                SUM(CASE WHEN status = 'Completed' THEN amount ELSE 0 END) as revenue,
+                COUNT(*) as transactionCount
+            FROM transactions
+            WHERE createdAt >= date('now', '-12 months')
+            GROUP BY month
+            ORDER BY month ASC
+        `);
+
+        // Recent transactions (last 10)
+        const recentTransactions = await db.all(`
+            SELECT t.*, u.businessName, u.fullName
+            FROM transactions t
+            LEFT JOIN users u ON t.userId = u.id
+            ORDER BY t.createdAt DESC
+            LIMIT 10
+        `);
+
+        // Active sellers with revenue
+        const topSellers = await db.all(`
+            SELECT u.id, u.businessName, u.fullName, u.email,
+                SUM(CASE WHEN t.status = 'Completed' THEN t.amount ELSE 0 END) as totalRevenue,
+                COUNT(t.id) as transactionCount
+            FROM users u
+            LEFT JOIN transactions t ON u.id = t.userId
+            WHERE u.role = 'seller'
+            GROUP BY u.id
+            ORDER BY totalRevenue DESC
+            LIMIT 5
+        `);
+
         res.json({
             volume: totalVolume?.total || 0,
             revenue: totalRevenue?.total || 0,
             sellers: activeSellers?.count || 0,
             links: totalLinks?.count || 0,
             transactions: totalTransactions?.count || 0,
-            companyStats
+            companyStats,
+            monthlyRevenue,
+            recentTransactions,
+            topSellers
         });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const getCompanyStats = async (req, res) => {
+    try {
+        const companyStats = await Transaction.findAdminStats();
+        // Add percentage of total volume
+        const totalVolume = companyStats.reduce((sum, company) => sum + (company.totalVolume || 0), 0);
+        const companiesWithPercentage = companyStats.map(company => ({
+            ...company,
+            volumePercentage: totalVolume > 0 ? ((company.totalVolume || 0) / totalVolume * 100).toFixed(2) : 0
+        }));
+        res.json(companiesWithPercentage);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

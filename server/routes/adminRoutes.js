@@ -1,7 +1,7 @@
 import express from 'express';
 import { protect, admin } from '../middlewares/authMiddleware.js';
 import {
-    getPlatformStats, getAllUsers, createUser, deleteUser, updatePlatformStatus,
+    getPlatformStats, getCompanyStats, getAllUsers, createUser, deleteUser, updatePlatformStatus,
     getApiKeys, createApiKey, deleteApiKey, updateApiKeyStatus,
     getSystemSettings, updateSystemSetting,
     getSupportedCurrencies, createSupportedCurrency, updateSupportedCurrency, deleteSupportedCurrency,
@@ -12,6 +12,8 @@ const router = express.Router();
 
 // Admin Stats
 router.get('/stats', protect, admin, getPlatformStats);
+// Company Stats
+router.get('/companies', protect, admin, getCompanyStats);
 
 // User Management
 router.get('/users', protect, admin, getAllUsers);
