@@ -17,6 +17,11 @@ export const requestPayout = async (req, res) => {
             return res.status(400).json({ message: "Please set your payout method and details in Settings first." });
         }
 
+        const transactionLimit = user.transactionLimit || 5000;
+        if (amount > transactionLimit) {
+            return res.status(400).json({ message: `Please complete KYC verification to request payouts higher than ${transactionLimit}.` });
+        }
+
         // Calculate available balance
         const links = await PaymentLink.findAllByUserId(userId);
         const totalEarned = links.reduce((acc, l) => acc + (l.totalEarnedValue || 0), 0);

@@ -222,8 +222,8 @@ const Signup = () => {
           {step === 3 && (
             <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
               <div className="text-center">
-                <h2 className="text-2xl font-bold text-slate-900">Basic KYC</h2>
-                <p className="text-slate-500 text-sm mt-1">Help us keep the platform safe for everyone.</p>
+                <h2 className="text-2xl font-bold text-slate-900">Basic KYC (Optional)</h2>
+                <p className="text-slate-500 text-sm mt-1">Help us keep the platform safe for everyone. Skipping this will place limits on your transactions and payouts.</p>
               </div>
               <div className="space-y-4">
                 <div className="space-y-2">
@@ -241,7 +241,7 @@ const Signup = () => {
                 <div className="relative">
                   <CreditCard className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
                   <input
-                    type="text" placeholder="ID Number"
+                    type="text" placeholder="ID Number (Optional)"
                     className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-[#025864]/20"
                     value={formData.idNumber}
                     onChange={e => setFormData({ ...formData, idNumber: e.target.value })}
@@ -266,12 +266,20 @@ const Signup = () => {
                   />
                 </div>
               </div>
-              <button
-                onClick={nextStep}
-                className="w-full bg-[#025864] text-white py-4 rounded-xl font-bold hover:bg-[#013a42] transition-colors"
-              >
-                Continue
-              </button>
+              <div className="flex gap-3">
+                <button
+                  onClick={nextStep}
+                  className="w-full bg-slate-100 text-slate-600 py-4 rounded-xl font-bold hover:bg-slate-200 transition-colors"
+                >
+                  Skip for Now
+                </button>
+                <button
+                  onClick={nextStep}
+                  className="w-full bg-[#025864] text-white py-4 rounded-xl font-bold hover:bg-[#013a42] transition-colors"
+                >
+                  Continue
+                </button>
+              </div>
             </div>
           )}
 

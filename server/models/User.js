@@ -5,8 +5,8 @@ const User = {
     create: async (userData) => {
         const db = getDb();
         const result = await db.run(`
-      INSERT INTO users (email, password, role, fullName, phone, businessName, idType, idNumber, location, payoutMethod, payoutDetails, isVerified)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO users (email, password, role, fullName, phone, businessName, idType, idNumber, location, payoutMethod, payoutDetails, kycStatus, kybStatus, transactionLimit, isVerified)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
             userData.email,
             userData.password,
@@ -19,6 +19,9 @@ const User = {
             userData.location,
             userData.payoutMethod,
             userData.payoutDetails,
+            userData.kycStatus || 'none',
+            userData.kybStatus || 'none',
+            userData.transactionLimit || 5000,
             userData.isVerified ? 1 : 0
         ]);
 

@@ -26,6 +26,9 @@ const connectDB = async () => {
         payoutMethod TEXT DEFAULT 'mpesa',
         payoutDetails TEXT DEFAULT '',
         businessLogo TEXT,
+        kycStatus TEXT DEFAULT 'none',
+        kybStatus TEXT DEFAULT 'none',
+        transactionLimit REAL DEFAULT 5000,
         isVerified BOOLEAN DEFAULT 0,
         createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
       )
@@ -90,6 +93,18 @@ const connectDB = async () => {
 
     try {
       await dbInstance.exec(`ALTER TABLE users ADD COLUMN businessLogo TEXT`);
+    } catch (e) { }
+
+    try {
+      await dbInstance.exec(`ALTER TABLE users ADD COLUMN kycStatus TEXT DEFAULT 'none'`);
+    } catch (e) { }
+
+    try {
+      await dbInstance.exec(`ALTER TABLE users ADD COLUMN kybStatus TEXT DEFAULT 'none'`);
+    } catch (e) { }
+
+    try {
+      await dbInstance.exec(`ALTER TABLE users ADD COLUMN transactionLimit REAL DEFAULT 5000`);
     } catch (e) { }
 
     // Create Transactions Table

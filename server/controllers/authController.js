@@ -31,6 +31,20 @@ export const registerUser = async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
+        // Determine KYC/KYB status and transaction limits
+        let kycStatus = "none";
+        let kybStatus = "none";
+        let transactionLimit = 5000; // Base limit if no KYC provided
+
+        if (idNumber && idNumber.trim() !== "") {
+            kycStatus = "pending";
+            transactionLimit = 50000; // Elevated limit for KYC
+            if (businessName && businessName.trim() !== "") {
+                kybStatus = "pending";
+                transactionLimit = 500000; // Supreme limit for KYB
+            }
+        }
+
         // Create user
         const user = await User.create({
             email,
@@ -44,6 +58,9 @@ export const registerUser = async (req, res) => {
             location: location || "",
             payoutMethod: payoutMethod || "mpesa",
             payoutDetails: payoutDetails || "",
+            kycStatus,
+            kybStatus,
+            transactionLimit,
             isVerified: true // Assume verified if they reached here in the flow
         });
 
@@ -91,6 +108,9 @@ export const registerUser = async (req, res) => {
                     location: user.location,
                     payoutMethod: user.payoutMethod,
                     payoutDetails: user.payoutDetails,
+                    kycStatus: user.kycStatus,
+                    kybStatus: user.kybStatus,
+                    transactionLimit: user.transactionLimit,
                     isVerified: user.isVerified
                 }
             });
@@ -134,6 +154,9 @@ export const loginUser = async (req, res) => {
                 location: user.location,
                 payoutMethod: user.payoutMethod,
                 payoutDetails: user.payoutDetails,
+                kycStatus: user.kycStatus,
+                kybStatus: user.kybStatus,
+                transactionLimit: user.transactionLimit,
                 isVerified: user.isVerified
             }
         });
@@ -162,6 +185,9 @@ export const getMe = async (req, res) => {
                     location: user.location,
                     payoutMethod: user.payoutMethod,
                     payoutDetails: user.payoutDetails,
+                    kycStatus: user.kycStatus,
+                    kybStatus: user.kybStatus,
+                    transactionLimit: user.transactionLimit,
                     isVerified: user.isVerified
                 }
             });

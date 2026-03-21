@@ -1,11 +1,24 @@
 import crypto from 'crypto';
 import PaymentLink from '../models/PaymentLink.js';
 import UserPaymentMethod from '../models/UserPaymentMethod.js';
+import User from '../models/User.js';
 import slugify from '../utils/slugify.js';
 
 export const createLink = async (req, res) => {
     try {
         let { name, slug, description, price, currency, linkType, hasPhotos, deliveryDays, expiryDate, expiryLabel, buyerName, buyerPhone, buyerEmail, minDonation, category, shippingFee } = req.body;
+
+        const user = await User.findById(req.user.id);
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        const linkPrice = price || 0;
+        const transactionLimit = user.transactionLimit || 5000;
+
+        if (linkPrice > transactionLimit) {
+            return res.status(400).json({ message: `Please complete KYC verification to create links with prices higher than ${transactionLimit}.` });
+        }
 
         if (!slug && name) {
             const shortId = crypto.randomBytes(4).toString('hex');
