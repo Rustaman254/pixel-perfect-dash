@@ -45,6 +45,11 @@ const PublicPaymentPage = () => {
             setVerifyingPayment(true);
         }
 
+        // Auto-fill M-Pesa phone if available
+        if (step === 3 && buyerInfo.phone && !mpesaNumber) {
+            setMpesaNumber(buyerInfo.phone);
+        }
+
         const fetchLink = async () => {
             try {
                 if (!slug) return;

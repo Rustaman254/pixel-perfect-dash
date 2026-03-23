@@ -48,6 +48,11 @@ const PaymentLink = {
         `, slug);
     },
 
+    findById: async (id) => {
+        const db = getDb();
+        return await db.get(`SELECT * FROM payment_links WHERE id = ?`, id);
+    },
+
     updateStatus: async (id, status) => {
         const db = getDb();
         try {

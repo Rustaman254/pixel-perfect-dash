@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { fetchWithAuth } from "@/lib/api";
 import usePageTitle from "@/hooks/usePageTitle";
 
-type StatusType = "All" | "Success" | "Pending" | "Failed" | "Refunded";
+type StatusType = "All" | "Confirmed" | "Success" | "Shipped" | "Pending" | "Failed" | "Refunded";
 
 const OrdersPage = () => {
     usePageTitle("Orders");
@@ -28,7 +28,7 @@ const OrdersPage = () => {
         method: "M-Pesa",
         methodSub: t.buyerPhone || "",
         amount: `${t.currency} ${t.amount.toLocaleString()}`,
-        status: t.status === "Completed" || t.status === "Funds locked" ? "Success" : (t.status === "Pending" ? "Pending" : t.status === "Failed" ? "Failed" : "Pending"),
+        status: t.status === "Completed" ? "Confirmed" : (t.status === "Funds locked" ? "Success" : (t.status === "Pending" ? "Pending" : t.status === "Failed" ? "Failed" : t.status)),
         date: new Date(t.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
         rawAmount: t.amount,
         rawStatus: t.status
@@ -45,6 +45,7 @@ const OrdersPage = () => {
 
     const statusColor: Record<string, string> = {
         Success: "bg-green-50 text-green-600",
+        Confirmed: "bg-emerald-100 text-emerald-700",
         Pending: "bg-yellow-50 text-yellow-600",
         Failed: "bg-red-50 text-red-600",
         Refunded: "bg-blue-50 text-blue-600",
@@ -53,33 +54,44 @@ const OrdersPage = () => {
     };
 
     const totalVolume = mappedTransactions.reduce((acc, t) => acc + t.rawAmount, 0);
-    const successCount = mappedTransactions.filter(t => t.status === "Success").length;
+    const successCount = mappedTransactions.filter(t => t.status === "Success" || t.status === "Confirmed").length;
     const successRate = mappedTransactions.length > 0 ? (successCount / mappedTransactions.length * 100).toFixed(1) : "0";
     const avgAmount = mappedTransactions.length > 0 ? (totalVolume / mappedTransactions.length).toFixed(2) : "0";
 
     const handleConfirmReceived = async (t: typeof mappedTransactions[0]) => {
-        if (!t.linkId) return;
         try {
-            await fetchWithAuth(`/links/${t.linkId}/status`, {
+            await fetchWithAuth(`/transactions/${t.rawId}/status`, {
                 method: 'PUT',
                 body: JSON.stringify({ status: 'Completed' })
             });
             await refreshData();
-            toast({ title: "Delivery Confirmed", description: "Transaction marked as Completed." });
+            toast({ title: "Delivery Confirmed", description: "Transaction marked as Confirmed." });
         } catch (err: any) {
             toast({ title: "Error", description: err.message, variant: "destructive" });
         }
     };
 
     const handleReportProblem = async (t: typeof mappedTransactions[0]) => {
-        if (!t.linkId) return;
         try {
-            await fetchWithAuth(`/links/${t.linkId}/status`, {
+            await fetchWithAuth(`/transactions/${t.rawId}/status`, {
                 method: 'PUT',
                 body: JSON.stringify({ status: 'Disputed' })
             });
             await refreshData();
             toast({ title: "Problem Reported", description: "Transaction flagged as Disputed." });
+        } catch (err: any) {
+            toast({ title: "Error", description: err.message, variant: "destructive" });
+        }
+    };
+
+    const handleShipProduct = async (t: typeof mappedTransactions[0]) => {
+        try {
+            await fetchWithAuth(`/transactions/${t.rawId}/status`, {
+                method: 'PUT',
+                body: JSON.stringify({ status: 'Shipped' })
+            });
+            await refreshData();
+            toast({ title: "Product Shipped", description: "Transaction marked as Shipped." });
         } catch (err: any) {
             toast({ title: "Error", description: err.message, variant: "destructive" });
         }
@@ -144,7 +156,7 @@ const OrdersPage = () => {
                         />
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
-                        {(["All", "Success", "Pending", "Failed"] as StatusType[]).map((s) => (
+                        {(["All", "Confirmed", "Success", "Shipped", "Pending", "Failed"] as StatusType[]).map((s) => (
                             <button
                                 key={s}
                                 onClick={() => { setStatusFilter(s); setPage(1); }}
@@ -222,6 +234,17 @@ const OrdersPage = () => {
                                                     >
                                                         <MapPin className="w-3 h-3" />
                                                         Track
+                                                    </button>
+                                                )}
+                                                {/* Ship Product (Seller action) */}
+                                                {(t.rawStatus === "Funds locked") && (
+                                                    <button
+                                                        onClick={() => handleShipProduct(t)}
+                                                        title="Mark as Shipped"
+                                                        className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors"
+                                                    >
+                                                        <CheckCircle2 className="w-3 h-3" />
+                                                        Ship
                                                     </button>
                                                 )}
                                                 {/* Confirm Received */}

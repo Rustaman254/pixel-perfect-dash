@@ -402,3 +402,35 @@ export const getStats = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+export const updateTransactionStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
+        
+        const transaction = await Transaction.findById(id);
+        if (!transaction) {
+            return res.status(404).json({ message: "Transaction not found" });
+        }
+
+        // Verify ownership (only the seller/admin of the link can update status)
+        if (transaction.userId !== req.user.id) {
+            return res.status(403).json({ message: "Not authorized to update this transaction" });
+        }
+
+        await Transaction.updateStatus(id, status);
+
+        // If the transaction is linked to a one-time payment link and status is Shipped, update link
+        if (status === 'Shipped' && transaction.linkId) {
+            const link = await PaymentLink.findById(transaction.linkId);
+            if (link && link.linkType === 'one-time') {
+                await PaymentLink.updateStatus(link.id, 'Shipped');
+            }
+        }
+
+        res.json({ message: "Transaction status updated", status });
+    } catch (error) {
+        console.error('Update Transaction Status Error:', error);
+        res.status(500).json({ message: error.message });
+    }
+};
