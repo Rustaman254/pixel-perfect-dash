@@ -4,12 +4,8 @@ import {
     getMyTransactions, 
     getStats, 
     getTransactionByTrackingToken, 
-    handlePaystackIPN,
-    submitPaystackOTP,
-    submitPaystackPIN,
-    submitPaystackBirthday,
-    submitPaystackAddress,
-    verifyPaystackPayment
+    handleIntaSendWebhook,
+    checkIntaSendPaymentStatus
 } from '../controllers/transactionController.js';
 import { protect } from '../middlewares/authMiddleware.js';
 
@@ -25,15 +21,10 @@ router.get('/public/track/:token', getTransactionByTrackingToken);
 // Public route for creating a transaction from a payment link
 router.post('/public/:slug', createTransaction);
 
-// Paystack specific collection routes
-router.post('/paystack/submit-otp', submitPaystackOTP);
-router.post('/paystack/submit-pin', submitPaystackPIN);
-router.post('/paystack/submit-birthday', submitPaystackBirthday);
-router.post('/paystack/submit-address', submitPaystackAddress);
-router.get('/paystack/public-key', (req, res) => res.json({ publicKey: process.env.PAYSTACK_PUBLIC_KEY }));
-router.get('/paystack/verify/:reference', verifyPaystackPayment);
+// IntaSend payment status check
+router.get('/intasend/status/:invoiceId', checkIntaSendPaymentStatus);
 
-// Webhook (IPN) handlers
-router.post('/ipn/paystack', handlePaystackIPN);
+// Webhook (IPN) handler for IntaSend
+router.post('/ipn/intasend', handleIntaSendWebhook);
 
 export default router;

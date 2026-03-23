@@ -102,7 +102,6 @@ export const getPublicLink = async (req, res) => {
             isExpired, 
             expirationReason, 
             enabledMethods,
-            publicKey: process.env.PAYSTACK_PUBLIC_KEY
         });
     } catch (error) {
         res.status(500).json({ message: error.message });

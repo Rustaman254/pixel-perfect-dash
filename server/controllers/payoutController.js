@@ -2,7 +2,6 @@ import Payout from '../models/Payout.js';
 import User from '../models/User.js';
 import PaymentLink from '../models/PaymentLink.js';
 import Notification from '../models/Notification.js';
-import paystackService from '../utils/paystackService.js';
 import { getDb } from '../config/db.js';
 
 
@@ -62,36 +61,14 @@ export const requestPayout = async (req, res) => {
             status: 'Processing'
         });
 
-        try {
-            // 1. Create a Transfer Recipient
-            const recipientResponse = await paystackService.createTransferRecipient({
-                type: "nuban",
-                name: user.fullName || user.email,
-                account_number: user.payoutDetails.accountNumber || "0000000000",
-                bank_code: user.payoutDetails.bankCode || "058", // Generic or specific bank code
-                currency: user.currency || 'NGN'
-            });
-
-            // 2. Initiate Transfer
-            const transferData = {
-                source: "balance",
-                amount: netAmount * 100, // Paystack uses subunit
-                recipient: recipientResponse.data.recipient_code,
-                reason: `Payout for ${user.email} - PAY-${newPayout.id}`
-            };
-
-            const transferResponse = await paystackService.initiateTransfer(transferData);
-            console.log('Paystack Payout Response:', transferResponse);
-
-            await Notification.create({
-                userId: null,
-                title: "Payout Request (Paystack)",
-                message: `Automated payout of ${netAmount} initiated for ${user.email}. Status: ${transferResponse.data.status}`,
-                type: 'info'
-            });
-        } catch (paystackError) {
-            console.error('Paystack Payout Initiation Failed:', paystackError);
-        }
+        // TODO: Implement IntaSend B2C Payouts here for automated withdrawals
+        // Currently leaving as Processing for manual admin approval.
+        await Notification.create({
+            userId: null,
+            title: "Payout Request",
+            message: `Payout of ${netAmount} requested for ${user.email}.`,
+            type: 'info'
+        });
 
         res.status(201).json(newPayout);
     } catch (error) {

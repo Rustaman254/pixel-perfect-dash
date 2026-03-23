@@ -192,6 +192,7 @@ const connectDB = async () => {
     try { await dbInstance.exec(`ALTER TABLE transactions ADD COLUMN paymentMethod TEXT`); } catch(e){}
     try { await dbInstance.exec(`ALTER TABLE transactions ADD COLUMN txHash TEXT`); } catch(e){}
     try { await dbInstance.exec(`ALTER TABLE transactions ADD COLUMN metadata TEXT`); } catch(e){}
+    try { await dbInstance.exec(`ALTER TABLE transactions ADD COLUMN externalRef TEXT`); } catch(e){}
 
     // Create Wallets Table
     await dbInstance.exec(`

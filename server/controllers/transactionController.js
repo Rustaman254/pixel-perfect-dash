@@ -2,9 +2,37 @@ import Transaction from '../models/Transaction.js';
 import PaymentLink from '../models/PaymentLink.js';
 import Notification from '../models/Notification.js';
 import { getDb } from '../config/db.js';
-import paystackService from '../utils/paystackService.js';
+import intasendService from '../utils/intasendService.js';
 import crypto from 'crypto';
 import emailService from '../services/emailService.js';
+
+/**
+ * Normalize Kenyan phone numbers to 254XXXXXXXXX format (no + prefix — IntaSend requirement)
+ */
+const normalizePhone = (phone) => {
+    if (!phone) return '';
+    let p = phone.replace(/\D/g, '');
+
+    if (p.startsWith('0') && p.length === 10) {
+        p = '254' + p.slice(1);
+    } else if (p.length === 9) {
+        p = '254' + p;
+    }
+    // Already starts with 254 and is 12 digits — fine as-is
+    return p;
+};
+
+/**
+ * Split a full name into first and last parts
+ */
+const splitName = (fullName) => {
+    if (!fullName) return { firstName: 'Customer', lastName: '' };
+    const parts = fullName.trim().split(/\s+/);
+    return {
+        firstName: parts[0] || 'Customer',
+        lastName: parts.slice(1).join(' ') || '',
+    };
+};
 
 export const createTransaction = async (req, res) => {
     console.log('Create Transaction Request:', { params: req.params, body: req.body });
@@ -35,7 +63,6 @@ export const createTransaction = async (req, res) => {
                     expectedAmount += (parseFloat(link.shippingFee) || 0);
                 }
                 
-                // Use a small epsilon for float comparison if necessary, but prices are usually simple
                 if (Math.abs(numericAmount - expectedAmount) > 0.01) {
                     return res.status(400).json({ 
                         message: "Transaction amount mismatch. Please do not tamper with the price.",
@@ -90,127 +117,152 @@ export const createTransaction = async (req, res) => {
             });
         }
 
+        const { firstName, lastName } = splitName(buyerName);
+        const email = buyerEmail || 'customer@ripplify.io';
+        const phone = normalizePhone(req.body.phone || buyerPhone);
 
-        // Paystack Unified Charge (Card, Mobile Money, Bank)
-        if (['paystack', 'card', 'mpesa', 'bank'].includes(req.body.paymentMethod)) {
-            console.log('Submitting Paystack Charge via Raw API');
-            const paystackData = {
-                amount: Math.round(numericAmount * 100),
-                email: buyerEmail || 'customer@ripplify.io',
-                currency: currency || 'KES',
-                reference: tx_ref,
-                metadata: {
-                    buyerName,
-                    buyerPhone: req.body.phone || buyerPhone,
-                    linkId: link?.id
-                }
-            };
+        // IntaSend M-Pesa STK Push
+        if (req.body.paymentMethod === 'mpesa') {
+            console.log('Triggering IntaSend M-Pesa STK Push');
+            const mpesaPhone = normalizePhone(req.body.mpesaPhone || req.body.phone || buyerPhone);
 
-            // Normalize phone number for Paystack (Kenya format +254XXXXXXXXX)
-            const normalizePhone = (phone) => {
-                if (!phone) return '';
-                // Remove all non-digit characters (including +)
-                let p = phone.replace(/\D/g, '');
-                
-                // If it starts with 0 and is 10 digits (07... or 01...), prepend 254 and remove the leading 0
-                if (p.startsWith('0') && p.length === 10) {
-                    p = '254' + p.slice(1);
-                }
-                // If it's 9 digits (7... or 1...), prepend 254
-                else if (p.length === 9) {
-                    p = '254' + p;
-                }
-                // If it starts with 254 and is 12 digits, it's already correct
-                // Otherwise return as-is
-                
-                // Paystack requires the + prefix for mobile money
-                if (p.startsWith('254') && p.length === 12) {
-                    return '+' + p;
-                }
-                
-                return '+' + p;
-            };
-
-            const formattedPhone = normalizePhone(req.body.mobile_money?.phone || req.body.phone || buyerPhone);
-            console.log('Normalized phone for Paystack:', formattedPhone, '(source: mobile_money.phone=', req.body.mobile_money?.phone, ', buyerPhone=', buyerPhone, ')');
-
-            // Mapping frontend methods to Paystack structure
-            if (req.body.card) {
-                paystackData.card = req.body.card;
-            } else if (req.body.mobile_money) {
-                paystackData.mobile_money = {
-                    ...req.body.mobile_money,
-                    phone: formattedPhone
-                };
-            } else if (req.body.bank) {
-                paystackData.bank = req.body.bank;
-            } else if (req.body.paymentMethod === 'mpesa') {
-                paystackData.mobile_money = {
-                    phone: formattedPhone,
-                    provider: 'mpesa'
-                };
-            } else {
-                return res.status(400).json({ message: "Payment details missing for " + req.body.paymentMethod });
+            if (!mpesaPhone || mpesaPhone.length < 12) {
+                return res.status(400).json({ message: "Valid Kenyan phone number is required for M-Pesa" });
             }
-            
-            console.log('Final Paystack Data:', JSON.stringify(paystackData, null, 2));
 
-            const paystackResponse = await paystackService.charge(paystackData);
-            console.log('Paystack Charge Response:', JSON.stringify(paystackResponse, null, 2));
-            
+            const stkResponse = await intasendService.mpesaStkPush({
+                phone: mpesaPhone,
+                email,
+                amount: numericAmount,
+                firstName,
+                lastName,
+                apiRef: tx_ref,
+                host: process.env.BASE_URL || 'https://ripplify.io',
+            });
+
+            // Store the IntaSend invoice_id for status tracking
+            const invoiceId = stkResponse?.invoice?.invoice_id || stkResponse?.invoice?.id || null;
+            if (invoiceId) {
+                await db.run(
+                    `UPDATE transactions SET paymentMethod = ?, externalRef = ? WHERE id = ?`,
+                    ['mpesa', invoiceId, newTransaction.id]
+                );
+            }
+
             return res.status(201).json({
                 ...newTransaction,
-                paystackResponse, 
-                transactionId: paystackResponse.data?.reference || tx_ref,
-                redirect_url: null
+                intasendResponse: stkResponse,
+                invoiceId,
+                paymentType: 'mpesa_stk',
+            });
+        }
+
+        // IntaSend Checkout (Card / Bank / General)
+        if (['card', 'bank', 'checkout'].includes(req.body.paymentMethod)) {
+            console.log('Generating IntaSend Checkout Link for:', req.body.paymentMethod);
+
+            // Determine redirect URL — back to the payment page
+            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+            const redirectUrl = `${frontendUrl}/pay/${slug}?intasend_complete=true&ref=${tx_ref}`;
+
+            // Map payment method to IntaSend method identifier
+            let intasendMethod = null;
+            if (req.body.paymentMethod === 'card') {
+                intasendMethod = 'CARD-PAYMENT';
+            }
+            // bank and checkout use the default (all methods) checkout
+
+            const checkoutResponse = await intasendService.checkoutCharge({
+                email,
+                firstName,
+                lastName,
+                phone,
+                amount: numericAmount,
+                currency: currency || 'KES',
+                apiRef: tx_ref,
+                redirectUrl,
+                method: intasendMethod,
+                host: process.env.BASE_URL || 'https://ripplify.io',
+            });
+
+            const invoiceId = checkoutResponse?.invoice?.invoice_id || checkoutResponse?.invoice?.id || checkoutResponse?.id || null;
+            const checkoutUrl = checkoutResponse?.url || null;
+
+            if (invoiceId) {
+                await db.run(
+                    `UPDATE transactions SET paymentMethod = ?, externalRef = ? WHERE id = ?`,
+                    [req.body.paymentMethod, invoiceId, newTransaction.id]
+                );
+            }
+
+            return res.status(201).json({
+                ...newTransaction,
+                intasendResponse: checkoutResponse,
+                invoiceId,
+                checkout_url: checkoutUrl,
+                paymentType: 'checkout',
             });
         }
 
         return res.status(400).json({ 
-            message: "Payment method " + (req.body.paymentMethod || 'unknown') + " is not supported in-app. Please contact support." 
+            message: "Payment method " + (req.body.paymentMethod || 'unknown') + " is not supported. Use mpesa, card, bank, or crypto." 
         });
     } catch (error) {
         console.error('Create Transaction Error Full:', error);
         
-        // Check if it's a validation error (400) from Paystack
-        const isValidationError = error.message.includes('format') || 
-                                 error.message.includes('Invalid') || 
-                                 error.response?.status === 400;
+        const isValidationError = error.message?.includes('format') || 
+                                 error.message?.includes('Invalid') || 
+                                 error.message?.includes('required');
         
         res.status(isValidationError ? 400 : 500).json({ 
-            message: error.response?.data?.message || error.message || "An unexpected error occurred during transaction creation.",
-            details: error.response?.data || null
+            message: error.message || "An unexpected error occurred during transaction creation.",
         });
     }
 };
 
 
-export const handlePaystackIPN = async (req, res) => {
+/**
+ * IntaSend Webhook Handler
+ * Receives POST with payment state changes from IntaSend
+ */
+export const handleIntaSendWebhook = async (req, res) => {
     try {
-        console.log('Paystack IPN Received:', req.body.event);
-        const signature = req.headers['x-paystack-signature'];
-        
-        // Simple signature verification (Ideally requires raw body, but this should work for simple payloads)
-        const isValid = paystackService.verifyWebhookSignature(signature, JSON.stringify(req.body));
-        if (!isValid) {
-            console.log('Paystack Signature Verification Failed');
-            // We could return 401, but best practice is to return 200 in webhooks to prevent retries
-            // if we are failing due to formatting. For safety, return 400.
-            return res.status(400).send('Invalid Signature');
-        }
+        console.log('IntaSend Webhook Received:', JSON.stringify(req.body, null, 2));
 
         const event = req.body;
+        const invoiceId = event.invoice_id;
+        const state = event.state;
+        const apiRef = event.api_ref;
+        const challenge = event.challenge;
 
-        if (event.event === 'charge.success') {
-            const data = event.data;
-            const transaction = await Transaction.findByTransactionId(data.reference);
-            
+        // Validate challenge matches (set in IntaSend dashboard)
+        // In production, verify the challenge string
+        if (!invoiceId || !state) {
+            console.log('IntaSend Webhook: Missing invoice_id or state');
+            return res.status(400).json({ message: 'Missing required fields' });
+        }
+
+        if (state === 'COMPLETE') {
+            // Find transaction by api_ref (our tx_ref) or externalRef (invoice_id)
+            let transaction = null;
+            if (apiRef) {
+                transaction = await Transaction.findByTransactionId(apiRef);
+            }
+            if (!transaction) {
+                // Try by externalRef (invoiceId)
+                const db = getDb();
+                const row = await db.get('SELECT * FROM transactions WHERE externalRef = ?', [invoiceId]);
+                if (row) {
+                    transaction = row;
+                }
+            }
+
             if (transaction && transaction.status === 'Pending') {
                 await Transaction.updateStatus(transaction.id, 'Funds locked');
-                
+
                 if (transaction.linkId) {
                     await PaymentLink.updatePaymentStats(transaction.linkId, transaction.amount);
-                    
+
                     const link = await PaymentLink.findById(transaction.linkId);
                     if (link && link.linkType === 'one-time') {
                         await PaymentLink.updateStatus(link.id, 'Funds locked');
@@ -219,7 +271,7 @@ export const handlePaystackIPN = async (req, res) => {
 
                 await Notification.create({
                     userId: transaction.userId,
-                    title: "Payment Received (Paystack)",
+                    title: "Payment Received (IntaSend)",
                     message: `You received ${transaction.amount} ${transaction.currency} from ${transaction.buyerName}. Funds are held in escrow.`,
                     type: 'success'
                 });
@@ -236,56 +288,87 @@ export const handlePaystackIPN = async (req, res) => {
                     console.error('Failed to send receipt email:', emailError.message);
                 }
             }
+        } else if (state === 'FAILED') {
+            let transaction = null;
+            if (apiRef) {
+                transaction = await Transaction.findByTransactionId(apiRef);
+            }
+            if (transaction && transaction.status === 'Pending') {
+                await Transaction.updateStatus(transaction.id, 'Failed');
+                console.log(`Transaction ${apiRef} marked as Failed (IntaSend webhook)`);
+            }
         }
 
         res.status(200).json({ status: 'OK' });
     } catch (error) {
-        console.error('Paystack webhook error:', error);
+        console.error('IntaSend webhook error:', error);
         res.status(500).send('Internal Server Error');
     }
 };
 
-export const submitPaystackOTP = async (req, res) => {
+/**
+ * Check IntaSend payment status by invoice ID
+ */
+export const checkIntaSendPaymentStatus = async (req, res) => {
     try {
-        const { otp, reference } = req.body;
-        const response = await paystackService.submitOTP(otp, reference);
-        res.json(response);
-    } catch (error) {
-        console.error('Submit OTP Error:', error);
-        res.status(400).json({ message: error.message });
-    }
-};
+        const { invoiceId } = req.params;
+        const result = await intasendService.checkPaymentStatus(invoiceId);
 
-export const submitPaystackPIN = async (req, res) => {
-    try {
-        const { pin, reference } = req.body;
-        const response = await paystackService.submitPIN(pin, reference);
-        res.json(response);
-    } catch (error) {
-        console.error('Submit PIN Error:', error);
-        res.status(400).json({ message: error.message });
-    }
-};
+        const invoiceState = result?.invoice?.state || result?.state || null;
 
-export const submitPaystackBirthday = async (req, res) => {
-    try {
-        const { birthday, reference } = req.body;
-        const response = await paystackService.submitBirthday(birthday, reference);
-        res.json(response);
-    } catch (error) {
-        console.error('Submit Birthday Error:', error);
-        res.status(400).json({ message: error.message });
-    }
-};
+        // If payment is complete, update local transaction
+        if (invoiceState === 'COMPLETE') {
+            const apiRef = result?.invoice?.api_ref || null;
+            let transaction = null;
 
-export const submitPaystackAddress = async (req, res) => {
-    try {
-        const { address, city, state, zipcode, reference } = req.body;
-        const response = await paystackService.submitAddress({ address, city, state, zipcode }, reference);
-        res.json(response);
+            if (apiRef) {
+                transaction = await Transaction.findByTransactionId(apiRef);
+            }
+            if (!transaction) {
+                const db = getDb();
+                const row = await db.get('SELECT * FROM transactions WHERE externalRef = ?', [invoiceId]);
+                if (row) transaction = row;
+            }
+
+            if (transaction && transaction.status === 'Pending') {
+                await Transaction.updateStatus(transaction.id, 'Funds locked');
+
+                if (transaction.linkId) {
+                    await PaymentLink.updatePaymentStats(transaction.linkId, transaction.amount);
+                    const link = await PaymentLink.findById(transaction.linkId);
+                    if (link && link.linkType === 'one-time') {
+                        await PaymentLink.updateStatus(link.id, 'Funds locked');
+                    }
+                }
+
+                await Notification.create({
+                    userId: transaction.userId,
+                    title: "Payment Received (IntaSend)",
+                    message: `You received ${transaction.amount} ${transaction.currency} from ${transaction.buyerName}. Funds are held in escrow.`,
+                    type: 'success'
+                });
+
+                // Send receipt email
+                try {
+                    const buyer = {
+                        email: transaction.buyerEmail,
+                        fullName: transaction.buyerName
+                    };
+                    await emailService.sendReceiptEmail(buyer, transaction);
+                } catch (emailError) {
+                    console.error('Failed to send receipt email:', emailError.message);
+                }
+            }
+        }
+
+        res.json({
+            invoiceId,
+            state: invoiceState,
+            raw: result,
+        });
     } catch (error) {
-        console.error('Submit Address Error:', error);
-        res.status(400).json({ message: error.message });
+        console.error('Check IntaSend Payment Status Error:', error);
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -316,53 +399,6 @@ export const getStats = async (req, res) => {
         ]);
         res.json({ stats, methodStats });
     } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-};
-
-export const verifyPaystackPayment = async (req, res) => {
-    try {
-        const { reference } = req.params;
-        const result = await paystackService.verifyPayment(reference);
-        
-        // If payment is successful, update local transaction status
-        if (result.data?.status === 'success') {
-            const transaction = await Transaction.findByTransactionId(reference);
-            if (transaction && transaction.status === 'Pending') {
-                await Transaction.updateStatus(transaction.id, 'Funds locked');
-                
-                if (transaction.linkId) {
-                    await PaymentLink.updatePaymentStats(transaction.linkId, transaction.amount);
-                    const link = await PaymentLink.findById(transaction.linkId);
-                    if (link && link.linkType === 'one-time') {
-                        await PaymentLink.updateStatus(link.id, 'Funds locked');
-                    }
-                }
-
-                await Notification.create({
-                    userId: transaction.userId,
-                    title: "Payment Received (M-Pesa)",
-                    message: `You received ${transaction.amount} ${transaction.currency} from ${transaction.buyerName}. Funds are held in escrow.`,
-                    type: 'success'
-                });
-
-                // Send receipt email to buyer
-                try {
-                    const buyer = {
-                        email: transaction.buyerEmail,
-                        fullName: transaction.buyerName
-                    };
-                    await emailService.sendReceiptEmail(buyer, transaction);
-                    console.log('Receipt email sent to:', transaction.buyerEmail);
-                } catch (emailError) {
-                    console.error('Failed to send receipt email:', emailError.message);
-                }
-            }
-        }
-        
-        res.json(result);
-    } catch (error) {
-        console.error('Verify Paystack Payment Error:', error);
         res.status(500).json({ message: error.message });
     }
 };
