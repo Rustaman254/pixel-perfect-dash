@@ -143,7 +143,7 @@ const PublicPaymentPage = () => {
                         <Clock className="w-8 h-8 text-[#025864] animate-spin" />
                     </div>
                     <h2 className="text-2xl font-bold text-slate-900 mb-2">Verifying Payment</h2>
-                    <p className="text-slate-500 text-sm">Please wait while we confirm your transaction with IntaSend...</p>
+                    <p className="text-slate-500 text-sm">Please wait while we confirm your transaction...</p>
                 </div>
             </div>
         );
@@ -559,7 +559,7 @@ const PublicPaymentPage = () => {
                                                     <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center"><Lock className="w-5 h-5 text-indigo-600" /></div>
                                                     <div className="text-left">
                                                         <p className="font-bold text-slate-900">Card Payment</p>
-                                                        <p className="text-[10px] text-slate-500 uppercase tracking-wider">Visa, Mastercard via IntaSend</p>
+                                                        <p className="text-[10px] text-slate-500 uppercase tracking-wider">Visa, Mastercard</p>
                                                     </div>
                                                 </div>
                                                 {paymentMethod === 'card' && <div className="w-5 h-5 rounded-full bg-[#025864] flex items-center justify-center"><Check className="w-3 h-3 text-white" /></div>}
@@ -627,7 +627,7 @@ const PublicPaymentPage = () => {
                                                 <Lock className="w-3.5 h-3.5 text-slate-400" />
                                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Secure {paymentMethod === 'card' ? 'Card' : 'Bank'} Payment</span>
                                             </div>
-                                            <p className="text-sm text-slate-600">You will be redirected to IntaSend's secure checkout page to complete your {paymentMethod === 'card' ? 'card' : 'bank transfer'} payment.</p>
+                                            <p className="text-sm text-slate-600">You will be redirected to a secure checkout page to complete your {paymentMethod === 'card' ? 'card' : 'bank transfer'} payment.</p>
                                             {paymentMethod === 'bank' && (
                                                 <div className="text-[10px] text-slate-500 space-y-1">
                                                     <p className="font-bold text-slate-600">Supported Kenyan Banks:</p>

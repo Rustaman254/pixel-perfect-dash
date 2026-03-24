@@ -11,6 +11,10 @@ router.get('/stats', protect, admin, adminController.getPlatformStats);
 // Company Stats
 router.get('/companies', protect, admin, adminController.getCompanyStats);
 
+// Payout Management
+router.get('/payouts', protect, admin, adminController.getAllPayouts);
+router.put('/payouts/:id', protect, admin, adminController.updatePayoutStatus);
+
 
 // User Management
 router.get('/users', protect, admin, adminController.getAllUsers);

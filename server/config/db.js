@@ -289,6 +289,7 @@ const connectDB = async () => {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         userId INTEGER NOT NULL,
         amount REAL NOT NULL,
+        fee REAL DEFAULT 0,
         currency TEXT NOT NULL,
         method TEXT NOT NULL,
         details TEXT NOT NULL,
@@ -297,6 +298,10 @@ const connectDB = async () => {
         FOREIGN KEY (userId) REFERENCES users (id)
       )
     `);
+
+    try {
+      await dbInstance.exec(`ALTER TABLE payouts ADD COLUMN fee REAL DEFAULT 0`);
+    } catch (e) { }
 
     // Create Support Tickets Table
     await dbInstance.exec(`

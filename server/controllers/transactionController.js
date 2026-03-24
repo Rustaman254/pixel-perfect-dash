@@ -271,7 +271,7 @@ export const handleIntaSendWebhook = async (req, res) => {
 
                 await Notification.create({
                     userId: transaction.userId,
-                    title: "Payment Received (IntaSend)",
+                    title: "Payment Received",
                     message: `You received ${transaction.amount} ${transaction.currency} from ${transaction.buyerName}. Funds are held in escrow.`,
                     type: 'success'
                 });
@@ -343,7 +343,7 @@ export const checkIntaSendPaymentStatus = async (req, res) => {
 
                 await Notification.create({
                     userId: transaction.userId,
-                    title: "Payment Received (IntaSend)",
+                    title: "Payment Received",
                     message: `You received ${transaction.amount} ${transaction.currency} from ${transaction.buyerName}. Funds are held in escrow.`,
                     type: 'success'
                 });

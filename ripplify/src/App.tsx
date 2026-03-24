@@ -36,6 +36,7 @@ import AdminNotificationsPage from "./pages/admin/AdminNotificationsPage";
 import ManageReferralCodes from "./pages/admin/ManageReferralCodes";
 import ManageApps from "./pages/admin/ManageApps";
 import ManageRoles from "./pages/admin/ManageRoles";
+import AdminPayoutsPage from "./pages/admin/AdminPayoutsPage";
 
 import { AppProvider, useAppContext } from "./contexts/AppContext";
 
@@ -88,7 +89,7 @@ const AppRoutes = () => {
         <Route path="/admin/companies" element={<ProtectedRoute role="admin"><ManageCompanies /></ProtectedRoute>} />
         <Route path="/admin/api-keys" element={<ProtectedRoute role="admin"><ManageApiKeys /></ProtectedRoute>} />
         <Route path="/admin/revenue" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
-        <Route path="/admin/payouts" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
+        <Route path="/admin/payouts" element={<ProtectedRoute role="admin"><AdminPayoutsPage /></ProtectedRoute>} />
         <Route path="/admin/settings" element={<ProtectedRoute role="admin"><SystemSettings /></ProtectedRoute>} />
         <Route path="/admin/support" element={<ProtectedRoute role="admin"><ManageSupport /></ProtectedRoute>} />
         <Route path="/admin/notifications" element={<ProtectedRoute role="admin"><AdminNotificationsPage /></ProtectedRoute>} />

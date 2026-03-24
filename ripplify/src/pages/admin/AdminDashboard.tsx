@@ -4,6 +4,10 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, 
 import { useToast } from "@/hooks/use-toast";
 import { fetchWithAuth } from "@/lib/api";
 import { useEffect, useState } from "react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { useAppContext } from "@/contexts/AppContext";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
@@ -17,8 +21,11 @@ const recentActivities = [
 
 const AdminDashboard = () => {
   const { toast } = useToast();
+  const { userProfile } = useAppContext();
   const [stats, setStats] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState("");
 
   const chartData = stats?.monthlyRevenue?.map((item: any) => {
     const [year, month] = item.month.split('-');
@@ -48,8 +55,8 @@ const AdminDashboard = () => {
 
   const platformStats = [
     { title: "Platform Revenue", value: stats ? `KES ${Number(stats.revenue).toLocaleString()}` : "...", change: "+12.5%", positive: true, icon: TrendingUp, color: "bg-emerald-50 text-emerald-600" },
-    { title: "Active Sellers", value: stats ? stats.sellers : "...", change: "+8.2%", positive: true, icon: Users, color: "bg-blue-50 text-blue-600" },
-    { title: "Payment Links", value: stats ? stats.links : "...", change: "+4.1%", positive: true, icon: Building2, color: "bg-indigo-50 text-indigo-600" },
+    { title: "Payout Earnings", value: stats ? `KES ${Number(stats.payoutRevenue).toLocaleString()}` : "...", change: "+8.2%", positive: true, icon: CreditCard, color: "bg-blue-50 text-blue-600" },
+    { title: "Active Sellers", value: stats ? stats.sellers : "...", change: "+8.2%", positive: true, icon: Users, color: "bg-indigo-50 text-indigo-600" },
     { title: "Escrow Transactions", value: stats ? stats.transactions : "...", change: "-2.4%", positive: false, icon: ShieldCheck, color: "bg-orange-50 text-orange-600" },
   ];
 
@@ -60,9 +67,18 @@ const AdminDashboard = () => {
             <h1 className="text-2xl font-bold text-slate-900">Platform Overview</h1>
             <p className="text-slate-500">Monitor and manage Ripplify global operations.</p>
         </div>
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-full text-xs font-bold animate-pulse">
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-            Live Updates
+        <div className="flex items-center gap-3">
+            <button 
+                onClick={() => setIsWithdrawOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-[#025864] text-white rounded-xl text-sm font-bold shadow-sm hover:opacity-90 transition-all"
+            >
+                <CreditCard className="w-4 h-4" />
+                Withdraw Revenue
+            </button>
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-full text-xs font-bold animate-pulse">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                Live Updates
+            </div>
         </div>
       </div>
 
@@ -151,9 +167,9 @@ const AdminDashboard = () => {
         <div className="p-6 bg-[#025864] rounded-3xl text-white">
           <h4 className="font-bold mb-2">Pending Withdrawals</h4>
           <p className="text-white/70 text-sm mb-6">{stats?.pendingTransactions || 0} withdrawal requests waiting for approval.</p>
-          <button className="w-full py-3 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl transition-all">
+          <Link to="/admin/payouts" className="block w-full py-3 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl transition-all text-center">
             Review All
-          </button>
+          </Link>
         </div>
         <div className="p-6 bg-red-600 rounded-3xl text-white">
           <h4 className="font-bold mb-2">Flagged Accounts</h4>
@@ -170,6 +186,60 @@ const AdminDashboard = () => {
           </button>
         </div>
       </div>
+
+      <Dialog open={isWithdrawOpen} onOpenChange={setIsWithdrawOpen}>
+        <DialogContent className="max-w-md rounded-3xl">
+            <DialogHeader>
+                <DialogTitle className="text-xl font-bold">Withdraw Platform Revenue</DialogTitle>
+                <DialogDescription>Withdraw accumulated platform fees to your configured payout account.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+                <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-[10px] text-slate-500 mb-1 uppercase tracking-widest font-bold">Total Platform Revenue</p>
+                    <p className="text-3xl font-black text-[#025864]">KES {Number(stats?.revenue || 0).toLocaleString()}</p>
+                </div>
+                <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700 ml-1">Amount to Withdraw</label>
+                    <Input 
+                        type="number" 
+                        placeholder="0.00" 
+                        value={withdrawAmount} 
+                        onChange={(e) => setWithdrawAmount(e.target.value)}
+                        className="h-12 rounded-xl border-slate-200 focus:ring-[#025864]"
+                    />
+                    <p className="text-[10px] text-slate-400 mt-2 px-1">
+                        Funds will be sent to your {userProfile?.payoutMethod || 'configured'} account: 
+                        <strong className="text-slate-600 ml-1 truncate max-w-[200px] inline-block align-bottom">{userProfile?.payoutDetails || 'Not set'}</strong>
+                    </p>
+                </div>
+                <div className="pt-2">
+                    <Button 
+                        className="w-full h-12 rounded-xl bg-[#025864] hover:bg-[#025864]/90 text-white font-bold shadow-lg shadow-emerald-900/10 transition-all active:scale-[0.98]"
+                        onClick={async () => {
+                            try {
+                                setLoading(true);
+                                await fetchWithAuth('/payouts/request', {
+                                    method: 'POST',
+                                    body: JSON.stringify({ amount: parseFloat(withdrawAmount) })
+                                });
+                                toast({ title: "Payout Requested", description: "Your revenue withdrawal has been initiated." });
+                                setIsWithdrawOpen(false);
+                                setWithdrawAmount("");
+                                loadStats();
+                            } catch (err: any) {
+                                toast({ title: "Error", description: err.message, variant: "destructive" });
+                            } finally {
+                                setLoading(false);
+                            }
+                        }}
+                        disabled={loading || !withdrawAmount || parseFloat(withdrawAmount) <= 0 || parseFloat(withdrawAmount) > (stats?.revenue || 0)}
+                    >
+                        {loading ? "Processing..." : "Confirm Withdrawal"}
+                    </Button>
+                </div>
+            </div>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 };

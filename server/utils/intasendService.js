@@ -102,8 +102,48 @@ const checkPaymentStatus = async (invoiceId) => {
     }
 };
 
+/**
+ * Trigger M-Pesa B2C Payout
+ */
+const mpesaB2c = async ({ name, account, amount, narrative }) => {
+    try {
+        const intasend = getClient();
+        const payouts = intasend.payouts();
+
+        const response = await payouts.mpesa({
+            currency: 'KES',
+            transactions: [
+                {
+                    name: name || 'Customer',
+                    account: account,
+                    amount: parseFloat(amount).toString(), // IntaSend expects string or proper number
+                    narrative: narrative || 'Payout from Ripplify'
+                }
+            ]
+        });
+
+        console.log('IntaSend B2C Payout Response:', JSON.stringify(response, null, 2));
+
+        // Attempting to auto-approve if possible. Some IntaSend setups require 2FA checker.
+        // We catch approve errors silently and return the initial response, as it might just need dashboard approval.
+        try {
+            await payouts.approve(response, false);
+            console.log('IntaSend B2C Payout Auto-Approved successfully.');
+        } catch (approveErr) {
+            console.warn('IntaSend B2C Payout Approval requires manual action or failed:', approveErr?.message || approveErr);
+        }
+
+        return response;
+    } catch (error) {
+        console.error('IntaSend B2C Payout Error:', error);
+        const errMsg = error?.message || error?.toString() || 'M-Pesa B2C Payout failed';
+        throw new Error(errMsg);
+    }
+};
+
 export default {
     mpesaStkPush,
     checkoutCharge,
     checkPaymentStatus,
+    mpesaB2c,
 };

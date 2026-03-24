@@ -35,18 +35,33 @@ const SettingsPage = () => {
         phone: "",
         location: "",
         payoutMethod: "mpesa",
-        payoutDetails: ""
+        payoutDetails: "",
+        bankAccount: "",
+        bankCode: ""
     });
 
     useEffect(() => {
         if (userProfile) {
+            let details = userProfile.payoutDetails || "";
+            let bankData = { account: "", bankCode: "" };
+            
+            if (userProfile.payoutMethod === 'bank') {
+                try {
+                    bankData = JSON.parse(details);
+                } catch (e) {
+                    console.error("Failed to parse bank details");
+                }
+            }
+
             setFormData({
                 businessName: userProfile.businessName || "",
                 fullName: userProfile.fullName || "",
                 phone: userProfile.phone || "",
                 location: userProfile.location || "",
                 payoutMethod: userProfile.payoutMethod || "mpesa",
-                payoutDetails: userProfile.payoutDetails || ""
+                payoutDetails: details,
+                bankAccount: bankData.account,
+                bankCode: bankData.bankCode
             });
         }
     }, [userProfile]);
@@ -72,9 +87,17 @@ const SettingsPage = () => {
     const handleSaveProfile = async () => {
         setLoading(true);
         try {
+            const dataToSave = { ...formData };
+            if (formData.payoutMethod === 'bank') {
+                dataToSave.payoutDetails = JSON.stringify({
+                    account: formData.bankAccount,
+                    bankCode: formData.bankCode
+                });
+            }
+
             await fetchWithAuth('/auth/profile', {
                 method: 'PUT',
-                body: JSON.stringify(formData)
+                body: JSON.stringify(dataToSave)
             });
             await refreshData();
             toast({ title: "Success", description: "Profile updated successfully!" });
@@ -193,13 +216,51 @@ const SettingsPage = () => {
                             </select>
                         </div>
                         <div>
-                            <label className="text-sm text-muted-foreground block mb-1.5">Payout Details (Phone/AC)</label>
-                            <input
-                                type="text"
-                                value={formData.payoutDetails}
-                                onChange={(e) => setFormData({ ...formData, payoutDetails: e.target.value })}
-                                className={inputClass}
-                            />
+                            {formData.payoutMethod === 'mpesa' ? (
+                                <>
+                                    <label className="text-sm text-muted-foreground block mb-1.5">M-Pesa Number</label>
+                                    <input
+                                        type="text"
+                                        placeholder="07xxxxxxxx"
+                                        value={formData.payoutDetails}
+                                        onChange={(e) => setFormData({ ...formData, payoutDetails: e.target.value })}
+                                        className={inputClass}
+                                    />
+                                </>
+                            ) : (
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="text-sm text-muted-foreground block mb-1.5">Bank Account</label>
+                                        <input
+                                            type="text"
+                                            placeholder="Account number"
+                                            value={formData.bankAccount}
+                                            onChange={(e) => setFormData({ ...formData, bankAccount: e.target.value })}
+                                            className={inputClass}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-sm text-muted-foreground block mb-1.5">Bank Code</label>
+                                        <select
+                                            value={formData.bankCode}
+                                            onChange={(e) => setFormData({ ...formData, bankCode: e.target.value })}
+                                            className={inputClass}
+                                        >
+                                            <option value="">Select Bank</option>
+                                            <option value="01">KCB</option>
+                                            <option value="11">Co-operative Bank</option>
+                                            <option value="63">Diamond Trust Bank</option>
+                                            <option value="03">ABSA</option>
+                                            <option value="07">Standard Chartered</option>
+                                            <option value="68">Equity Bank</option>
+                                            <option value="60">Family Bank</option>
+                                            <option value="12">I&M Bank</option>
+                                            <option value="31">Stanbic Bank</option>
+                                            <option value="55">Guardian Bank</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                     <div className="mt-5 pt-4 border-t border-border flex justify-end">

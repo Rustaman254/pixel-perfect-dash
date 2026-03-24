@@ -6,13 +6,23 @@ import ApiKey from '../models/ApiKey.js';
 import Transaction from '../models/Transaction.js';
 import SupportedCurrency from '../models/SupportedCurrency.js';
 import ReferralCode from '../models/ReferralCode.js';
+import Payout from '../models/Payout.js';
+
+export const getPlatformRevenue = async () => {
+    const db = getDb();
+    const transactionRevenue = await db.get(`SELECT SUM(fee) as total FROM transactions WHERE status = 'Completed'`);
+    const payoutRevenue = await db.get(`SELECT SUM(fee) as total FROM payouts WHERE status IN ('Processing', 'Completed')`);
+    return (transactionRevenue?.total || 0) + (payoutRevenue?.total || 0);
+};
 
 export const getPlatformStats = async (req, res) => {
     try {
         const db = getDb();
 
         const totalVolume = await db.get(`SELECT SUM(amount) as total FROM transactions WHERE status = 'Completed'`);
-        const totalRevenue = await db.get(`SELECT SUM(fee) as total FROM transactions WHERE status = 'Completed'`);
+        const totalRevenue = await getPlatformRevenue();
+        const transactionRevenue = await db.get(`SELECT SUM(fee) as total FROM transactions WHERE status = 'Completed'`);
+        const payoutRevenue = await db.get(`SELECT SUM(fee) as total FROM payouts WHERE status IN ('Processing', 'Completed')`);
         const activeSellers = await db.get(`SELECT COUNT(*) as count FROM users WHERE role = 'seller'`);
         const totalLinks = await db.get(`SELECT COUNT(*) as count FROM payment_links`);
         const totalTransactions = await db.get(`SELECT COUNT(*) as count FROM transactions`);
@@ -57,7 +67,9 @@ export const getPlatformStats = async (req, res) => {
 
         res.json({
             volume: totalVolume?.total || 0,
-            revenue: totalRevenue?.total || 0,
+            revenue: totalRevenue || 0,
+            transactionRevenue: transactionRevenue?.total || 0,
+            payoutRevenue: payoutRevenue?.total || 0,
             sellers: activeSellers?.count || 0,
             links: totalLinks?.count || 0,
             transactions: totalTransactions?.count || 0,
@@ -312,6 +324,25 @@ export const toggleReferralCodeStatus = async (req, res) => {
         const { isActive } = req.body;
         await ReferralCode.toggleActive(req.params.id, isActive);
         res.json({ message: `Referral code ${isActive ? 'activated' : 'deactivated'}` });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const getAllPayouts = async (req, res) => {
+    try {
+        const payouts = await Payout.findAll();
+        res.json(payouts);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const updatePayoutStatus = async (req, res) => {
+    try {
+        const { status } = req.body;
+        const payout = await Payout.updateStatus(req.params.id, status);
+        res.json(payout);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

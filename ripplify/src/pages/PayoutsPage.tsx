@@ -126,7 +126,16 @@ const PayoutsPage = () => {
                 <div className="bg-card rounded-2xl p-5 border border-border">
                     <p className="text-sm text-muted-foreground mb-2">Payout Method</p>
                     <h3 className="text-base font-bold text-foreground capitalize">{userProfile?.payoutMethod || "M-Pesa"}</h3>
-                    <p className="text-[11px] text-muted-foreground truncate">{userProfile?.payoutDetails || "Not set"}</p>
+                    <p className="text-[11px] text-muted-foreground truncate">
+                        {userProfile?.payoutMethod === 'bank' ? (() => {
+                            try {
+                                const b = JSON.parse(userProfile.payoutDetails || "{}");
+                                return `${b.bankCode || ''} - ${b.account || ''}`;
+                            } catch (e) {
+                                return userProfile.payoutDetails;
+                            }
+                        })() : (userProfile?.payoutDetails || "Not set")}
+                    </p>
                 </div>
             </div>
 
@@ -165,7 +174,10 @@ const PayoutsPage = () => {
                                     <tr key={p.id}>
                                         <td className="py-4 text-xs font-mono text-muted-foreground">#PO-{p.id.toString().padStart(4, '0')}</td>
                                         <td className="py-4 text-sm font-bold text-foreground">{p.currency} {p.amount.toLocaleString()}</td>
-                                        <td className="py-4 text-sm text-muted-foreground hidden sm:table-cell uppercase">{p.method}</td>
+                                        <td className="py-4 text-sm text-muted-foreground hidden sm:table-cell uppercase">
+                                            {p.method}
+                                            <span className="block text-[10px] lowercase opacity-60 normal-case">{p.details}</span>
+                                        </td>
                                         <td className="py-4">
                                             <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${statusColor[p.status] || 'bg-gray-50 text-gray-500'}`}>
                                                 {p.status}
@@ -225,29 +237,47 @@ const PayoutsPage = () => {
                                             }}
                                         />
                                     </div>
-                                    <p className="text-[10px] text-muted-foreground mt-2">Funds will be sent to your {userProfile?.payoutMethod || 'M-Pesa'} account: <strong>{userProfile?.payoutDetails || 'Not set'}</strong></p>
+                                    <p className="text-[10px] text-muted-foreground mt-2">
+                                        Funds will be sent to your {userProfile?.payoutMethod || 'M-Pesa'} account: 
+                                        <strong>
+                                            {userProfile?.payoutMethod === 'bank' ? (() => {
+                                                try {
+                                                    const b = JSON.parse(userProfile.payoutDetails || "{}");
+                                                    return ` ${b.bankCode || ''} (A/C: ${b.account || ''})`;
+                                                } catch (e) {
+                                                    return ` ${userProfile.payoutDetails}`;
+                                                }
+                                            })() : ` ${userProfile?.payoutDetails || 'Not set'}`}
+                                        </strong>
+                                    </p>
                                 </div>
 
-                                {parseFloat(withdrawAmount) > 0 && (
-                                    <div className="bg-slate-50 rounded-2xl p-4 border border-border space-y-2">
-                                        <div className="flex justify-between text-xs">
-                                            <span className="text-muted-foreground">Withdrawal Amount</span>
-                                            <span className="font-bold text-foreground">KES {parseFloat(withdrawAmount).toLocaleString()}</span>
+                                {parseFloat(withdrawAmount) > 0 && (() => {
+                                    const amt = parseFloat(withdrawAmount);
+                                    const totalFee = amt * 0.01;
+                                    const netAmount = Math.max(0, amt - totalFee);
+
+                                    return (
+                                        <div className="bg-slate-50 rounded-2xl p-4 border border-border space-y-2">
+                                            <div className="flex justify-between text-xs">
+                                                <span className="text-muted-foreground">Withdrawal Amount</span>
+                                                <span className="font-bold text-foreground">KES {amt.toLocaleString()}</span>
+                                            </div>
+                                            <div className="flex justify-between text-xs">
+                                                <span className="text-muted-foreground">Platform Fee (1%)</span>
+                                                <span className="font-bold text-red-500">-KES {totalFee.toLocaleString()}</span>
+                                            </div>
+                                            <div className="pt-2 border-t border-border flex justify-between text-sm font-black">
+                                                <span className="text-foreground">You will receive</span>
+                                                <span className="text-[#025864]">KES {netAmount.toLocaleString()}</span>
+                                            </div>
                                         </div>
-                                        <div className="flex justify-between text-xs">
-                                            <span className="text-muted-foreground">Platform Fee (2% + KES 50)</span>
-                                            <span className="font-bold text-red-500">-KES {((parseFloat(withdrawAmount) * 0.02) + 50).toLocaleString()}</span>
-                                        </div>
-                                        <div className="pt-2 border-t border-border flex justify-between text-sm font-black">
-                                            <span className="text-foreground">You will receive</span>
-                                            <span className="text-[#025864]">KES {Math.max(0, parseFloat(withdrawAmount) - ((parseFloat(withdrawAmount) * 0.02) + 50)).toLocaleString()}</span>
-                                        </div>
-                                    </div>
-                                )}
+                                    );
+                                })()}
 
                                 <div className="p-4 bg-emerald-50/50 rounded-xl border border-emerald-100 flex items-start gap-3">
                                     <ShieldCheck className="w-5 h-5 text-[#025864] shrink-0 mt-0.5" />
-                                    <p className="text-xs text-muted-foreground leading-relaxed">Withdrawals are processed within 24 hours. A transaction fee of 2% + KES 50 applies to cover processing costs.</p>
+                                    <p className="text-xs text-muted-foreground leading-relaxed">Withdrawals are processed within 24 hours. A transaction fee of 1% applies to cover processing costs.</p>
                                 </div>
 
                                 <button 

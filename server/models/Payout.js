@@ -5,11 +5,12 @@ const Payout = {
         const db = getDb();
         const result = await db.run(`
       INSERT INTO payouts (
-        userId, amount, currency, method, details, status
-      ) VALUES (?, ?, ?, ?, ?, ?)
+        userId, amount, fee, currency, method, details, status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
     `, [
             payoutData.userId,
             payoutData.amount,
+            payoutData.fee || 0,
             payoutData.currency,
             payoutData.method,
             payoutData.details,
@@ -17,6 +18,16 @@ const Payout = {
         ]);
 
         return await db.get(`SELECT * FROM payouts WHERE id = ?`, result.lastID);
+    },
+
+    findAll: async () => {
+        const db = getDb();
+        return await db.all(`
+            SELECT p.*, u.fullName, u.email, u.businessName 
+            FROM payouts p
+            LEFT JOIN users u ON p.userId = u.id
+            ORDER BY p.createdAt DESC
+        `);
     },
 
     findAllByUserId: async (userId) => {

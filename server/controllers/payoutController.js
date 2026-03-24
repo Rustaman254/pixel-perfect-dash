@@ -3,6 +3,8 @@ import User from '../models/User.js';
 import PaymentLink from '../models/PaymentLink.js';
 import Notification from '../models/Notification.js';
 import { getDb } from '../config/db.js';
+import intasendService from '../utils/intasendService.js';
+import { getPlatformRevenue } from './adminController.js';
 
 
 export const requestPayout = async (req, res) => {
@@ -23,50 +25,118 @@ export const requestPayout = async (req, res) => {
         }
 
         // Calculate available balance
-        const links = await PaymentLink.findAllByUserId(userId);
-        const totalEarned = links.reduce((acc, l) => acc + (l.totalEarnedValue || 0), 0);
+        let available;
+        if (user.role === 'admin') {
+            const totalRevenue = await getPlatformRevenue();
+            const totalWithdrawnByAdmins = await db.get(`
+                SELECT SUM(amount) as total 
+                FROM payouts p 
+                JOIN users u ON p.userId = u.id 
+                WHERE u.role = 'admin' AND p.status IN ('Processing', 'Completed')
+            `);
+            available = totalRevenue - (totalWithdrawnByAdmins?.total || 0);
+        } else {
+            const links = await PaymentLink.findAllByUserId(userId);
+            const totalEarned = links.reduce((acc, l) => acc + (l.totalEarnedValue || 0), 0);
 
-        const payouts = await Payout.findAllByUserId(userId);
-        const withdrawn = payouts
-            .filter(p => ['Processing', 'Completed'].includes(p.status))
-            .reduce((acc, p) => acc + p.amount, 0);
+            const payouts = await Payout.findAllByUserId(userId);
+            const withdrawn = payouts
+                .filter(p => ['Processing', 'Completed'].includes(p.status))
+                .reduce((acc, p) => acc + p.amount, 0);
 
-        const available = totalEarned - withdrawn;
+            available = totalEarned - withdrawn;
+        }
 
         if (amount > available) {
             return res.status(400).json({ message: `Insufficient balance. Available: ${user.currency || 'KES'} ${available.toLocaleString()}` });
         }
 
 
-        // Calculate amount after fee deduction (for Ripplify's profitability)
-        // We can apply a payout fee if needed, or just use the collected fees.
-        // The user asked to make the platform profitable with good margins.
-        const db = getDb();
-        const settings = await db.get("SELECT value FROM system_settings WHERE key = 'payout_fee'");
-        const flatFee = settings ? parseFloat(settings.value) : 50;
-        const percentFee = amount * 0.02; // 2% platform margin
-        const totalFee = flatFee + percentFee;
-        const netAmount = amount - totalFee;
-
-        if (netAmount <= 0) {
-            return res.status(400).json({ message: "Payout amount too small after fees." });
+        // Ensure we support M-Pesa and Bank via IntaSend auto API
+        if (!['mpesa', 'bank'].includes(user.payoutMethod)) {
+            return res.status(400).json({ message: "Currently, only M-Pesa and Bank Transfers are supported." });
         }
+
+        let intasendResponse = null;
+        let detailsDisplay = user.payoutDetails;
+
+        if (user.payoutMethod === 'mpesa') {
+            let phone = user.payoutDetails.replace(/\D/g, '');
+            if (phone.startsWith('0') && phone.length === 10) phone = '254' + phone.slice(1);
+            else if (phone.length === 9) phone = '254' + phone;
+            detailsDisplay = phone;
+
+            // Ripplify Profit Margin
+            const totalFee = amount * 0.01; 
+            const netAmount = amount - totalFee;
+
+            if (netAmount <= 0) {
+                return res.status(400).json({ message: "Payout amount too small after fees." });
+            }
+
+            try {
+                intasendResponse = await intasendService.mpesaB2c({
+                    name: user.fullName || 'Customer',
+                    account: phone,
+                    amount: netAmount,
+                    narrative: 'Ripplify Payout'
+                });
+            } catch (apiError) {
+                return res.status(500).json({ message: `IntaSend Payout Error: ${apiError.message}` });
+            }
+        } else if (user.payoutMethod === 'bank') {
+            let bankData;
+            try {
+                bankData = JSON.parse(user.payoutDetails);
+            } catch (e) {
+                return res.status(400).json({ message: "Invalid bank details format. Please re-save in Settings." });
+            }
+
+            if (!bankData.account || !bankData.bankCode) {
+                return res.status(400).json({ message: "Bank Account and Bank Code are required." });
+            }
+            
+            detailsDisplay = `${bankData.bankCode} - ${bankData.account}`;
+
+            // Ripplify Profit Margin
+            const totalFee = amount * 0.01; 
+            const netAmount = amount - totalFee;
+
+            if (netAmount <= 0) {
+                return res.status(400).json({ message: "Payout amount too small after fees." });
+            }
+
+            try {
+                intasendResponse = await intasendService.bankPayout({
+                    name: user.fullName || 'Customer',
+                    account: bankData.account,
+                    bankCode: bankData.bankCode,
+                    amount: netAmount,
+                    narrative: 'Ripplify Bank Payout'
+                });
+            } catch (apiError) {
+                return res.status(500).json({ message: `IntaSend Bank Payout Error: ${apiError.message}` });
+            }
+        }
+
+        const platformFee = amount * 0.01;
+        const netAmountFinal = amount - platformFee;
 
         const newPayout = await Payout.create({
             userId,
-            amount: netAmount,
+            amount: amount, // Gross amount
+            fee: platformFee,
             currency: user.currency || 'KES',
             method: user.payoutMethod,
-            details: user.payoutDetails,
+            details: detailsDisplay,
             status: 'Processing'
         });
 
-        // TODO: Implement IntaSend B2C Payouts here for automated withdrawals
-        // Currently leaving as Processing for manual admin approval.
+        // Notifications
         await Notification.create({
-            userId: null,
-            title: "Payout Request",
-            message: `Payout of ${netAmount} requested for ${user.email}.`,
+            userId: null, // Admin
+            title: "Payout Initiated",
+            message: `Payout of ${netAmountFinal} initiated for ${user.email}.`,
             type: 'info'
         });
 
