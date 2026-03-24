@@ -149,6 +149,11 @@ export const loginUser = async (req, res) => {
             return res.status(400).json({ message: "Invalid credentials" });
         }
 
+        // Check if user is disabled
+        if (user.isDisabled) {
+            return res.status(403).json({ message: "Your account has been disabled. Contact support for assistance." });
+        }
+
         // If role is specified, verify it matches
         if (role && user.role !== role) {
             return res.status(400).json({ message: "Invalid credentials or role mismatch" });
@@ -175,7 +180,8 @@ export const loginUser = async (req, res) => {
                 kycStatus: user.kycStatus,
                 kybStatus: user.kybStatus,
                 transactionLimit: user.transactionLimit,
-                isVerified: user.isVerified
+                isVerified: user.isVerified,
+                isDisabled: user.isDisabled
             }
         });
 
@@ -206,7 +212,8 @@ export const getMe = async (req, res) => {
                     kycStatus: user.kycStatus,
                     kybStatus: user.kybStatus,
                     transactionLimit: user.transactionLimit,
-                    isVerified: user.isVerified
+                    isVerified: user.isVerified,
+                    isDisabled: user.isDisabled
                 }
             });
         } else {

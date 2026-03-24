@@ -36,6 +36,7 @@ import AdminNotificationsPage from "./pages/admin/AdminNotificationsPage";
 import ManageReferralCodes from "./pages/admin/ManageReferralCodes";
 import ManageApps from "./pages/admin/ManageApps";
 import ManageRoles from "./pages/admin/ManageRoles";
+import ManageFeatureFlags from "./pages/admin/ManageFeatureFlags";
 
 import { AppProvider, useAppContext } from "./contexts/AppContext";
 
@@ -45,6 +46,14 @@ const ProtectedRoute = ({ children, role }: { children: React.ReactNode, role?: 
   const { isAuthenticated, userProfile } = useAppContext();
 
   if (!isAuthenticated || !userProfile) return <Navigate to="/login" replace />;
+
+  // Check if user account is disabled
+  if ((userProfile as any).isDisabled) {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('ripplify_profile');
+    return <Navigate to="/login?error=disabled" replace />;
+  }
+
   if (role && userProfile.role !== role) {
     if (userProfile.role === "admin") return <Navigate to="/admin" replace />;
     return <Navigate to="/" replace />;
@@ -97,6 +106,7 @@ const AppRoutes = () => {
         <Route path="/admin/referrals" element={<ProtectedRoute role="admin"><ManageReferralCodes /></ProtectedRoute>} />
         <Route path="/admin/apps" element={<ProtectedRoute role="admin"><ManageApps /></ProtectedRoute>} />
         <Route path="/admin/roles" element={<ProtectedRoute role="admin"><ManageRoles /></ProtectedRoute>} />
+        <Route path="/admin/features" element={<ProtectedRoute role="admin"><ManageFeatureFlags /></ProtectedRoute>} />
 
         {/* Public Routes */}
         <Route path="/pay/:slug" element={<PublicPaymentPage />} />

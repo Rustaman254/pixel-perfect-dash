@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Mail, Lock, LogIn, ShieldAlert } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAppContext } from "@/contexts/AppContext";
@@ -15,6 +15,18 @@ const Login = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { login } = useAppContext();
+  const [searchParams] = useSearchParams();
+
+  // Show disabled account message if redirected
+  useEffect(() => {
+    if (searchParams.get('error') === 'disabled') {
+      toast({
+        title: "Account Disabled",
+        description: "Your account has been disabled. Contact support for assistance.",
+        variant: "destructive"
+      });
+    }
+  }, [searchParams, toast]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

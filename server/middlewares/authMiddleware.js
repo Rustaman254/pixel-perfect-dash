@@ -32,6 +32,11 @@ const protect = async (req, res, next) => {
                 }
             }
 
+            // Check if user account is disabled
+            if (req.user.isDisabled) {
+                return res.status(403).json({ message: "Your account has been disabled. Contact support for assistance." });
+            }
+
             return next();
         } catch (error) {
             if (error.name === 'TokenExpiredError') {

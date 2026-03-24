@@ -93,6 +93,7 @@ export interface UserProfile {
     payoutMethod: string;
     payoutDetails: string;
     isVerified: boolean;
+    isDisabled?: boolean;
 }
 
 interface AppContextType {
@@ -111,6 +112,8 @@ interface AppContextType {
     login: (userData: Partial<UserProfile>, token?: string) => void;
     logout: () => void;
     refreshData: () => Promise<void>;
+    featureFlags: Record<string, boolean>;
+    isFeatureEnabled: (key: string) => boolean;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -127,6 +130,25 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     const [isAuthenticated, setIsAuthenticated] = useState(() => {
         return !!localStorage.getItem('auth_token');
     });
+    const [featureFlags, setFeatureFlags] = useState<Record<string, boolean>>({});
+
+    const loadFeatureFlags = async () => {
+        if (!isAuthenticated) return;
+        try {
+            const flags = await fetchWithAuth('/auth/features');
+            const flagMap: Record<string, boolean> = {};
+            flags.forEach((f: any) => { flagMap[f.key] = !!f.isEnabled; });
+            setFeatureFlags(flagMap);
+        } catch (e) {
+            console.error("Failed to load feature flags:", e);
+        }
+    };
+
+    const isFeatureEnabled = (key: string): boolean => {
+        // Admins always have access
+        if (userProfile?.role === 'admin') return true;
+        return featureFlags[key] !== false;
+    };
 
     const { setAuth: syncToSSO } = useSSOSync((token, profile) => {
         // Sync FROM SSO Hub on initial load
@@ -178,10 +200,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     useEffect(() => {
         if (isAuthenticated) {
             refreshData();
+            loadFeatureFlags();
 
             const interval = setInterval(() => {
                 refreshData();
-            }, 10000);
+                loadFeatureFlags();
+            }, 30000);
 
             return () => clearInterval(interval);
         } else {
@@ -189,6 +213,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
             setTransactions([]);
             setPayouts([]);
             setWallets([]);
+            setFeatureFlags({});
         }
     }, [isAuthenticated]);
 
@@ -229,7 +254,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
             wallets, setWallets,
             userProfile, setUserProfile,
             isAuthenticated, setIsAuthenticated,
-            login, logout, refreshData
+            login, logout, refreshData,
+            featureFlags, isFeatureEnabled
         }}>
             {children}
         </AppContext.Provider>
