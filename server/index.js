@@ -52,6 +52,8 @@ const allowedOrigins = process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split
     'https://pixel-perfect-dash.vercel.app',
     'https://ripplify-hazel.vercel.app',
     'https://ripplify.vercel.app',
+    'https://ripplify.sokostack.xyz',
+    'https://watchtower.sokostack.xyz',
     'http://localhost:3000',
     'http://localhost:3001',
     'http://localhost:5173',
