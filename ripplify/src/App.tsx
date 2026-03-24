@@ -84,11 +84,13 @@ const AppRoutes = () => {
 
         {/* Admin Dashboard */}
         <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
+        <Route path="/admin/analytics" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
         <Route path="/admin/users" element={<ProtectedRoute role="admin"><ManageUsers /></ProtectedRoute>} />
         <Route path="/admin/companies" element={<ProtectedRoute role="admin"><ManageCompanies /></ProtectedRoute>} />
         <Route path="/admin/api-keys" element={<ProtectedRoute role="admin"><ManageApiKeys /></ProtectedRoute>} />
         <Route path="/admin/revenue" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
         <Route path="/admin/payouts" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
+        <Route path="/admin/currencies" element={<ProtectedRoute role="admin"><SystemSettings /></ProtectedRoute>} />
         <Route path="/admin/settings" element={<ProtectedRoute role="admin"><SystemSettings /></ProtectedRoute>} />
         <Route path="/admin/support" element={<ProtectedRoute role="admin"><ManageSupport /></ProtectedRoute>} />
         <Route path="/admin/notifications" element={<ProtectedRoute role="admin"><AdminNotificationsPage /></ProtectedRoute>} />

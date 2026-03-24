@@ -143,9 +143,14 @@ export const loginUser = async (req, res) => {
     try {
         const { email, password, role } = req.body;
 
-        // Find user
-        const user = await User.findOne({ email, role });
+        // Find user by email first
+        const user = await User.findOne({ email });
         if (!user) {
+            return res.status(400).json({ message: "Invalid credentials" });
+        }
+
+        // If role is specified, verify it matches
+        if (role && user.role !== role) {
             return res.status(400).json({ message: "Invalid credentials or role mismatch" });
         }
 

@@ -45,21 +45,13 @@ app.use((req, res, next) => {
   });
   next();
 });
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-      "frame-ancestors": ["'self'", "http://localhost:3000", "http://localhost:3001", "http://localhost:5173", "http://localhost:5174", "http://localhost:5175", "http://localhost:8080", "https://pixel-perfect-dash.vercel.app", "https://sokostack.ddns.net", "http://sokostack.ddns.net", "*.ddns.net"],
-      "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
-    },
-  },
-  crossOriginResourcePolicy: { policy: "cross-origin" },
-  crossOriginEmbedderPolicy: false,
-}));
+
 const allowedOrigins = process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : [
     'https://sokostack.ddns.net',
     'http://sokostack.ddns.net',
     'https://pixel-perfect-dash.vercel.app',
+    'https://ripplify-hazel.vercel.app',
+    'https://ripplify.vercel.app',
     'http://localhost:3000',
     'http://localhost:3001',
     'http://localhost:5173',
@@ -74,9 +66,7 @@ const allowedOrigins = process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split
     'http://127.0.0.1:8080'
 ];
 
-// Watchtower routes (public ingest endpoint)
-app.use("/api/watchtower", watchtowerRoutes);
-
+// CORS middleware - must be before all routes
 app.use(cors({
     origin: function(origin, callback) {
         // Allow requests with no origin (like mobile apps or curl requests)
@@ -84,11 +74,29 @@ app.use(cors({
         if (allowedOrigins.indexOf(origin) !== -1) {
             callback(null, true);
         } else {
-            callback(new Error('Not allowed by CORS'));
+            // Return false instead of throwing error to avoid 500 on preflight
+            callback(null, false);
         }
     },
-    credentials: true
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-app-name', 'X-API-Key', 'Accept', 'Origin'],
+    preflightContinue: false,
+    optionsSuccessStatus: 204
 }));
+
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+      "frame-ancestors": ["'self'", "*"],
+      "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+    },
+  },
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginEmbedderPolicy: false,
+}));
+
 app.use(express.static("public"));
 app.use(express.json({ type: ['application/json', 'text/plain'] }));
 
@@ -96,6 +104,7 @@ app.use(express.json({ type: ['application/json', 'text/plain'] }));
 const server = http.createServer(app);
 
 // Mount Routes
+app.use("/api/watchtower", watchtowerRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/links", linkRoutes);
 app.use("/api/transactions", transactionRoutes);
@@ -108,7 +117,6 @@ app.use("/api/payouts", payoutRoutes);
 app.use("/api/support", supportRoutes);
 app.use("/api/payment-methods", paymentMethodRoutes);
 app.use("/api/currencies", currencyRoutes);
-// watchtower routes moved before CORS middleware
 app.use("/api/payments", paymentRoutes);
 app.use("/api/apps", appRoutes);
 

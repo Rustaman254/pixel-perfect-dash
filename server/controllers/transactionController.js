@@ -162,8 +162,12 @@ export const createTransaction = async (req, res) => {
             console.log('Generating IntaSend Checkout Link for:', req.body.paymentMethod);
 
             // Determine redirect URL — back to the payment page
-            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-            const redirectUrl = `${frontendUrl}/pay/${slug}?intasend_complete=true&ref=${tx_ref}`;
+            // IntaSend requires HTTPS URLs, so we ensure we use a valid HTTPS frontend URL
+            const frontendUrl = process.env.FRONTEND_URL && process.env.FRONTEND_URL.startsWith('https://') 
+                ? process.env.FRONTEND_URL 
+                : 'https://ripplify.io';
+            // Include intasend_complete parameter so frontend can detect the callback
+            const redirectUrl = `${frontendUrl}/pay/${slug}?intasend_complete=true`;
 
             // Map payment method to IntaSend method identifier
             let intasendMethod = null;

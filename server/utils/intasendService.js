@@ -16,6 +16,26 @@ const getClient = () => {
 };
 
 /**
+ * Get a valid HTTPS URL for IntaSend callbacks
+ * IntaSend requires HTTPS URLs, so we ensure we always return a valid URL
+ */
+const getValidHostUrl = () => {
+    const baseUrl = process.env.BASE_URL || '';
+    const frontendUrl = process.env.FRONTEND_URL || '';
+    
+    // Prefer HTTPS URLs
+    if (frontendUrl && frontendUrl.startsWith('https://')) {
+        return frontendUrl;
+    }
+    if (baseUrl && baseUrl.startsWith('https://')) {
+        return baseUrl;
+    }
+    
+    // Fallback to a valid HTTPS URL
+    return 'https://ripplify.io';
+};
+
+/**
  * Trigger M-Pesa STK Push directly to user's phone
  * Kenya-focused — phone must be in 254XXXXXXXXX format
  */
@@ -24,11 +44,14 @@ const mpesaStkPush = async ({ phone, email, amount, firstName, lastName, apiRef,
         const intasend = getClient();
         const collection = intasend.collection();
 
+        // Ensure host is a valid HTTPS URL
+        const validHost = (host && host.startsWith('https://')) ? host : getValidHostUrl();
+
         const response = await collection.mpesaStkPush({
             first_name: firstName || 'Customer',
             last_name: lastName || '',
             email: email || 'customer@ripplify.io',
-            host: host || process.env.BASE_URL || 'https://ripplify.io',
+            host: validHost,
             amount: parseFloat(amount),
             phone_number: phone,
             api_ref: apiRef,
@@ -52,15 +75,24 @@ const checkoutCharge = async ({ email, firstName, lastName, phone, amount, curre
         const intasend = getClient();
         const collection = intasend.collection();
 
+        // Ensure host is a valid HTTPS URL
+        const validHost = (host && host.startsWith('https://')) ? host : getValidHostUrl();
+
+        // Ensure redirect_url is a valid HTTPS URL
+        let validRedirectUrl = redirectUrl;
+        if (!validRedirectUrl || !validRedirectUrl.startsWith('https://')) {
+            validRedirectUrl = `${getValidHostUrl()}/pay/callback`;
+        }
+
         const payload = {
             first_name: firstName || 'Customer',
             last_name: lastName || '',
             email: email || 'customer@ripplify.io',
-            host: host || process.env.BASE_URL || 'https://ripplify.io',
+            host: validHost,
             amount: parseFloat(amount),
             currency: currency || 'KES',
             api_ref: apiRef,
-            redirect_url: redirectUrl,
+            redirect_url: validRedirectUrl,
         };
 
         // If a specific method is requested, add it
