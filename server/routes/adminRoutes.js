@@ -15,10 +15,11 @@ router.get('/companies', protect, admin, adminController.getCompanyStats);
 router.get('/payouts', protect, admin, adminController.getAllPayouts);
 router.put('/payouts/:id', protect, admin, adminController.updatePayoutStatus);
 
-
 // User Management
 router.get('/users', protect, admin, adminController.getAllUsers);
 router.post('/users', protect, admin, adminController.createUser);
+router.get('/users/:id', protect, admin, adminController.getUserDetails);
+router.patch('/users/:id', protect, admin, adminController.updateUser);
 router.delete('/users/:id', protect, admin, adminController.deleteUser);
 router.patch('/users/:id/status', protect, admin, adminController.updatePlatformStatus);
 
@@ -43,5 +44,12 @@ router.get('/referrals', protect, admin, adminController.getReferralCodes);
 router.post('/referrals', protect, admin, adminController.createReferralCode);
 router.delete('/referrals/:id', protect, admin, adminController.deleteReferralCode);
 router.patch('/referrals/:id/status', protect, admin, adminController.toggleReferralCodeStatus);
+
+// Feature Flags Management
+router.get('/feature-flags', protect, admin, adminController.getFeatureFlags);
+router.post('/feature-flags', protect, admin, adminController.createFeatureFlag);
+router.put('/feature-flags/:id', protect, admin, adminController.updateFeatureFlag);
+router.patch('/feature-flags/:id/toggle', protect, admin, adminController.toggleFeatureFlag);
+router.delete('/feature-flags/:id', protect, admin, adminController.deleteFeatureFlag);
 
 export default router;

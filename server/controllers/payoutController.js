@@ -5,18 +5,48 @@ import Notification from '../models/Notification.js';
 import { getDb } from '../config/db.js';
 import intasendService from '../utils/intasendService.js';
 import { getPlatformRevenue } from './adminController.js';
+import smsService from '../services/smsService.js';
 
 
 export const requestPayout = async (req, res) => {
     try {
-        const { amount } = req.body;
+        const { amount, payoutMethodId } = req.body;
         const userId = req.user.id;
+        const db = getDb();
 
         const user = await User.findById(userId);
         if (!user) return res.status(404).json({ message: "User not found" });
 
-        if (!user.payoutMethod || !user.payoutDetails) {
-            return res.status(400).json({ message: "Please set your payout method and details in Settings first." });
+        // Resolve which payout method to use
+        let payoutMethod = null;
+        let payoutDetails = '';
+
+        if (payoutMethodId) {
+            // Use a specific saved payout method
+            payoutMethod = await db.get(
+                `SELECT * FROM user_payout_methods WHERE id = ? AND userId = ? AND isActive = 1`,
+                payoutMethodId, userId
+            );
+            if (!payoutMethod) {
+                return res.status(400).json({ message: "Selected payout method not found. Please set it up in Settings > Payout Options.", redirectTo: '/settings' });
+            }
+        } else {
+            // Fall back to user's default payout method
+            payoutMethod = await db.get(
+                `SELECT * FROM user_payout_methods WHERE userId = ? AND isDefault = 1 AND isActive = 1`,
+                userId
+            );
+            if (!payoutMethod) {
+                // Last resort: use legacy user fields
+                if (!user.payoutMethod || !user.payoutDetails) {
+                    return res.status(400).json({ message: "No payout method configured. Please add one in Settings > Payout Options.", redirectTo: '/settings' });
+                }
+                payoutMethod = { method: user.payoutMethod, details: user.payoutDetails, label: user.payoutMethod === 'mpesa' ? 'M-Pesa' : 'Bank' };
+            }
+        }
+
+        if (!['mpesa', 'bank'].includes(payoutMethod.method)) {
+            return res.status(400).json({ message: "Only M-Pesa and Bank withdrawals are supported." });
         }
 
         const transactionLimit = user.transactionLimit || 5000;
@@ -42,37 +72,37 @@ export const requestPayout = async (req, res) => {
             const payouts = await Payout.findAllByUserId(userId);
             const withdrawn = payouts
                 .filter(p => ['Processing', 'Completed'].includes(p.status))
-                .reduce((acc, p) => acc + p.amount, 0);
+                .reduce((acc, p) => acc + p.amount + (p.fee || 0), 0);
 
-            available = totalEarned - withdrawn;
+            const transfers = await db.get(
+                `SELECT SUM(amount + fee) as total FROM transfers WHERE senderId = ? AND status IN ('Processing', 'Completed')`,
+                userId
+            );
+            const transferSpent = transfers?.total || 0;
+
+            available = totalEarned - withdrawn - transferSpent;
         }
 
         if (amount > available) {
-            return res.status(400).json({ message: `Insufficient balance. Available: ${user.currency || 'KES'} ${available.toLocaleString()}` });
+            return res.status(400).json({ message: `Insufficient balance. Available: KES ${available.toLocaleString()}` });
         }
 
-
-        // Ensure we support M-Pesa and Bank via IntaSend auto API
-        if (!['mpesa', 'bank'].includes(user.payoutMethod)) {
-            return res.status(400).json({ message: "Currently, only M-Pesa and Bank Transfers are supported." });
-        }
-
+        // Process payout via IntaSend
         let intasendResponse = null;
-        let detailsDisplay = user.payoutDetails;
+        let detailsDisplay = payoutMethod.details;
 
-        if (user.payoutMethod === 'mpesa') {
-            let phone = user.payoutDetails.replace(/\D/g, '');
+        const platformFee = amount * 0.01;
+        const netAmount = amount - platformFee;
+
+        if (netAmount <= 0) {
+            return res.status(400).json({ message: "Payout amount too small after fees." });
+        }
+
+        if (payoutMethod.method === 'mpesa') {
+            let phone = payoutMethod.details.replace(/\D/g, '');
             if (phone.startsWith('0') && phone.length === 10) phone = '254' + phone.slice(1);
             else if (phone.length === 9) phone = '254' + phone;
             detailsDisplay = phone;
-
-            // Ripplify Profit Margin
-            const totalFee = amount * 0.01; 
-            const netAmount = amount - totalFee;
-
-            if (netAmount <= 0) {
-                return res.status(400).json({ message: "Payout amount too small after fees." });
-            }
 
             try {
                 intasendResponse = await intasendService.mpesaB2c({
@@ -82,29 +112,21 @@ export const requestPayout = async (req, res) => {
                     narrative: 'Ripplify Payout'
                 });
             } catch (apiError) {
-                return res.status(500).json({ message: `IntaSend Payout Error: ${apiError.message}` });
+                return res.status(500).json({ message: `IntaSend M-Pesa Payout Error: ${apiError.message}` });
             }
-        } else if (user.payoutMethod === 'bank') {
+        } else if (payoutMethod.method === 'bank') {
             let bankData;
             try {
-                bankData = JSON.parse(user.payoutDetails);
+                bankData = JSON.parse(payoutMethod.details);
             } catch (e) {
-                return res.status(400).json({ message: "Invalid bank details format. Please re-save in Settings." });
+                return res.status(400).json({ message: "Invalid bank details. Please update in Settings > Payout Options.", redirectTo: '/settings' });
             }
 
             if (!bankData.account || !bankData.bankCode) {
-                return res.status(400).json({ message: "Bank Account and Bank Code are required." });
+                return res.status(400).json({ message: "Bank Account and Bank Code are required. Please update in Settings.", redirectTo: '/settings' });
             }
-            
+
             detailsDisplay = `${bankData.bankCode} - ${bankData.account}`;
-
-            // Ripplify Profit Margin
-            const totalFee = amount * 0.01; 
-            const netAmount = amount - totalFee;
-
-            if (netAmount <= 0) {
-                return res.status(400).json({ message: "Payout amount too small after fees." });
-            }
 
             try {
                 intasendResponse = await intasendService.bankPayout({
@@ -119,26 +141,28 @@ export const requestPayout = async (req, res) => {
             }
         }
 
-        const platformFee = amount * 0.01;
-        const netAmountFinal = amount - platformFee;
-
         const newPayout = await Payout.create({
             userId,
-            amount: amount, // Gross amount
+            amount: amount,
             fee: platformFee,
-            currency: user.currency || 'KES',
-            method: user.payoutMethod,
+            currency: 'KES',
+            method: payoutMethod.method,
             details: detailsDisplay,
             status: 'Processing'
         });
 
-        // Notifications
         await Notification.create({
-            userId: null, // Admin
+            userId: null,
             title: "Payout Initiated",
-            message: `Payout of ${netAmountFinal} initiated for ${user.email}.`,
+            message: `Payout of KES ${netAmount.toLocaleString()} (${payoutMethod.method}) initiated for ${user.email}.`,
             type: 'info'
         });
+
+        try {
+            if (user.phone) {
+                await smsService.sendPayoutSMS(user.phone, newPayout);
+            }
+        } catch (e) { console.error('Payout SMS error:', e.message); }
 
         res.status(201).json(newPayout);
     } catch (error) {

@@ -1,23 +1,15 @@
 import AdminLayout from "@/components/admin/AdminLayout";
-import { TrendingUp, Users, Building2, CreditCard, ArrowUpRight, ArrowDownRight, MoreVertical, ShieldCheck, Search, Filter } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, AreaChart, Area, Tooltip } from "recharts";
-import { useToast } from "@/hooks/use-toast";
+import { TrendingUp, Users, Building2, CreditCard, ArrowUpRight, ArrowDownRight, ShieldCheck, Link2, AlertTriangle, DollarSign } from "lucide-react";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { fetchWithAuth } from "@/lib/api";
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import { useAppContext } from "@/contexts/AppContext";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
-
-const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-const recentActivities = [
-  { company: "Global Tech Solutions", action: "New Registration", date: "2 mins ago", status: "Active" },
-  { company: "Global Traders", action: "API Key Generated", date: "15 mins ago", status: "Active" },
-  { company: "Aero Logistics", action: "Suspended", date: "1 hour ago", status: "Suspended" },
-];
 
 const AdminDashboard = () => {
   const { toast } = useToast();
@@ -26,15 +18,6 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(false);
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
-
-  const chartData = stats?.monthlyRevenue?.map((item: any) => {
-    const [year, month] = item.month.split('-');
-    const monthIndex = parseInt(month, 10) - 1;
-    return {
-      name: monthNames[monthIndex] || item.month,
-      revenue: item.revenue
-    };
-  }) || [];
 
   const loadStats = async () => {
     try {
@@ -49,23 +32,31 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     loadStats();
-    const interval = setInterval(loadStats, 30000); // Polling every 30s
+    const interval = setInterval(loadStats, 30000);
     return () => clearInterval(interval);
   }, []);
 
-  const platformStats = [
-    { title: "Platform Revenue", value: stats ? `KES ${Number(stats.revenue).toLocaleString()}` : "...", change: "+12.5%", positive: true, icon: TrendingUp, color: "bg-emerald-50 text-emerald-600" },
-    { title: "Payout Earnings", value: stats ? `KES ${Number(stats.payoutRevenue).toLocaleString()}` : "...", change: "+8.2%", positive: true, icon: CreditCard, color: "bg-blue-50 text-blue-600" },
-    { title: "Active Sellers", value: stats ? stats.sellers : "...", change: "+8.2%", positive: true, icon: Users, color: "bg-indigo-50 text-indigo-600" },
-    { title: "Escrow Transactions", value: stats ? stats.transactions : "...", change: "-2.4%", positive: false, icon: ShieldCheck, color: "bg-orange-50 text-orange-600" },
+  const chartData = stats?.monthlyRevenue?.map((item: any) => {
+    const [year, month] = item.month.split('-');
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const monthIndex = parseInt(month, 10) - 1;
+    return { name: monthNames[monthIndex] || item.month, revenue: item.revenue };
+  }) || [];
+
+  const statCards = [
+    { title: "Total Revenue", value: stats ? `KES ${Number(stats.revenue || 0).toLocaleString()}` : "...", change: "+12.5%", positive: true, icon: DollarSign, color: "bg-emerald-50 text-emerald-600" },
+    { title: "Active Sellers", value: stats ? stats.sellers || 0 : "...", change: "+8.2%", positive: true, icon: Users, color: "bg-blue-50 text-blue-600" },
+    { title: "Payment Links", value: stats ? stats.links || 0 : "...", change: "+4.1%", positive: true, icon: Link2, color: "bg-indigo-50 text-indigo-600" },
+    { title: "Transactions", value: stats ? stats.transactions || 0 : "...", change: "-2.4%", positive: false, icon: CreditCard, color: "bg-orange-50 text-orange-600" },
   ];
 
   return (
     <AdminLayout>
-      <div className="mb-8 flex items-center justify-between">
+      {/* Header */}
+      <div className="mb-6 flex items-center justify-between">
         <div>
-            <h1 className="text-2xl font-bold text-slate-900">Platform Overview</h1>
-            <p className="text-slate-500">Monitor and manage Ripplify global operations.</p>
+          <h1 className="text-xl font-bold text-slate-900">Platform Overview</h1>
+          <p className="text-sm text-slate-500">Monitor Ripplify operations in real-time</p>
         </div>
         <div className="flex items-center gap-3">
             <button 
@@ -83,82 +74,77 @@ const AdminDashboard = () => {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {platformStats.map((stat) => (
-          <div key={stat.title} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <div className={cn("p-3 rounded-2xl", stat.color)}>
-                <stat.icon className="w-6 h-6" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {statCards.map((stat) => (
+          <div key={stat.title} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <div className={cn("p-2 rounded-xl", stat.color)}>
+                <stat.icon className="w-5 h-5" />
               </div>
               <div className={cn(
-                "flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full",
+                "flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full",
                 stat.positive ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"
               )}>
                 {stat.positive ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
                 {stat.change}
               </div>
             </div>
-            <p className="text-sm font-medium text-slate-500 mb-1">{stat.title}</p>
-            <h3 className="text-2xl font-bold text-slate-900">{stat.value}</h3>
+            <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">{stat.title}</p>
+            <h3 className="text-lg font-bold text-slate-900 mt-0.5">{stat.value}</h3>
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+      {/* Charts & Lists */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         {/* Revenue Chart */}
-        <div className="lg:col-span-2 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-          <div className="flex items-center justify-between mb-8">
-            <h3 className="font-bold text-slate-900">Revenue Growth (Annual)</h3>
-            <button className="text-sm font-bold text-[#025864] hover:underline">Download Report</button>
+        <div className="lg:col-span-2 bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-bold text-slate-900 text-sm">Revenue Trend</h3>
           </div>
-          <div className="h-[300px]">
+          <div className="h-[250px]">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData}>
                 <defs>
-                  <linearGradient id="adminRevenue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#025864" stopOpacity={0.1} />
+                  <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#025864" stopOpacity={0.15} />
                     <stop offset="95%" stopColor="#025864" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#64748b" }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#64748b" }} tickFormatter={(v) => `KES ${(v / 1000).toFixed(0)}k`} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#94a3b8" }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#94a3b8" }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
                 <Tooltip />
-                <Area type="monotone" dataKey="revenue" stroke="#025864" strokeWidth={3} fill="url(#adminRevenue)" />
+                <Area type="monotone" dataKey="revenue" stroke="#025864" strokeWidth={2} fill="url(#revenueGrad)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Company Stats */}
-        <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="font-bold text-slate-900">Company Revenue</h3>
+        {/* Top Companies */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-bold text-slate-900 text-sm">Top Companies</h3>
+            <Link to="/admin/companies" className="text-[10px] font-bold text-[#025864] hover:underline">View All</Link>
           </div>
-          <div className="space-y-6 max-h-[350px] overflow-y-auto pr-2">
+          <div className="space-y-3 max-h-[260px] overflow-y-auto">
             {!stats?.companyStats || stats.companyStats.length === 0 ? (
-                <div className="py-10 text-center text-sm text-slate-500">No company data yet.</div>
+              <div className="py-8 text-center text-xs text-slate-400">No data yet</div>
             ) : (
-                stats.companyStats.map((company: any, i: number) => (
-                    <div key={i} className="flex gap-4 items-center border-b border-slate-50 pb-4 last:border-0 last:pb-0">
-                        <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center shrink-0 font-bold text-[#025864]">
-                            {company.businessName?.charAt(0) || "C"}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-slate-900 truncate">{company.businessName || "Unknown"}</p>
-                            <p className="text-[10px] text-slate-500">{company.txCount} transactions</p>
-                        </div>
-                        <div className="text-right shrink-0">
-                            <p className="text-xs font-bold text-slate-900">KES {Number(company.totalVolume).toLocaleString()}</p>
-                            <p className="text-[10px] text-emerald-600 font-medium">Earned: KES {Number(company.totalFees).toLocaleString()}</p>
-                        </div>
-                    </div>
-                ))
+              stats.companyStats.slice(0, 6).map((company: any, i: number) => (
+                <div key={i} className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-xs font-bold text-[#025864]">
+                    {company.businessName?.charAt(0) || "?"}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-900 truncate">{company.businessName || "Unknown"}</p>
+                    <p className="text-[10px] text-slate-400">{company.txCount} txns</p>
+                  </div>
+                  <p className="text-xs font-bold text-slate-900">KES {Number(company.totalVolume || 0).toLocaleString()}</p>
+                </div>
+              ))
             )}
           </div>
-          <Link to="/admin/companies" className="block w-full mt-6 py-3 bg-slate-50 text-slate-600 font-bold text-sm rounded-xl hover:bg-slate-100 transition-colors text-center">
-            View All Companies
-          </Link>
         </div>
       </div>
 

@@ -16,6 +16,26 @@ const getClient = () => {
 };
 
 /**
+ * Get a valid HTTPS URL for IntaSend callbacks
+ * IntaSend requires HTTPS URLs, so we ensure we always return a valid URL
+ */
+const getValidHostUrl = () => {
+    const baseUrl = process.env.BASE_URL || '';
+    const frontendUrl = process.env.FRONTEND_URL || '';
+    
+    // Prefer HTTPS URLs
+    if (frontendUrl && frontendUrl.startsWith('https://')) {
+        return frontendUrl;
+    }
+    if (baseUrl && baseUrl.startsWith('https://')) {
+        return baseUrl;
+    }
+    
+    // Fallback to a valid HTTPS URL
+    return 'https://ripplify.io';
+};
+
+/**
  * Trigger M-Pesa STK Push directly to user's phone
  * Kenya-focused — phone must be in 254XXXXXXXXX format
  */
@@ -24,11 +44,14 @@ const mpesaStkPush = async ({ phone, email, amount, firstName, lastName, apiRef,
         const intasend = getClient();
         const collection = intasend.collection();
 
+        // Ensure host is a valid HTTPS URL
+        const validHost = (host && host.startsWith('https://')) ? host : getValidHostUrl();
+
         const response = await collection.mpesaStkPush({
             first_name: firstName || 'Customer',
             last_name: lastName || '',
             email: email || 'customer@ripplify.io',
-            host: host || process.env.BASE_URL || 'https://ripplify.io',
+            host: validHost,
             amount: parseFloat(amount),
             phone_number: phone,
             api_ref: apiRef,
@@ -52,15 +75,24 @@ const checkoutCharge = async ({ email, firstName, lastName, phone, amount, curre
         const intasend = getClient();
         const collection = intasend.collection();
 
+        // Ensure host is a valid HTTPS URL
+        const validHost = (host && host.startsWith('https://')) ? host : getValidHostUrl();
+
+        // Ensure redirect_url is a valid HTTPS URL
+        let validRedirectUrl = redirectUrl;
+        if (!validRedirectUrl || !validRedirectUrl.startsWith('https://')) {
+            validRedirectUrl = `${getValidHostUrl()}/pay/callback`;
+        }
+
         const payload = {
             first_name: firstName || 'Customer',
             last_name: lastName || '',
             email: email || 'customer@ripplify.io',
-            host: host || process.env.BASE_URL || 'https://ripplify.io',
+            host: validHost,
             amount: parseFloat(amount),
             currency: currency || 'KES',
             api_ref: apiRef,
-            redirect_url: redirectUrl,
+            redirect_url: validRedirectUrl,
         };
 
         // If a specific method is requested, add it
@@ -125,7 +157,6 @@ const mpesaB2c = async ({ name, account, amount, narrative }) => {
         console.log('IntaSend B2C Payout Response:', JSON.stringify(response, null, 2));
 
         // Attempting to auto-approve if possible. Some IntaSend setups require 2FA checker.
-        // We catch approve errors silently and return the initial response, as it might just need dashboard approval.
         try {
             await payouts.approve(response, false);
             console.log('IntaSend B2C Payout Auto-Approved successfully.');
@@ -141,9 +172,103 @@ const mpesaB2c = async ({ name, account, amount, narrative }) => {
     }
 };
 
+/**
+ * Trigger Bank Transfer Payout via PesaLink
+ */
+const bankPayout = async ({ name, account, bankCode, amount, narrative }) => {
+    try {
+        const intasend = getClient();
+        const payouts = intasend.payouts();
+
+        const response = await payouts.bank({
+            currency: 'KES',
+            transactions: [
+                {
+                    name: name || 'Customer',
+                    account: account,
+                    bank_code: bankCode,
+                    amount: parseFloat(amount).toString(),
+                    narrative: narrative || 'Bank Payout from Ripplify'
+                }
+            ]
+        });
+
+        console.log('IntaSend Bank Payout Response:', JSON.stringify(response, null, 2));
+
+        // Auto-approve if possible
+        try {
+            await payouts.approve(response, false);
+            console.log('IntaSend Bank Payout Auto-Approved successfully.');
+        } catch (approveErr) {
+            console.warn('IntaSend Bank Payout Approval requires manual action or failed:', approveErr?.message || approveErr);
+        }
+
+        return response;
+    } catch (error) {
+        console.error('IntaSend Bank Payout Error:', error);
+        const errMsg = error?.message || error?.toString() || 'Bank Payout failed';
+        throw new Error(errMsg);
+    }
+};
+
+/**
+ * Transfer to another IntaSend account (instant, no fees)
+ */
+const intasendTransfer = async ({ name, amount, narrative }) => {
+    try {
+        const intasend = getClient();
+        const payouts = intasend.payouts();
+
+        const response = await payouts.intasend({
+            currency: 'KES',
+            transactions: [
+                {
+                    name: name || 'Customer',
+                    amount: parseFloat(amount).toString(),
+                    narrative: narrative || 'Ripplify Transfer'
+                }
+            ]
+        });
+
+        console.log('IntaSend Internal Transfer Response:', JSON.stringify(response, null, 2));
+
+        try {
+            await payouts.approve(response, false);
+        } catch (approveErr) {
+            console.warn('IntaSend Transfer Approval requires manual action:', approveErr?.message || approveErr);
+        }
+
+        return response;
+    } catch (error) {
+        console.error('IntaSend Internal Transfer Error:', error);
+        const errMsg = error?.message || error?.toString() || 'IntaSend transfer failed';
+        throw new Error(errMsg);
+    }
+};
+
+/**
+ * Check payout status by tracking ID
+ */
+const checkPayoutStatus = async (trackingId) => {
+    try {
+        const intasend = getClient();
+        const payouts = intasend.payouts();
+
+        const response = await payouts.status({ tracking_id: trackingId });
+        console.log('IntaSend Payout Status Response:', JSON.stringify(response, null, 2));
+        return response;
+    } catch (error) {
+        console.error('IntaSend Payout Status Check Error:', error);
+        throw new Error(error?.message || 'Payout status check failed');
+    }
+};
+
 export default {
     mpesaStkPush,
     checkoutCharge,
     checkPaymentStatus,
     mpesaB2c,
+    bankPayout,
+    intasendTransfer,
+    checkPayoutStatus,
 };

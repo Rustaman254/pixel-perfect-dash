@@ -2,6 +2,7 @@ import express from "express";
 import rateLimit from "express-rate-limit";
 import { registerUser, loginUser, getMe, sendOTP, verifyOTP, getMyApiKeys, updateProfile, createMyApiKey, deleteMyApiKey, forgotPassword, resetPassword } from "../controllers/authController.js";
 import { protect } from "../middlewares/authMiddleware.js";
+import { getEnabledFeatures } from "../controllers/adminController.js";
 
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
@@ -22,5 +23,6 @@ router.post("/send-otp", authLimiter, sendOTP);
 router.post("/verify-otp", authLimiter, verifyOTP);
 router.post("/forgot-password", authLimiter, forgotPassword);
 router.post("/reset-password", authLimiter, resetPassword);
+router.get("/features", protect, getEnabledFeatures);
 
 export default router;

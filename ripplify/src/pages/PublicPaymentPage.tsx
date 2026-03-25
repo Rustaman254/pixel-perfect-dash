@@ -40,9 +40,20 @@ const PublicPaymentPage = () => {
         const searchParams = new URLSearchParams(window.location.search);
         const orderTrackingId = searchParams.get('OrderTrackingId');
         const merchantReference = searchParams.get('OrderMerchantReference');
+        const intasendComplete = searchParams.get('intasend_complete');
+        const intasendRef = searchParams.get('ref');
 
+        // Handle PesaPal or IntaSend callback
         if (orderTrackingId && merchantReference) {
             setVerifyingPayment(true);
+        } else if (intasendComplete === 'true') {
+            // IntaSend callback - verify payment status
+            setVerifyingPayment(true);
+            // The webhook or status check will confirm the payment
+            // We'll stop verifying after a timeout
+            setTimeout(() => {
+                setVerifyingPayment(false);
+            }, 5000);
         }
 
         // Auto-fill M-Pesa phone if available

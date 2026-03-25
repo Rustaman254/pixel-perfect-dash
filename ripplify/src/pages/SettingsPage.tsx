@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
-import { User, Shield, Bell, Key, CreditCard, Save, Eye, EyeOff, Copy, Plus } from "lucide-react";
+import { User, Shield, Bell, Key, CreditCard, Save, Eye, EyeOff, Copy, Plus, Trash2, Smartphone, Building, Star } from "lucide-react";
 import { useAppContext } from "@/contexts/AppContext";
 import { fetchWithAuth } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 
 const tabs = [
     { id: "profile", label: "Profile", icon: User },
+    { id: "payouts", label: "Payout Options", icon: CreditCard },
     { id: "security", label: "Security", icon: Shield },
     { id: "notifications", label: "Notifications", icon: Bell },
     { id: "api", label: "API Keys", icon: Key },
@@ -28,6 +29,19 @@ const SettingsPage = () => {
     const [apiKeys, setApiKeys] = useState<any[]>([]);
     const [fetchingKeys, setFetchingKeys] = useState(false);
     const [notifs, setNotifs] = useState({ email: true, push: true, sms: false, marketing: false, weeklyReport: true, payoutAlerts: true });
+
+    // Payout methods state
+    const [payoutMethods, setPayoutMethods] = useState<any[]>([]);
+    const [loadingPayouts, setLoadingPayouts] = useState(false);
+    const [newPayoutMethod, setNewPayoutMethod] = useState({
+        method: "mpesa",
+        label: "",
+        details: "",
+        bankAccount: "",
+        bankCode: "",
+        isDefault: false
+    });
+    const [showAddPayout, setShowAddPayout] = useState(false);
 
     const [formData, setFormData] = useState({
         businessName: "",
@@ -78,9 +92,24 @@ const SettingsPage = () => {
         }
     };
 
+    const fetchPayoutMethods = async () => {
+        try {
+            setLoadingPayouts(true);
+            const data = await fetchWithAuth('/user-payout-methods');
+            setPayoutMethods(data);
+        } catch (err: any) {
+            console.error("Failed to fetch payout methods:", err);
+        } finally {
+            setLoadingPayouts(false);
+        }
+    };
+
     useEffect(() => {
         if (activeTab === "api") {
             fetchKeys();
+        }
+        if (activeTab === "payouts") {
+            fetchPayoutMethods();
         }
     }, [activeTab]);
 
@@ -119,6 +148,62 @@ const SettingsPage = () => {
             });
             fetchKeys();
             toast({ title: "Success", description: "API Key created successfully!" });
+        } catch (err: any) {
+            toast({ title: "Error", description: err.message, variant: "destructive" });
+        }
+    };
+
+    const handleAddPayoutMethod = async () => {
+        const details = newPayoutMethod.method === 'mpesa'
+            ? newPayoutMethod.details
+            : JSON.stringify({ account: newPayoutMethod.bankAccount, bankCode: newPayoutMethod.bankCode });
+
+        if (!details) {
+            toast({ title: "Error", description: "Please enter the payout details", variant: "destructive" });
+            return;
+        }
+
+        try {
+            await fetchWithAuth('/user-payout-methods', {
+                method: 'POST',
+                body: JSON.stringify({
+                    method: newPayoutMethod.method,
+                    label: newPayoutMethod.label || (newPayoutMethod.method === 'mpesa' ? 'M-Pesa' : 'Bank Account'),
+                    details,
+                    isDefault: newPayoutMethod.isDefault
+                })
+            });
+            toast({ title: "Success", description: "Payout method added!" });
+            setShowAddPayout(false);
+            setNewPayoutMethod({ method: "mpesa", label: "", details: "", bankAccount: "", bankCode: "", isDefault: false });
+            fetchPayoutMethods();
+            refreshData();
+        } catch (err: any) {
+            toast({ title: "Error", description: err.message, variant: "destructive" });
+        }
+    };
+
+    const handleSetDefaultPayout = async (id: number) => {
+        try {
+            await fetchWithAuth(`/user-payout-methods/${id}`, {
+                method: 'PUT',
+                body: JSON.stringify({ isDefault: true })
+            });
+            toast({ title: "Default Updated", description: "Default payout method changed." });
+            fetchPayoutMethods();
+            refreshData();
+        } catch (err: any) {
+            toast({ title: "Error", description: err.message, variant: "destructive" });
+        }
+    };
+
+    const handleDeletePayoutMethod = async (id: number) => {
+        if (!confirm("Remove this payout method?")) return;
+        try {
+            await fetchWithAuth(`/user-payout-methods/${id}`, { method: 'DELETE' });
+            toast({ title: "Removed", description: "Payout method removed." });
+            fetchPayoutMethods();
+            refreshData();
         } catch (err: any) {
             toast({ title: "Error", description: err.message, variant: "destructive" });
         }
@@ -273,6 +358,169 @@ const SettingsPage = () => {
                             <Save className="w-4 h-4" />
                             {loading ? "Saving..." : "Save Changes"}
                         </button>
+                    </div>
+                </div>
+            )}
+
+            {activeTab === "payouts" && (
+                <div className="space-y-4">
+                    <div className="bg-card rounded-2xl p-5 border border-border">
+                        <div className="flex items-center justify-between mb-4">
+                            <div>
+                                <h3 className="font-semibold text-foreground">Payout Methods</h3>
+                                <p className="text-sm text-muted-foreground">Manage where you receive your money.</p>
+                            </div>
+                            <button
+                                onClick={() => setShowAddPayout(!showAddPayout)}
+                                className="flex items-center gap-2 text-sm font-medium text-white px-4 py-2 rounded-lg"
+                                style={{ backgroundColor: '#025864' }}
+                            >
+                                <Plus className="w-4 h-4" /> Add Method
+                            </button>
+                        </div>
+
+                        {showAddPayout && (
+                            <div className="p-4 mb-4 border-2 border-dashed border-slate-200 rounded-xl space-y-3">
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button
+                                        onClick={() => setNewPayoutMethod({ ...newPayoutMethod, method: "mpesa" })}
+                                        className={cn(
+                                            "p-3 rounded-xl border-2 text-center transition-all",
+                                            newPayoutMethod.method === "mpesa" ? "border-[#025864] bg-[#025864]/5" : "border-slate-200"
+                                        )}
+                                    >
+                                        <Smartphone className="w-5 h-5 mx-auto mb-1 text-green-600" />
+                                        <p className="text-xs font-bold">M-Pesa</p>
+                                    </button>
+                                    <button
+                                        onClick={() => setNewPayoutMethod({ ...newPayoutMethod, method: "bank" })}
+                                        className={cn(
+                                            "p-3 rounded-xl border-2 text-center transition-all",
+                                            newPayoutMethod.method === "bank" ? "border-[#025864] bg-[#025864]/5" : "border-slate-200"
+                                        )}
+                                    >
+                                        <Building className="w-5 h-5 mx-auto mb-1 text-blue-600" />
+                                        <p className="text-xs font-bold">Bank Transfer</p>
+                                    </button>
+                                </div>
+                                <input
+                                    type="text"
+                                    placeholder="Label (e.g., Personal M-Pesa)"
+                                    value={newPayoutMethod.label}
+                                    onChange={e => setNewPayoutMethod({ ...newPayoutMethod, label: e.target.value })}
+                                    className={inputClass}
+                                />
+                                {newPayoutMethod.method === 'mpesa' ? (
+                                    <input
+                                        type="text"
+                                        placeholder="M-Pesa Number (07xxxxxxxx)"
+                                        value={newPayoutMethod.details}
+                                        onChange={e => setNewPayoutMethod({ ...newPayoutMethod, details: e.target.value })}
+                                        className={inputClass}
+                                    />
+                                ) : (
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <input
+                                            type="text"
+                                            placeholder="Bank Account Number"
+                                            value={newPayoutMethod.bankAccount}
+                                            onChange={e => setNewPayoutMethod({ ...newPayoutMethod, bankAccount: e.target.value })}
+                                            className={inputClass}
+                                        />
+                                        <select
+                                            value={newPayoutMethod.bankCode}
+                                            onChange={e => setNewPayoutMethod({ ...newPayoutMethod, bankCode: e.target.value })}
+                                            className={inputClass}
+                                        >
+                                            <option value="">Select Bank</option>
+                                            <option value="01">KCB</option>
+                                            <option value="11">Co-operative Bank</option>
+                                            <option value="63">Diamond Trust Bank</option>
+                                            <option value="03">ABSA</option>
+                                            <option value="07">Standard Chartered</option>
+                                            <option value="68">Equity Bank</option>
+                                            <option value="60">Family Bank</option>
+                                            <option value="12">I&M Bank</option>
+                                            <option value="31">Stanbic Bank</option>
+                                            <option value="55">Guardian Bank</option>
+                                        </select>
+                                    </div>
+                                )}
+                                <label className="flex items-center gap-2 text-sm">
+                                    <input
+                                        type="checkbox"
+                                        checked={newPayoutMethod.isDefault}
+                                        onChange={e => setNewPayoutMethod({ ...newPayoutMethod, isDefault: e.target.checked })}
+                                        className="rounded"
+                                    />
+                                    Set as default payout method
+                                </label>
+                                <div className="flex gap-2">
+                                    <button onClick={() => setShowAddPayout(false)} className="flex-1 py-2 rounded-lg border text-sm font-medium text-slate-500 hover:bg-slate-50">Cancel</button>
+                                    <button onClick={handleAddPayoutMethod} className="flex-1 py-2 rounded-lg text-sm font-medium text-white" style={{ backgroundColor: '#025864' }}>Add Method</button>
+                                </div>
+                            </div>
+                        )}
+
+                        {loadingPayouts ? (
+                            <div className="py-8 text-center text-sm text-muted-foreground">Loading payout methods...</div>
+                        ) : payoutMethods.length === 0 ? (
+                            <div className="py-8 text-center text-sm text-muted-foreground border border-dashed border-border rounded-xl">
+                                No payout methods added yet. Add one to receive payouts.
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {payoutMethods.map((pm: any) => (
+                                    <div key={pm.id} className={cn(
+                                        "flex items-center justify-between p-4 rounded-xl border",
+                                        pm.isDefault ? "border-[#025864] bg-[#025864]/5" : "border-border"
+                                    )}>
+                                        <div className="flex items-center gap-3">
+                                            <div className={cn(
+                                                "w-10 h-10 rounded-xl flex items-center justify-center",
+                                                pm.method === 'mpesa' ? "bg-green-50 text-green-600" : "bg-blue-50 text-blue-600"
+                                            )}>
+                                                {pm.method === 'mpesa' ? <Smartphone className="w-5 h-5" /> : <Building className="w-5 h-5" />}
+                                            </div>
+                                            <div>
+                                                <div className="flex items-center gap-2">
+                                                    <p className="text-sm font-medium text-foreground">{pm.label || (pm.method === 'mpesa' ? 'M-Pesa' : 'Bank')}</p>
+                                                    {pm.isDefault && (
+                                                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#025864] text-white font-bold">Default</span>
+                                                    )}
+                                                </div>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {pm.method === 'mpesa' ? pm.details : (() => {
+                                                        try {
+                                                            const d = JSON.parse(pm.details);
+                                                            return `Account: ${d.account} · Bank: ${d.bankCode}`;
+                                                        } catch { return pm.details; }
+                                                    })()}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            {!pm.isDefault && (
+                                                <button
+                                                    onClick={() => handleSetDefaultPayout(pm.id)}
+                                                    className="text-xs text-[#025864] hover:underline font-medium"
+                                                    title="Set as default"
+                                                >
+                                                    <Star className="w-4 h-4" />
+                                                </button>
+                                            )}
+                                            <button
+                                                onClick={() => handleDeletePayoutMethod(pm.id)}
+                                                className="text-xs text-red-500 hover:text-red-700"
+                                                title="Remove"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

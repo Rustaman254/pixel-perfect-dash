@@ -21,6 +21,7 @@ import PublicPaymentPage from "./pages/PublicPaymentPage";
 import DeveloperSettings from "./pages/DeveloperSettings";
 import OAuthConsentPage from "./pages/OAuthConsentPage";
 import NotificationsPage from "./pages/NotificationsPage";
+import TransfersPage from "./pages/TransfersPage";
 
 // Auth & Admin
 import Login from "./pages/auth/Login";
@@ -37,6 +38,7 @@ import ManageReferralCodes from "./pages/admin/ManageReferralCodes";
 import ManageApps from "./pages/admin/ManageApps";
 import ManageRoles from "./pages/admin/ManageRoles";
 import AdminPayoutsPage from "./pages/admin/AdminPayoutsPage";
+import ManageFeatureFlags from "./pages/admin/ManageFeatureFlags";
 
 import { AppProvider, useAppContext } from "./contexts/AppContext";
 
@@ -46,6 +48,14 @@ const ProtectedRoute = ({ children, role }: { children: React.ReactNode, role?: 
   const { isAuthenticated, userProfile } = useAppContext();
 
   if (!isAuthenticated || !userProfile) return <Navigate to="/login" replace />;
+
+  // Check if user account is disabled
+  if ((userProfile as any).isDisabled) {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('ripplify_profile');
+    return <Navigate to="/login?error=disabled" replace />;
+  }
+
   if (role && userProfile.role !== role) {
     if (userProfile.role === "admin") return <Navigate to="/admin" replace />;
     return <Navigate to="/" replace />;
@@ -73,6 +83,7 @@ const AppRoutes = () => {
         <Route path="/analytics" element={<ProtectedRoute role="seller"><StatisticsPage /></ProtectedRoute>} />
         <Route path="/statistics" element={<ProtectedRoute role="seller"><StatisticsPage /></ProtectedRoute>} />
         <Route path="/payouts" element={<ProtectedRoute role="seller"><PayoutsPage /></ProtectedRoute>} />
+        <Route path="/transfers" element={<ProtectedRoute role="seller"><TransfersPage /></ProtectedRoute>} />
         <Route path="/wallets" element={<ProtectedRoute role="seller"><WalletsPage /></ProtectedRoute>} />
         <Route path="/wallet" element={<Navigate to="/wallets" replace />} />
         <Route path="/customers" element={<ProtectedRoute role="seller"><CustomersPage /></ProtectedRoute>} />
@@ -85,17 +96,20 @@ const AppRoutes = () => {
 
         {/* Admin Dashboard */}
         <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
+        <Route path="/admin/analytics" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
         <Route path="/admin/users" element={<ProtectedRoute role="admin"><ManageUsers /></ProtectedRoute>} />
         <Route path="/admin/companies" element={<ProtectedRoute role="admin"><ManageCompanies /></ProtectedRoute>} />
         <Route path="/admin/api-keys" element={<ProtectedRoute role="admin"><ManageApiKeys /></ProtectedRoute>} />
         <Route path="/admin/revenue" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
         <Route path="/admin/payouts" element={<ProtectedRoute role="admin"><AdminPayoutsPage /></ProtectedRoute>} />
+        <Route path="/admin/currencies" element={<ProtectedRoute role="admin"><SystemSettings /></ProtectedRoute>} />
         <Route path="/admin/settings" element={<ProtectedRoute role="admin"><SystemSettings /></ProtectedRoute>} />
         <Route path="/admin/support" element={<ProtectedRoute role="admin"><ManageSupport /></ProtectedRoute>} />
         <Route path="/admin/notifications" element={<ProtectedRoute role="admin"><AdminNotificationsPage /></ProtectedRoute>} />
         <Route path="/admin/referrals" element={<ProtectedRoute role="admin"><ManageReferralCodes /></ProtectedRoute>} />
         <Route path="/admin/apps" element={<ProtectedRoute role="admin"><ManageApps /></ProtectedRoute>} />
         <Route path="/admin/roles" element={<ProtectedRoute role="admin"><ManageRoles /></ProtectedRoute>} />
+        <Route path="/admin/features" element={<ProtectedRoute role="admin"><ManageFeatureFlags /></ProtectedRoute>} />
 
         {/* Public Routes */}
         <Route path="/pay/:slug" element={<PublicPaymentPage />} />

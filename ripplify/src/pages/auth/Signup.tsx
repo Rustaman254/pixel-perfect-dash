@@ -29,7 +29,17 @@ const Signup = () => {
     payoutDetails: ""
   });
 
-  const nextStep = () => setStep(s => s + 1);
+  const nextStep = () => {
+    setStep(s => {
+      // When entering step 4 (payout), auto-set M-Pesa number from phone
+      if (s === 3) {
+        if (formData.payoutMethod === "mpesa" && !formData.payoutDetails && formData.phone) {
+          setFormData(prev => ({ ...prev, payoutDetails: prev.phone }));
+        }
+      }
+      return s + 1;
+    });
+  };
   const prevStep = () => setStep(s => s - 1);
 
   const handleSignup = async () => {
@@ -297,7 +307,7 @@ const Signup = () => {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <button
-                  onClick={() => setFormData({ ...formData, payoutMethod: "mpesa" })}
+                  onClick={() => setFormData({ ...formData, payoutMethod: "mpesa", payoutDetails: formData.phone })}
                   className={cn(
                     "p-4 rounded-2xl border-2 transition-all text-left",
                     formData.payoutMethod === "mpesa" ? "border-[#025864] bg-[#025864]/5" : "border-slate-100 bg-slate-50"
@@ -310,7 +320,7 @@ const Signup = () => {
                   <p className="text-[10px] text-slate-500">Mobile Money</p>
                 </button>
                 <button
-                  onClick={() => setFormData({ ...formData, payoutMethod: "bank" })}
+                  onClick={() => setFormData({ ...formData, payoutMethod: "bank", payoutDetails: "" })}
                   className={cn(
                     "p-4 rounded-2xl border-2 transition-all text-left",
                     formData.payoutMethod === "bank" ? "border-[#025864] bg-[#025864]/5" : "border-slate-100 bg-slate-50"
@@ -332,6 +342,11 @@ const Signup = () => {
                   value={formData.payoutDetails}
                   onChange={e => setFormData({ ...formData, payoutDetails: e.target.value })}
                 />
+                {formData.payoutMethod === "mpesa" && formData.phone && formData.payoutDetails === formData.phone && (
+                  <p className="text-[10px] text-slate-400 mt-1.5 ml-1">
+                    Using your phone number as M-Pesa. You can edit this.
+                  </p>
+                )}
               </div>
               <button
                 onClick={handleSignup}

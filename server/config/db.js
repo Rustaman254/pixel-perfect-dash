@@ -230,6 +230,43 @@ const connectDB = async () => {
       )
     `);
 
+    // Create User Payout Methods Table (multiple payout options per user)
+    await dbInstance.exec(`
+      CREATE TABLE IF NOT EXISTS user_payout_methods (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        userId INTEGER NOT NULL,
+        method TEXT NOT NULL,
+        label TEXT DEFAULT '',
+        details TEXT NOT NULL,
+        isDefault BOOLEAN DEFAULT 0,
+        isActive BOOLEAN DEFAULT 1,
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (userId) REFERENCES users (id)
+      )
+    `);
+
+    // Create Transfers Table (user-to-user transfers)
+    await dbInstance.exec(`
+      CREATE TABLE IF NOT EXISTS transfers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        senderId INTEGER NOT NULL,
+        receiverId INTEGER,
+        receiverPhone TEXT,
+        receiverEmail TEXT,
+        amount REAL NOT NULL,
+        fee REAL DEFAULT 0,
+        currency TEXT NOT NULL,
+        method TEXT NOT NULL,
+        status TEXT DEFAULT 'Processing',
+        note TEXT,
+        externalRef TEXT,
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (senderId) REFERENCES users (id),
+        FOREIGN KEY (receiverId) REFERENCES users (id)
+      )
+    `);
+
     // Create System Settings Table
     await dbInstance.exec(`
       CREATE TABLE IF NOT EXISTS system_settings (
@@ -462,6 +499,54 @@ const connectDB = async () => {
         await insertStmt.run(curr.code, curr.name, curr.flag, curr.rate, curr.symbol, curr.enabled);
       }
       await insertStmt.finalize();
+    }
+
+    // Migration: add isDisabled to users if missing
+    try { await dbInstance.exec(`ALTER TABLE users ADD COLUMN isDisabled BOOLEAN DEFAULT 0`); } catch (e) { }
+
+    // Create Feature Flags Table
+    await dbInstance.exec(`
+      CREATE TABLE IF NOT EXISTS feature_flags (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        key TEXT UNIQUE NOT NULL,
+        name TEXT NOT NULL,
+        description TEXT DEFAULT '',
+        category TEXT DEFAULT 'general',
+        isEnabled BOOLEAN DEFAULT 1,
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Seed Default Feature Flags
+    const hasFeatureFlags = await dbInstance.get("SELECT COUNT(*) as count FROM feature_flags");
+    if (hasFeatureFlags.count === 0) {
+      const defaultFeatures = [
+        { key: 'payment_links', name: 'Payment Links', description: 'Create and manage payment links', category: 'payments' },
+        { key: 'transactions', name: 'Transactions', description: 'View and manage transactions', category: 'payments' },
+        { key: 'payouts', name: 'Payouts', description: 'Request and receive payouts', category: 'payments' },
+        { key: 'wallets', name: 'Wallets', description: 'Manage currency wallets', category: 'payments' },
+        { key: 'api_keys', name: 'API Keys', description: 'Generate and manage API keys for integrations', category: 'developer' },
+        { key: 'oauth', name: 'OAuth', description: 'OAuth client and authorization management', category: 'developer' },
+        { key: 'analytics', name: 'Analytics', description: 'View analytics and statistics', category: 'insights' },
+        { key: 'customers', name: 'Customers', description: 'View customer list and data', category: 'insights' },
+        { key: 'orders', name: 'Orders', description: 'Manage orders and fulfillment', category: 'payments' },
+        { key: 'payment_methods', name: 'Payment Methods', description: 'Configure payment methods', category: 'payments' },
+        { key: 'currencies', name: 'Currencies', description: 'Manage currency preferences', category: 'payments' },
+        { key: 'notifications', name: 'Notifications', description: 'Receive and manage notifications', category: 'system' },
+        { key: 'support', name: 'Support', description: 'Submit and track support tickets', category: 'system' },
+        { key: 'referrals', name: 'Referrals', description: 'Use and manage referral codes', category: 'payments' },
+        { key: 'transfers', name: 'Transfers', description: 'Send money to users and M-Pesa', category: 'payments' },
+        { key: 'developer_docs', name: 'Developer Docs', description: 'Access API documentation', category: 'developer' },
+      ];
+
+      for (const f of defaultFeatures) {
+        await dbInstance.run(
+          `INSERT INTO feature_flags (key, name, description, category) VALUES (?, ?, ?, ?)`,
+          [f.key, f.name, f.description, f.category]
+        );
+      }
+      console.log('Default feature flags seeded.');
     }
 
     // Default settings

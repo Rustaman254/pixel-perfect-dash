@@ -70,26 +70,45 @@ const PaymentMethodsPage = () => {
         setIsAddOpen(true);
     };
 
-    const confirmAddMethod = () => {
+    const confirmAddMethod = async () => {
         if (!newMethodName.trim()) return;
         
+        const methodId = newMethodName.toLowerCase().replace(/\s/g, "-");
+        const defaultFee = "2.0%";
+        
+        // Optimistic UI update
         const newMethod: PaymentMethod = {
-            id: newMethodName.toLowerCase().replace(/\s/g, "-"),
+            id: methodId,
             name: newMethodName,
             description: "New payment method added manually",
             icon: HelpCircle,
             enabled: true,
-            fee: "2.0%",
+            fee: defaultFee,
             currencies: ["USD"],
         };
 
         setMethods([...methods, newMethod]);
-        toast({
-            title: "Payment Method Added",
-            description: `${newMethodName} has been added to your payment options.`,
-        });
         setIsAddOpen(false);
         setNewMethodName("");
+
+        try {
+            await fetchWithAuth(`/payment-methods/${methodId}`, {
+                method: 'PUT',
+                body: JSON.stringify({ enabled: true, fee: defaultFee })
+            });
+            toast({
+                title: "Payment Method Added",
+                description: `${newMethodName} has been added to your payment options.`,
+            });
+        } catch (error) {
+            // Revert on error
+            setMethods(prev => prev.filter(m => m.id !== methodId));
+            toast({
+                title: "Error",
+                description: "Failed to add payment method.",
+                variant: "destructive"
+            });
+        }
     };
 
     const toggleMethod = async (id: string) => {

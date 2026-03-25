@@ -9,13 +9,14 @@ import {
     updateTransactionStatus
 } from '../controllers/transactionController.js';
 import { protect } from '../middlewares/authMiddleware.js';
+import { requireFeature } from '../middlewares/featureMiddleware.js';
 
 const router = express.Router();
 
 // Private routes
-router.get('/my', protect, getMyTransactions);
-router.get('/stats', protect, getStats);
-router.put('/:id/status', protect, updateTransactionStatus);
+router.get('/my', protect, requireFeature('transactions'), getMyTransactions);
+router.get('/stats', protect, requireFeature('analytics'), getStats);
+router.put('/:id/status', protect, requireFeature('transactions'), updateTransactionStatus);
 
 // Public tracking route BEFORE the wildcard slug route
 router.get('/public/track/:token', getTransactionByTrackingToken);

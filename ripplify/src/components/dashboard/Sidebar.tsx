@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import {
   LayoutDashboard, Link2, ArrowLeftRight, CreditCard,
   BarChart3, Globe, Wallet, Settings, HelpCircle,
-  ChevronDown, X, Users, LogOut, TerminalSquare, Plus, Bell
+  ChevronDown, X, Users, LogOut, TerminalSquare, Plus, Bell, Send
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NavLink, useNavigate } from "react-router-dom";
@@ -21,6 +21,7 @@ const generalItems = [
 
 const manageItems = [
   { icon: BarChart3, label: "Statistics", to: "/statistics" },
+  { icon: Send, label: "Transfers", to: "/transfers" },
   // { icon: Wallet, label: "Wallets", to: "/wallets" },
   { icon: Wallet, label: "Payouts", to: "/payouts" },
   { icon: Users, label: "Customers", to: "/customers" },

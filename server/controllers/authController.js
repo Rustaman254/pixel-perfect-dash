@@ -49,6 +49,14 @@ export const registerUser = async (req, res) => {
             }
         }
 
+        // Determine payout details - use phone as M-Pesa number if not provided
+        let finalPayoutMethod = payoutMethod || "mpesa";
+        let finalPayoutDetails = payoutDetails || "";
+
+        if (finalPayoutMethod === "mpesa" && !finalPayoutDetails && phone) {
+            finalPayoutDetails = phone;
+        }
+
         // Create user
         const user = await User.create({
             email,
@@ -60,8 +68,8 @@ export const registerUser = async (req, res) => {
             idType: idType || "National ID",
             idNumber: idNumber || "",
             location: location || "",
-            payoutMethod: payoutMethod || "mpesa",
-            payoutDetails: payoutDetails || "",
+            payoutMethod: finalPayoutMethod,
+            payoutDetails: finalPayoutDetails,
             kycStatus,
             kybStatus,
             transactionLimit,
@@ -69,6 +77,17 @@ export const registerUser = async (req, res) => {
         });
 
         if (user) {
+            // Create default payout method in user_payout_methods table
+            try {
+                const db = getDb();
+                await db.run(
+                    `INSERT INTO user_payout_methods (userId, method, label, details, isDefault) VALUES (?, ?, ?, ?, 1)`,
+                    [user.id, finalPayoutMethod, finalPayoutMethod === 'mpesa' ? 'M-Pesa' : 'Bank Account', finalPayoutDetails]
+                );
+            } catch (payoutErr) {
+                console.error('Failed to create default payout method:', payoutErr.message);
+            }
+
             // Send welcome email
             try {
                 await emailService.sendWelcomeEmail(user);
@@ -143,9 +162,19 @@ export const loginUser = async (req, res) => {
     try {
         const { email, password, role } = req.body;
 
-        // Find user
-        const user = await User.findOne({ email, role });
+        // Find user by email first
+        const user = await User.findOne({ email });
         if (!user) {
+            return res.status(400).json({ message: "Invalid credentials" });
+        }
+
+        // Check if user is disabled
+        if (user.isDisabled) {
+            return res.status(403).json({ message: "Your account has been disabled. Contact support for assistance." });
+        }
+
+        // If role is specified, verify it matches
+        if (role && user.role !== role) {
             return res.status(400).json({ message: "Invalid credentials or role mismatch" });
         }
 
@@ -170,7 +199,8 @@ export const loginUser = async (req, res) => {
                 kycStatus: user.kycStatus,
                 kybStatus: user.kybStatus,
                 transactionLimit: user.transactionLimit,
-                isVerified: user.isVerified
+                isVerified: user.isVerified,
+                isDisabled: user.isDisabled
             }
         });
 
@@ -201,7 +231,8 @@ export const getMe = async (req, res) => {
                     kycStatus: user.kycStatus,
                     kybStatus: user.kybStatus,
                     transactionLimit: user.transactionLimit,
-                    isVerified: user.isVerified
+                    isVerified: user.isVerified,
+                    isDisabled: user.isDisabled
                 }
             });
         } else {

@@ -5,6 +5,7 @@ import { getDb } from '../config/db.js';
 import intasendService from '../utils/intasendService.js';
 import crypto from 'crypto';
 import emailService from '../services/emailService.js';
+import smsService from '../services/smsService.js';
 
 /**
  * Normalize Kenyan phone numbers to 254XXXXXXXXX format (no + prefix — IntaSend requirement)
@@ -162,8 +163,12 @@ export const createTransaction = async (req, res) => {
             console.log('Generating IntaSend Checkout Link for:', req.body.paymentMethod);
 
             // Determine redirect URL — back to the payment page
-            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-            const redirectUrl = `${frontendUrl}/pay/${slug}?intasend_complete=true&ref=${tx_ref}`;
+            // IntaSend requires HTTPS URLs, so we ensure we use a valid HTTPS frontend URL
+            const frontendUrl = process.env.FRONTEND_URL && process.env.FRONTEND_URL.startsWith('https://') 
+                ? process.env.FRONTEND_URL 
+                : 'https://ripplify.io';
+            // Include intasend_complete parameter so frontend can detect the callback
+            const redirectUrl = `${frontendUrl}/pay/${slug}?intasend_complete=true`;
 
             // Map payment method to IntaSend method identifier
             let intasendMethod = null;
@@ -276,6 +281,19 @@ export const handleIntaSendWebhook = async (req, res) => {
                     type: 'success'
                 });
 
+                // Send SMS to seller
+                try {
+                    const seller = await db.get(`SELECT phone, fullName, businessName FROM users WHERE id = ?`, transaction.userId);
+                    if (seller?.phone) {
+                        await smsService.sendTransactionSMS(seller.phone, {
+                            ...transaction,
+                            buyerName: transaction.buyerName
+                        });
+                    }
+                } catch (smsError) {
+                    console.error('Failed to send transaction SMS:', smsError.message);
+                }
+
                 // Send receipt email to buyer
                 try {
                     const buyer = {
@@ -347,6 +365,20 @@ export const checkIntaSendPaymentStatus = async (req, res) => {
                     message: `You received ${transaction.amount} ${transaction.currency} from ${transaction.buyerName}. Funds are held in escrow.`,
                     type: 'success'
                 });
+
+                // Send SMS to seller
+                try {
+                    const db = getDb();
+                    const seller = await db.get(`SELECT phone, fullName, businessName FROM users WHERE id = ?`, transaction.userId);
+                    if (seller?.phone) {
+                        await smsService.sendTransactionSMS(seller.phone, {
+                            ...transaction,
+                            buyerName: transaction.buyerName
+                        });
+                    }
+                } catch (smsError) {
+                    console.error('Failed to send transaction SMS:', smsError.message);
+                }
 
                 // Send receipt email
                 try {

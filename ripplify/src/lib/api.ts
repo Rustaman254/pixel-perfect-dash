@@ -35,7 +35,10 @@ export const fetchWithAuth = async (endpoint: string, options: RequestInit = {})
             }
         }
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `API request failed with status ${response.status}`);
+        const err = new Error(errorData.message || `API request failed with status ${response.status}`) as Error & Record<string, any>;
+        // Attach all error response fields so frontend can use them (e.g., redirectTo)
+        Object.keys(errorData).forEach(key => { err[key] = errorData[key]; });
+        throw err;
     }
 
     return response.json();
