@@ -33,6 +33,13 @@ router.patch('/api-keys/:id/status', protect, admin, adminController.updateApiKe
 router.get('/settings', protect, admin, adminController.getSystemSettings);
 router.put('/settings', protect, admin, adminController.updateSystemSetting);
 
+// Analytics
+router.get('/analytics', protect, admin, adminController.getAnalytics);
+
+// Fee Tiers
+router.get('/fees', protect, admin, adminController.getFeeTiers);
+router.put('/fees', protect, admin, adminController.updateFeeTiers);
+
 // Supported Currencies
 router.get('/currencies', protect, admin, adminController.getSupportedCurrencies);
 router.post('/currencies', protect, admin, adminController.createSupportedCurrency);
@@ -42,6 +49,7 @@ router.delete('/currencies/:code', protect, admin, adminController.deleteSupport
 // Referral Code Management
 router.get('/referrals', protect, admin, adminController.getReferralCodes);
 router.post('/referrals', protect, admin, adminController.createReferralCode);
+router.get('/referrals/:id/usage', protect, admin, adminController.getReferralCodeUsage);
 router.delete('/referrals/:id', protect, admin, adminController.deleteReferralCode);
 router.patch('/referrals/:id/status', protect, admin, adminController.toggleReferralCodeStatus);
 

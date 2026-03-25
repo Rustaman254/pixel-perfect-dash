@@ -541,10 +541,21 @@ export const getReferralCodes = async (req, res) => {
 
 export const createReferralCode = async (req, res) => {
     try {
-        const { code, userId, discount, maxUses } = req.body;
-        const newCode = await ReferralCode.create({ code, userId, discount, maxUses });
+        const { code, userId, discount, maxUses, pointsPerReferral } = req.body;
+        if (!code) return res.status(400).json({ message: "Code is required" });
+
+        const newCode = await ReferralCode.create({
+            code: code.toUpperCase(),
+            userId: userId || null,
+            discount: discount || 0,
+            maxUses: maxUses ?? -1,
+            pointsPerReferral: pointsPerReferral ?? 10
+        });
         res.status(201).json(newCode);
     } catch (error) {
+        if (error.message?.includes('UNIQUE')) {
+            return res.status(400).json({ message: "This referral code already exists" });
+        }
         res.status(500).json({ message: error.message });
     }
 };
@@ -563,6 +574,44 @@ export const toggleReferralCodeStatus = async (req, res) => {
         const { isActive } = req.body;
         await ReferralCode.toggleActive(req.params.id, isActive);
         res.json({ message: `Referral code ${isActive ? 'activated' : 'deactivated'}` });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// Get usage details for a specific referral code
+export const getReferralCodeUsage = async (req, res) => {
+    try {
+        const db = getDb();
+        const codeId = req.params.id;
+        const code = await ReferralCode.findById(codeId);
+        if (!code) return res.status(404).json({ message: "Referral code not found" });
+
+        const usage = await ReferralCode.getUsageByCodeId(codeId);
+        const referrer = code.userId ? await db.get(`SELECT id, fullName, email, businessName, referralPoints FROM users WHERE id = ?`, code.userId) : null;
+
+        res.json({ code, usage, referrer });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// Validate referral code (public endpoint for registration)
+export const validateReferralCode = async (req, res) => {
+    try {
+        const { code } = req.query;
+        if (!code) return res.status(400).json({ message: "Code is required" });
+
+        const result = await ReferralCode.validateForRegistration(code);
+        if (!result.valid) return res.status(400).json({ message: result.message });
+
+        res.json({
+            valid: true,
+            code: result.referral.code,
+            discount: result.referral.discount,
+            referrerName: result.referral.referrerName || 'Ripplify',
+            pointsPerReferral: result.referral.pointsPerReferral
+        });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -892,6 +941,210 @@ export const removeUserFeatureOverride = async (req, res) => {
         const { userId, featureKey } = req.params;
         await db.run(`DELETE FROM user_feature_overrides WHERE userId = ? AND featureKey = ?`, userId, featureKey);
         res.json({ message: `Override removed. User ${userId} now uses global setting for ${featureKey}.` });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// ==================== ANALYTICS ====================
+
+export const getAnalytics = async (req, res) => {
+    try {
+        const db = getDb();
+        const { period = '30d' } = req.query;
+
+        let dateFilter;
+        switch (period) {
+            case '7d': dateFilter = "date('now', '-7 days')"; break;
+            case '30d': dateFilter = "date('now', '-30 days')"; break;
+            case '90d': dateFilter = "date('now', '-90 days')"; break;
+            case '1y': dateFilter = "date('now', '-1 year')"; break;
+            default: dateFilter = "date('now', '-30 days')";
+        }
+
+        // Revenue trend
+        const revenueTrend = await db.all(`
+            SELECT 
+                strftime('%Y-%m-%d', createdAt) as date,
+                SUM(CASE WHEN status = 'Completed' THEN amount ELSE 0 END) as revenue,
+                SUM(CASE WHEN status = 'Completed' THEN fee ELSE 0 END) as fees,
+                COUNT(*) as count
+            FROM transactions
+            WHERE createdAt >= ${dateFilter}
+            GROUP BY date ORDER BY date ASC
+        `);
+
+        // Transaction volume
+        const volumeTrend = await db.all(`
+            SELECT 
+                strftime('%Y-%m-%d', createdAt) as date,
+                SUM(amount) as volume, COUNT(*) as transactionCount
+            FROM transactions
+            WHERE createdAt >= ${dateFilter}
+            GROUP BY date ORDER BY date ASC
+        `);
+
+        // Status breakdown
+        const statusBreakdown = await db.all(`
+            SELECT status, COUNT(*) as count, SUM(amount) as total
+            FROM transactions WHERE createdAt >= ${dateFilter}
+            GROUP BY status
+        `);
+
+        // User growth
+        const userGrowth = await db.all(`
+            SELECT 
+                strftime('%Y-%m-%d', createdAt) as date,
+                COUNT(*) as newUsers,
+                SUM(CASE WHEN role = 'seller' THEN 1 ELSE 0 END) as newSellers
+            FROM users WHERE createdAt >= ${dateFilter} AND role != 'admin'
+            GROUP BY date ORDER BY date ASC
+        `);
+
+        const totalUsers = await db.get(`SELECT COUNT(*) as count FROM users WHERE role != 'admin'`);
+        const verifiedUsers = await db.get(`SELECT COUNT(*) as count FROM users WHERE isVerified = 1 AND role != 'admin'`);
+        const disabledUsers = await db.get(`SELECT COUNT(*) as count FROM users WHERE isDisabled = 1`);
+        const suspendedUsers = await db.get(`SELECT COUNT(*) as count FROM users WHERE isSuspended = 1`);
+
+        // Payment method breakdown
+        const paymentBreakdown = await db.all(`
+            SELECT currency as name, COUNT(*) as count, SUM(amount) as total
+            FROM transactions
+            WHERE createdAt >= ${dateFilter} AND status = 'Completed'
+            GROUP BY currency
+        `);
+
+        // Payout trend
+        const payoutTrend = await db.all(`
+            SELECT 
+                strftime('%Y-%m-%d', createdAt) as date,
+                SUM(amount) as totalPayouts, COUNT(*) as payoutCount
+            FROM payouts WHERE createdAt >= ${dateFilter}
+            GROUP BY date ORDER BY date ASC
+        `);
+
+        // Transfer trend
+        const transferTrend = await db.all(`
+            SELECT 
+                strftime('%Y-%m-%d', createdAt) as date,
+                SUM(amount) as totalTransfers, COUNT(*) as transferCount
+            FROM transfers WHERE createdAt >= ${dateFilter}
+            GROUP BY date ORDER BY date ASC
+        `);
+
+        // Top sellers
+        const topSellers = await db.all(`
+            SELECT u.id, u.businessName, u.fullName, u.email,
+                SUM(CASE WHEN t.status = 'Completed' THEN t.amount ELSE 0 END) as totalRevenue,
+                COUNT(t.id) as transactionCount
+            FROM users u
+            LEFT JOIN transactions t ON u.id = t.userId
+            WHERE u.role = 'seller' AND (t.createdAt >= ${dateFilter} OR t.id IS NULL)
+            GROUP BY u.id HAVING totalRevenue > 0
+            ORDER BY totalRevenue DESC LIMIT 10
+        `);
+
+        // Month comparison
+        const thisMonth = await db.get(`
+            SELECT SUM(CASE WHEN status = 'Completed' THEN amount ELSE 0 END) as revenue, COUNT(*) as transactions
+            FROM transactions WHERE createdAt >= date('now', 'start of month')
+        `);
+        const lastMonth = await db.get(`
+            SELECT SUM(CASE WHEN status = 'Completed' THEN amount ELSE 0 END) as revenue, COUNT(*) as transactions
+            FROM transactions
+            WHERE createdAt >= date('now', 'start of month', '-1 month') AND createdAt < date('now', 'start of month')
+        `);
+
+        res.json({
+            revenueTrend, volumeTrend, statusBreakdown, userGrowth,
+            userStats: { total: totalUsers?.count||0, verified: verifiedUsers?.count||0, disabled: disabledUsers?.count||0, suspended: suspendedUsers?.count||0 },
+            paymentBreakdown, payoutTrend, transferTrend, topSellers,
+            comparison: {
+                thisMonth: { revenue: thisMonth?.revenue||0, transactions: thisMonth?.transactions||0 },
+                lastMonth: { revenue: lastMonth?.revenue||0, transactions: lastMonth?.transactions||0 },
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// ==================== FEE TIERS ====================
+
+export const getFeeTiers = async (req, res) => {
+    try {
+        const db = getDb();
+        const tiers = await db.all(`SELECT * FROM fee_tiers ORDER BY minAmount ASC`);
+        const flatFee = await db.get(`SELECT value FROM system_settings WHERE key = 'platform_fee'`);
+        const feeMode = await db.get(`SELECT value FROM system_settings WHERE key = 'fee_mode'`);
+        const minWithdrawal = await db.get(`SELECT value FROM system_settings WHERE key = 'min_withdrawal'`);
+        const escrowDays = await db.get(`SELECT value FROM system_settings WHERE key = 'escrow_days'`);
+
+        res.json({
+            mode: feeMode?.value || 'flat',
+            flatFee: flatFee?.value || '1',
+            minWithdrawal: minWithdrawal?.value || '500',
+            escrowDays: escrowDays?.value || '3',
+            tiers: tiers.length > 0 ? tiers : [
+                { id: null, minAmount: 0, maxAmount: 1000, feePercent: 1.5, label: 'Small Transactions' },
+                { id: null, minAmount: 1001, maxAmount: 10000, feePercent: 1.0, label: 'Medium Transactions' },
+                { id: null, minAmount: 10001, maxAmount: 999999999, feePercent: 0.5, label: 'Large Transactions' },
+            ]
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const updateFeeTiers = async (req, res) => {
+    try {
+        const db = getDb();
+        const { mode, flatFee, minWithdrawal, escrowDays, tiers } = req.body;
+
+        const upsertSetting = async (key, value) => {
+            await db.run(`
+                INSERT INTO system_settings (key, value) VALUES (?, ?)
+                ON CONFLICT(key) DO UPDATE SET value = ?, updatedAt = CURRENT_TIMESTAMP
+            `, [key, value, value]);
+        };
+
+        if (mode) await upsertSetting('fee_mode', mode);
+        if (flatFee !== undefined) await upsertSetting('platform_fee', flatFee.toString());
+        if (minWithdrawal !== undefined) await upsertSetting('min_withdrawal', minWithdrawal.toString());
+        if (escrowDays !== undefined) await upsertSetting('escrow_days', escrowDays.toString());
+
+        if (tiers && Array.isArray(tiers)) {
+            await db.run(`DELETE FROM fee_tiers`);
+            for (const tier of tiers) {
+                await db.run(
+                    `INSERT INTO fee_tiers (minAmount, maxAmount, feePercent, label) VALUES (?, ?, ?, ?)`,
+                    [tier.minAmount, tier.maxAmount, tier.feePercent, tier.label || '']
+                );
+            }
+        }
+
+        res.json({ message: "Fee configuration updated" });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const getPublicFees = async (req, res) => {
+    try {
+        const db = getDb();
+        const feeMode = await db.get(`SELECT value FROM system_settings WHERE key = 'fee_mode'`);
+        const flatFee = await db.get(`SELECT value FROM system_settings WHERE key = 'platform_fee'`);
+        const tiers = await db.all(`SELECT * FROM fee_tiers ORDER BY minAmount ASC`);
+
+        res.json({
+            mode: feeMode?.value || 'flat',
+            flatFee: parseFloat(flatFee?.value || '1'),
+            tiers: tiers.length > 0 ? tiers : [
+                { minAmount: 0, maxAmount: 1000, feePercent: 1.5 },
+                { minAmount: 1001, maxAmount: 10000, feePercent: 1.0 },
+                { minAmount: 10001, maxAmount: 999999999, feePercent: 0.5 },
+            ]
+        });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

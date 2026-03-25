@@ -277,6 +277,18 @@ const connectDB = async () => {
       )
     `);
 
+    // Create Fee Tiers Table (tiered pricing like PayHero)
+    await dbInstance.exec(`
+      CREATE TABLE IF NOT EXISTS fee_tiers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        minAmount REAL NOT NULL,
+        maxAmount REAL NOT NULL,
+        feePercent REAL NOT NULL,
+        label TEXT DEFAULT '',
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     // Create OAuth Clients Table
     await dbInstance.exec(`
       CREATE TABLE IF NOT EXISTS oauth_clients (
@@ -471,10 +483,33 @@ const connectDB = async () => {
         maxUses INTEGER DEFAULT -1,
         currentUses INTEGER DEFAULT 0,
         isActive BOOLEAN DEFAULT 1,
+        pointsPerReferral INTEGER DEFAULT 10,
         createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (userId) REFERENCES users (id)
       )
     `);
+
+    // Referral usage tracking - who used which code to register
+    await dbInstance.exec(`
+      CREATE TABLE IF NOT EXISTS referral_usage (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        referralCodeId INTEGER NOT NULL,
+        code TEXT NOT NULL,
+        referrerId INTEGER,
+        referredUserId INTEGER NOT NULL,
+        pointsAwarded INTEGER DEFAULT 0,
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (referralCodeId) REFERENCES referral_codes (id),
+        FOREIGN KEY (referrerId) REFERENCES users (id),
+        FOREIGN KEY (referredUserId) REFERENCES users (id)
+      )
+    `);
+
+    // Migration: add pointsPerReferral to referral_codes
+    try { await dbInstance.exec(`ALTER TABLE referral_codes ADD COLUMN pointsPerReferral INTEGER DEFAULT 10`); } catch (e) { }
+
+    // Migration: add referralPoints to users
+    try { await dbInstance.exec(`ALTER TABLE users ADD COLUMN referralPoints INTEGER DEFAULT 0`); } catch (e) { }
 
     // Create Supported Currencies Table (Admin Managed)
     await dbInstance.exec(`

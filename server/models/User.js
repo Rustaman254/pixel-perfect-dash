@@ -5,7 +5,7 @@ const ALLOWED_COLUMNS = [
     'id', 'email', 'password', 'role', 'fullName', 'phone', 'businessName',
     'idType', 'idNumber', 'location', 'payoutMethod', 'payoutDetails',
     'isVerified', 'isDisabled', 'isSuspended', 'accountStatus', 'suspendReason',
-    'kycStatus', 'kybStatus', 'transactionLimit', 'createdAt', 'updatedAt'
+    'kycStatus', 'kybStatus', 'transactionLimit', 'referralPoints', 'createdAt', 'updatedAt'
 ];
 
 // User Model Methods for SQLite

@@ -22,7 +22,7 @@ export const registerUser = async (req, res) => {
     try {
         const {
             email, password, role, fullName, phone, businessName,
-            idType, idNumber, location, payoutMethod, payoutDetails
+            idType, idNumber, location, payoutMethod, payoutDetails, referralCode
         } = req.body;
 
         // Check if user exists
@@ -86,6 +86,27 @@ export const registerUser = async (req, res) => {
                 );
             } catch (payoutErr) {
                 console.error('Failed to create default payout method:', payoutErr.message);
+            }
+
+            // Process referral code if provided
+            if (referralCode) {
+                try {
+                    const ReferralCode = (await import('../models/ReferralCode.js')).default;
+                    const validation = await ReferralCode.validateForRegistration(referralCode.toUpperCase());
+                    if (validation.valid) {
+                        const points = validation.referral.pointsPerReferral || 10;
+                        await ReferralCode.recordUsage(
+                            validation.referral.id,
+                            validation.referral.code,
+                            validation.referral.userId,
+                            user.id,
+                            points
+                        );
+                        console.log(`Referral recorded: ${referralCode} -> user ${user.id}, ${points} points awarded`);
+                    }
+                } catch (refErr) {
+                    console.error('Referral processing error:', refErr.message);
+                }
             }
 
             // Send welcome email

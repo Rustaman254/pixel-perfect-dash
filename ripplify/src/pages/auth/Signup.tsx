@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowRight, Check, Phone, Mail, User, Lock, Building, MapPin, CreditCard } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAppContext } from "@/contexts/AppContext";
@@ -14,6 +14,7 @@ const Signup = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { login } = useAppContext();
+  const [searchParams] = useSearchParams();
 
   const [formData, setFormData] = useState({
     phone: "",
@@ -26,7 +27,8 @@ const Signup = () => {
     businessName: "",
     location: "",
     payoutMethod: "mpesa",
-    payoutDetails: ""
+    payoutDetails: "",
+    referralCode: searchParams.get('ref') || ""
   });
 
   const nextStep = () => {
@@ -189,6 +191,18 @@ const Signup = () => {
                     value={formData.password}
                     onChange={e => setFormData({ ...formData, password: e.target.value })}
                   />
+                </div>
+                <div className="relative">
+                  <CreditCard className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
+                  <input
+                    type="text" placeholder="Referral Code (Optional)"
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#025864]/20 focus:border-[#025864] outline-none transition-all uppercase"
+                    value={formData.referralCode}
+                    onChange={e => setFormData({ ...formData, referralCode: e.target.value.toUpperCase() })}
+                  />
+                  {formData.referralCode && (
+                    <p className="text-[10px] text-emerald-600 mt-1 ml-1 font-medium">Referral code applied!</p>
+                  )}
                 </div>
               </div>
               <button

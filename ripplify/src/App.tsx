@@ -41,6 +41,7 @@ import ManageRoles from "./pages/admin/ManageRoles";
 import AdminPayoutsPage from "./pages/admin/AdminPayoutsPage";
 import ManageFeatureFlags from "./pages/admin/ManageFeatureFlags";
 import AdminTransactionsPage from "./pages/admin/AdminTransactionsPage";
+import AdminAnalyticsPage from "./pages/admin/AdminAnalyticsPage";
 
 import { AppProvider, useAppContext } from "./contexts/AppContext";
 
@@ -106,7 +107,7 @@ const AppRoutes = () => {
 
         {/* Admin Dashboard */}
         <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
-        <Route path="/admin/analytics" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
+        <Route path="/admin/analytics" element={<ProtectedRoute role="admin"><AdminAnalyticsPage /></ProtectedRoute>} />
         <Route path="/admin/users" element={<ProtectedRoute role="admin"><ManageUsers /></ProtectedRoute>} />
         <Route path="/admin/companies" element={<ProtectedRoute role="admin"><ManageCompanies /></ProtectedRoute>} />
         <Route path="/admin/api-keys" element={<ProtectedRoute role="admin"><ManageApiKeys /></ProtectedRoute>} />
