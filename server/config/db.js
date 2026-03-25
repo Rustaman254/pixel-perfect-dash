@@ -503,6 +503,9 @@ const connectDB = async () => {
 
     // Migration: add isDisabled to users if missing
     try { await dbInstance.exec(`ALTER TABLE users ADD COLUMN isDisabled BOOLEAN DEFAULT 0`); } catch (e) { }
+    try { await dbInstance.exec(`ALTER TABLE users ADD COLUMN isSuspended BOOLEAN DEFAULT 0`); } catch (e) { }
+    try { await dbInstance.exec(`ALTER TABLE users ADD COLUMN accountStatus TEXT DEFAULT 'active'`); } catch (e) { }
+    try { await dbInstance.exec(`ALTER TABLE users ADD COLUMN suspendReason TEXT DEFAULT ''`); } catch (e) { }
 
     // Create Feature Flags Table
     await dbInstance.exec(`

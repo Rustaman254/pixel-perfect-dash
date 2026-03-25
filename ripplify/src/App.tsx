@@ -25,6 +25,7 @@ import TransfersPage from "./pages/TransfersPage";
 
 // Auth & Admin
 import Login from "./pages/auth/Login";
+import AdminLogin from "./pages/auth/AdminLogin";
 import Signup from "./pages/auth/Signup";
 import ForgotPassword from "./pages/auth/ForgotPassword";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -47,16 +48,20 @@ const queryClient = new QueryClient();
 const ProtectedRoute = ({ children, role }: { children: React.ReactNode, role?: "seller" | "admin" }) => {
   const { isAuthenticated, userProfile } = useAppContext();
 
-  if (!isAuthenticated || !userProfile) return <Navigate to="/login" replace />;
+  // Determine correct login route based on requested role
+  const loginRoute = role === "admin" ? "/admin/login" : "/login";
+
+  if (!isAuthenticated || !userProfile) return <Navigate to={loginRoute} replace />;
 
   // Check if user account is disabled
   if ((userProfile as any).isDisabled) {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('ripplify_profile');
-    return <Navigate to="/login?error=disabled" replace />;
+    return <Navigate to={`${loginRoute}?error=disabled`} replace />;
   }
 
   if (role && userProfile.role !== role) {
+    // Wrong role: redirect to their correct dashboard
     if (userProfile.role === "admin") return <Navigate to="/admin" replace />;
     return <Navigate to="/" replace />;
   }
@@ -72,6 +77,7 @@ const AppRoutes = () => {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/admin/login" element={<AdminLogin />} />
 
         {/* Seller Dashboard */}
         <Route path="/" element={<ProtectedRoute role="seller"><Index /></ProtectedRoute>} />
