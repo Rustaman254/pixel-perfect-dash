@@ -31,3 +31,4 @@ router.post("/verify-pin", protect, verifyPin);
 router.get("/pin-status", protect, getPinStatus);
 
 export default router;
+
