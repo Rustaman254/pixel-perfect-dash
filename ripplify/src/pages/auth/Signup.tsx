@@ -1,16 +1,18 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowRight, Check, Phone, Mail, User, Lock, Building, MapPin, CreditCard } from "lucide-react";
+import { ArrowRight, Check, Phone, Mail, User, Lock, Building, MapPin, CreditCard, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAppContext } from "@/contexts/AppContext";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { cn } from "@/lib/utils";
 import Logo from "@/components/Logo";
 import { BASE_URL } from "@/lib/api";
+import { Smartphone } from "lucide-react";
 
 const Signup = () => {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
   const { login } = useAppContext();
@@ -33,7 +35,6 @@ const Signup = () => {
 
   const nextStep = () => {
     setStep(s => {
-      // When entering step 4 (payout), auto-set M-Pesa number from phone
       if (s === 3) {
         if (formData.payoutMethod === "mpesa" && !formData.payoutDetails && formData.phone) {
           setFormData(prev => ({ ...prev, payoutDetails: prev.phone }));
@@ -156,53 +157,75 @@ const Signup = () => {
                 <p className="text-slate-500 text-sm mt-1">Join thousands of sellers getting paid safely.</p>
               </div>
               <div className="space-y-4">
-                <div className="relative">
-                  <User className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
-                  <input
-                    type="text" placeholder="Full Name"
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#025864]/20 focus:border-[#025864] outline-none transition-all"
-                    value={formData.fullName}
-                    onChange={e => setFormData({ ...formData, fullName: e.target.value })}
-                  />
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-slate-700">Full Name</label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
+                    <input
+                      type="text" placeholder="Enter your full name"
+                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#025864]/20 focus:border-[#025864] outline-none transition-all"
+                      value={formData.fullName}
+                      onChange={e => setFormData({ ...formData, fullName: e.target.value })}
+                    />
+                  </div>
                 </div>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
-                  <input
-                    type="email" placeholder="Email Address"
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#025864]/20 focus:border-[#025864] outline-none transition-all"
-                    value={formData.email}
-                    onChange={e => setFormData({ ...formData, email: e.target.value })}
-                  />
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-slate-700">Email Address</label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
+                    <input
+                      type="email" placeholder="Enter your email"
+                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#025864]/20 focus:border-[#025864] outline-none transition-all"
+                      value={formData.email}
+                      onChange={e => setFormData({ ...formData, email: e.target.value })}
+                    />
+                  </div>
                 </div>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
-                  <input
-                    type="tel" placeholder="Phone Number"
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#025864]/20 focus:border-[#025864] outline-none transition-all"
-                    value={formData.phone}
-                    onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                  />
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-slate-700">Phone Number</label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
+                    <input
+                      type="tel" placeholder="Enter your phone number"
+                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#025864]/20 focus:border-[#025864] outline-none transition-all"
+                      value={formData.phone}
+                      onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                    />
+                  </div>
                 </div>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
-                  <input
-                    type="password" placeholder="Password"
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#025864]/20 focus:border-[#025864] outline-none transition-all"
-                    value={formData.password}
-                    onChange={e => setFormData({ ...formData, password: e.target.value })}
-                  />
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-slate-700">Password</label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
+                    <input
+                      type={showPassword ? "text" : "password"} placeholder="Create a password"
+                      className="w-full pl-10 pr-12 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#025864]/20 focus:border-[#025864] outline-none transition-all"
+                      value={formData.password}
+                      onChange={e => setFormData({ ...formData, password: e.target.value })}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
                 </div>
-                <div className="relative">
-                  <CreditCard className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
-                  <input
-                    type="text" placeholder="Referral Code (Optional)"
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#025864]/20 focus:border-[#025864] outline-none transition-all uppercase"
-                    value={formData.referralCode}
-                    onChange={e => setFormData({ ...formData, referralCode: e.target.value.toUpperCase() })}
-                  />
-                  {formData.referralCode && (
-                    <p className="text-[10px] text-emerald-600 mt-1 ml-1 font-medium">Referral code applied!</p>
-                  )}
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-slate-700">Referral Code (Optional)</label>
+                  <div className="relative">
+                    <CreditCard className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
+                    <input
+                      type="text" placeholder="Enter referral code"
+                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#025864]/20 focus:border-[#025864] outline-none transition-all uppercase"
+                      value={formData.referralCode}
+                      onChange={e => setFormData({ ...formData, referralCode: e.target.value.toUpperCase() })}
+                    />
+                    {formData.referralCode && (
+                      <p className="text-[10px] text-emerald-600 mt-1 ml-1 font-medium">Referral code applied!</p>
+                    )}
+                  </div>
                 </div>
               </div>
               <button
@@ -379,5 +402,3 @@ const Signup = () => {
 };
 
 export default Signup;
-
-import { Smartphone } from "lucide-react";

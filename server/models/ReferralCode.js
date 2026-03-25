@@ -1,13 +1,13 @@
 import { getDb } from "../config/db.js";
 
 const ReferralCode = {
-    create: async ({ code, userId, discount = 0, maxUses = -1, pointsPerReferral = 10 }) => {
+    create: async ({ code, userId, discount = 0, maxUses = -1, pointsPerReferral = 10, expiresAt = null }) => {
         const db = getDb();
         const result = await db.run(
-            `INSERT INTO referral_codes (code, userId, discount, maxUses, pointsPerReferral) VALUES (?, ?, ?, ?, ?)`,
-            [code, userId || null, discount, maxUses, pointsPerReferral]
+            `INSERT INTO referral_codes (code, userId, discount, maxUses, pointsPerReferral, expiresAt) VALUES (?, ?, ?, ?, ?, ?)`,
+            [code, userId || null, discount, maxUses, pointsPerReferral, expiresAt || null]
         );
-        return { id: result.lastID, code, userId, discount, maxUses, pointsPerReferral, currentUses: 0, isActive: 1, createdAt: new Date() };
+        return { id: result.lastID, code, userId, discount, maxUses, pointsPerReferral, expiresAt, currentUses: 0, isActive: 1, createdAt: new Date() };
     },
 
     findAll: async () => {
@@ -103,6 +103,9 @@ const ReferralCode = {
         if (!referral) return { valid: false, message: "Invalid referral code" };
         if (referral.maxUses > 0 && referral.currentUses >= referral.maxUses) {
             return { valid: false, message: "This referral code has reached its usage limit" };
+        }
+        if (referral.expiresAt && new Date(referral.expiresAt) < new Date()) {
+            return { valid: false, message: "This referral code has expired" };
         }
         return { valid: true, referral };
     }

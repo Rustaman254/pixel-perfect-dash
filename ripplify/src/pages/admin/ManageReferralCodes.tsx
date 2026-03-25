@@ -18,6 +18,7 @@ interface ReferralCode {
     currentUses: number;
     isActive: boolean;
     pointsPerReferral: number;
+    expiresAt: string | null;
     createdAt: string;
 }
 
@@ -44,6 +45,7 @@ const ManageReferralCodes = () => {
     const [maxUses, setMaxUses] = useState("-1");
     const [pointsPerReferral, setPointsPerReferral] = useState("10");
     const [targetUserId, setTargetUserId] = useState("");
+    const [expiresAt, setExpiresAt] = useState("");
 
     // Usage detail modal
     const [usageOpen, setUsageOpen] = useState(false);
@@ -80,7 +82,8 @@ const ManageReferralCodes = () => {
                     userId: targetUserId ? parseInt(targetUserId) : null,
                     discount: parseFloat(discount) || 0,
                     maxUses: parseInt(maxUses) || -1,
-                    pointsPerReferral: parseInt(pointsPerReferral) || 10
+                    pointsPerReferral: parseInt(pointsPerReferral) || 10,
+                    expiresAt: expiresAt || null
                 })
             });
             toast({ title: "Success", description: "Referral code created" });
@@ -89,6 +92,7 @@ const ManageReferralCodes = () => {
             setMaxUses("-1");
             setPointsPerReferral("10");
             setTargetUserId("");
+            setExpiresAt("");
             loadData();
         } catch (error: any) {
             toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -187,6 +191,11 @@ const ManageReferralCodes = () => {
                             </div>
                         </div>
                         <div className="space-y-1.5">
+                            <label className="text-xs font-bold text-slate-500 uppercase">Expires At (Optional)</label>
+                            <input type="datetime-local" value={expiresAt} onChange={e => setExpiresAt(e.target.value)}
+                                className="w-full px-4 py-3 rounded-xl border border-slate-100 focus:outline-none focus:ring-2 focus:ring-[#025864] text-sm bg-slate-50" />
+                        </div>
+                        <div className="space-y-1.5">
                             <label className="text-xs font-bold text-slate-500 uppercase">Assign to User (Optional)</label>
                             <select value={targetUserId} onChange={e => setTargetUserId(e.target.value)}
                                 className="w-full px-4 py-3 rounded-xl border border-slate-100 focus:outline-none focus:ring-2 focus:ring-[#025864] text-sm bg-slate-50">
@@ -223,6 +232,7 @@ const ManageReferralCodes = () => {
                                         <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase">Assigned To</th>
                                         <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase">Points</th>
                                         <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase">Registrations</th>
+                                        <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase">Expires</th>
                                         <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase">Status</th>
                                         <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase text-right">Actions</th>
                                     </tr>
@@ -265,6 +275,15 @@ const ManageReferralCodes = () => {
                                                     <span className="text-sm font-bold text-slate-900">{c.currentUses}</span>
                                                     <Eye className="w-3 h-3 text-slate-300 ml-1" />
                                                 </button>
+                                            </td>
+                                            <td className="px-5 py-4">
+                                                {c.expiresAt ? (
+                                                    <span className={`text-xs font-medium ${new Date(c.expiresAt) < new Date() ? 'text-red-500' : 'text-slate-600'}`}>
+                                                        {new Date(c.expiresAt).toLocaleDateString()}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-[10px] font-bold text-slate-300 uppercase">Never</span>
+                                                )}
                                             </td>
                                             <td className="px-5 py-4">
                                                 <button onClick={() => toggleStatus(c.id, c.isActive)}

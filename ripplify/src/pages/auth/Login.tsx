@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Mail, Lock, LogIn } from "lucide-react";
+import { Mail, Lock, LogIn, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAppContext } from "@/contexts/AppContext";
 import Logo from "@/components/Logo";
@@ -9,6 +9,7 @@ import { BASE_URL } from "@/lib/api";
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -77,23 +78,36 @@ const Login = () => {
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
-            <div className="relative">
-              <Mail className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
-              <input
-                type="email" placeholder="Email Address"
-                className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#025864]/20 focus:border-[#025864] outline-none transition-all"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-              />
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-700">Email Address</label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
+                <input
+                  type="email" placeholder="Enter your email"
+                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#025864]/20 focus:border-[#025864] outline-none transition-all"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                />
+              </div>
             </div>
-            <div className="relative">
-              <Lock className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
-              <input
-                type="password" placeholder="Password"
-                className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#025864]/20 focus:border-[#025864] outline-none transition-all"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-              />
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-700">Password</label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
+                <input
+                  type={showPassword ? "text" : "password"} placeholder="Enter your password"
+                  className="w-full pl-10 pr-12 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#025864]/20 focus:border-[#025864] outline-none transition-all"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
             </div>
 
             <div className="flex justify-end">

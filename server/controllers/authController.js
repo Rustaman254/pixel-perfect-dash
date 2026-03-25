@@ -523,3 +523,69 @@ export const resetPassword = async (req, res) => {
         res.status(500).json({ message: "Server error" });
     }
 };
+
+// @desc    Set transaction PIN
+// @route   POST /api/auth/set-pin
+// @access  Private
+export const setPin = async (req, res) => {
+    try {
+        const { pin } = req.body;
+        if (!pin || pin.length !== 4 || !/^\d{4}$/.test(pin)) {
+            return res.status(400).json({ message: "PIN must be exactly 4 digits" });
+        }
+
+        const salt = await bcrypt.genSalt(10);
+        const hashedPin = await bcrypt.hash(pin, salt);
+
+        const db = getDb();
+        await db.run("UPDATE users SET pin = ? WHERE id = ?", [hashedPin, req.user.id]);
+
+        res.json({ message: "Transaction PIN set successfully" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Server error" });
+    }
+};
+
+// @desc    Verify transaction PIN
+// @route   POST /api/auth/verify-pin
+// @access  Private
+export const verifyPin = async (req, res) => {
+    try {
+        const { pin } = req.body;
+        if (!pin) {
+            return res.status(400).json({ message: "PIN is required" });
+        }
+
+        const db = getDb();
+        const user = await db.get("SELECT pin FROM users WHERE id = ?", [req.user.id]);
+
+        if (!user.pin) {
+            return res.status(400).json({ message: "No PIN set. Please set your transaction PIN first." });
+        }
+
+        const isMatch = await bcrypt.compare(pin, user.pin);
+        if (!isMatch) {
+            return res.status(401).json({ message: "Incorrect PIN" });
+        }
+
+        res.json({ message: "PIN verified successfully" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Server error" });
+    }
+};
+
+// @desc    Check if user has PIN set
+// @route   GET /api/auth/pin-status
+// @access  Private
+export const getPinStatus = async (req, res) => {
+    try {
+        const db = getDb();
+        const user = await db.get("SELECT pin FROM users WHERE id = ?", [req.user.id]);
+        res.json({ hasPin: !!user.pin });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Server error" });
+    }
+};

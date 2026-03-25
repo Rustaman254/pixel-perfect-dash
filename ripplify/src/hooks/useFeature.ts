@@ -14,6 +14,10 @@ export const FEATURE_LABELS: Record<string, string> = {
     payment_methods: "Payment Methods",
     referrals: "Referrals",
     developer_docs: "Developer Docs",
+    transaction_pin: "Transaction PIN",
+    referral_expiry: "Referral Code Expiry",
+    forgot_password: "Forgot Password",
+    password_reveal: "Password Reveal",
 };
 
 // Route to feature key mapping

@@ -541,7 +541,7 @@ export const getReferralCodes = async (req, res) => {
 
 export const createReferralCode = async (req, res) => {
     try {
-        const { code, userId, discount, maxUses, pointsPerReferral } = req.body;
+        const { code, userId, discount, maxUses, pointsPerReferral, expiresAt } = req.body;
         if (!code) return res.status(400).json({ message: "Code is required" });
 
         const newCode = await ReferralCode.create({
@@ -549,7 +549,8 @@ export const createReferralCode = async (req, res) => {
             userId: userId || null,
             discount: discount || 0,
             maxUses: maxUses ?? -1,
-            pointsPerReferral: pointsPerReferral ?? 10
+            pointsPerReferral: pointsPerReferral ?? 10,
+            expiresAt: expiresAt || null
         });
         res.status(201).json(newCode);
     } catch (error) {

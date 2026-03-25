@@ -508,8 +508,14 @@ const connectDB = async () => {
     // Migration: add pointsPerReferral to referral_codes
     try { await dbInstance.exec(`ALTER TABLE referral_codes ADD COLUMN pointsPerReferral INTEGER DEFAULT 10`); } catch (e) { }
 
+    // Migration: add expiresAt to referral_codes
+    try { await dbInstance.exec(`ALTER TABLE referral_codes ADD COLUMN expiresAt DATETIME`); } catch (e) { }
+
     // Migration: add referralPoints to users
     try { await dbInstance.exec(`ALTER TABLE users ADD COLUMN referralPoints INTEGER DEFAULT 0`); } catch (e) { }
+
+    // Migration: add pin to users
+    try { await dbInstance.exec(`ALTER TABLE users ADD COLUMN pin TEXT`); } catch (e) { }
 
     // Create Supported Currencies Table (Admin Managed)
     await dbInstance.exec(`
@@ -594,6 +600,10 @@ const connectDB = async () => {
         { key: 'referrals', name: 'Referrals', description: 'Use and manage referral codes', category: 'payments' },
         { key: 'transfers', name: 'Transfers', description: 'Send money to users and M-Pesa', category: 'payments' },
         { key: 'developer_docs', name: 'Developer Docs', description: 'Access API documentation', category: 'developer' },
+        { key: 'transaction_pin', name: 'Transaction PIN', description: 'Set and manage transaction PIN for secure payouts', category: 'security' },
+        { key: 'referral_expiry', name: 'Referral Code Expiry', description: 'Set expiration dates on referral codes', category: 'payments' },
+        { key: 'forgot_password', name: 'Forgot Password', description: 'Allow users to reset their password', category: 'auth' },
+        { key: 'password_reveal', name: 'Password Reveal', description: 'Toggle password visibility in forms', category: 'auth' },
       ];
 
       for (const f of defaultFeatures) {

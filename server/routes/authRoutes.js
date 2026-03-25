@@ -1,6 +1,6 @@
 import express from "express";
 import rateLimit from "express-rate-limit";
-import { registerUser, loginUser, getMe, sendOTP, verifyOTP, getMyApiKeys, updateProfile, createMyApiKey, deleteMyApiKey, forgotPassword, resetPassword } from "../controllers/authController.js";
+import { registerUser, loginUser, getMe, sendOTP, verifyOTP, getMyApiKeys, updateProfile, createMyApiKey, deleteMyApiKey, forgotPassword, resetPassword, setPin, verifyPin, getPinStatus } from "../controllers/authController.js";
 import { protect } from "../middlewares/authMiddleware.js";
 import { getEnabledFeatures, getPublicFees, validateReferralCode } from "../controllers/adminController.js";
 
@@ -26,5 +26,8 @@ router.post("/reset-password", authLimiter, resetPassword);
 router.get("/features", protect, getEnabledFeatures);
 router.get("/fees", protect, getPublicFees);
 router.get("/validate-referral", validateReferralCode);
+router.post("/set-pin", protect, setPin);
+router.post("/verify-pin", protect, verifyPin);
+router.get("/pin-status", protect, getPinStatus);
 
 export default router;
