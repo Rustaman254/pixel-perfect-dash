@@ -52,4 +52,12 @@ router.put('/feature-flags/:id', protect, admin, adminController.updateFeatureFl
 router.patch('/feature-flags/:id/toggle', protect, admin, adminController.toggleFeatureFlag);
 router.delete('/feature-flags/:id', protect, admin, adminController.deleteFeatureFlag);
 
+// All Transactions (categorized)
+router.get('/transactions', protect, admin, adminController.getAllTransactions);
+
+// Per-user Feature Overrides
+router.get('/users/:userId/features', protect, admin, adminController.getUserFeatureOverrides);
+router.put('/users/:userId/features', protect, admin, adminController.setUserFeatureOverride);
+router.delete('/users/:userId/features/:featureKey', protect, admin, adminController.removeUserFeatureOverride);
+
 export default router;

@@ -1,4 +1,5 @@
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import FeatureGuard from "@/components/FeatureGuard";
 import usePageTitle from "@/hooks/usePageTitle";
 import { useState, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, Tooltip, AreaChart, Area, PieChart, Pie } from "recharts";
@@ -54,6 +55,7 @@ const StatisticsPage = () => {
 
     return (
         <DashboardLayout>
+            <FeatureGuard featureKey="analytics">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 <div>
                     <h1 className="text-2xl font-bold text-foreground">Statistics & Insights</h1>
@@ -152,6 +154,7 @@ const StatisticsPage = () => {
                     </div>
                 </div>
             </div>
+            </FeatureGuard>
         </DashboardLayout>
     );
 };

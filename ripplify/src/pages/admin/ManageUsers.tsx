@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
-import { Search, Filter, MoreHorizontal, UserCheck, UserMinus, Trash2, Mail, Phone, Shield, Loader2, Building2, Ban, Eye, Pencil, MapPin, CreditCard, Key, Activity } from "lucide-react";
+import { Search, Filter, MoreHorizontal, UserCheck, UserMinus, Trash2, Mail, Phone, Shield, Loader2, Building2, Ban, Eye, Pencil, MapPin, CreditCard, Key, Activity, AlertTriangle, Flag } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { fetchWithAuth } from "@/lib/api";
 import {
@@ -31,6 +31,9 @@ const ManageUsers = () => {
   const [editUserOpen, setEditUserOpen] = useState(false);
   const [userDetails, setUserDetails] = useState<any>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
+  const [featuresOpen, setFeaturesOpen] = useState(false);
+  const [userFeatures, setUserFeatures] = useState<any[]>([]);
+  const [loadingFeatures, setLoadingFeatures] = useState(false);
 
   const loadUsers = async () => {
     try {
@@ -80,6 +83,56 @@ const ManageUsers = () => {
     }
   };
 
+  const handleSuspend = async (id: number, isSuspended: boolean) => {
+    try {
+      const reason = isSuspended ? prompt("Enter suspension reason (optional):") || "" : "";
+      await fetchWithAuth(`/admin/users/${id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ isSuspended, suspendReason: reason })
+      });
+      loadUsers();
+      toast({
+        title: "User status updated",
+        description: `Account has been ${isSuspended ? 'suspended' : 'unsuspended'}.`,
+      });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const loadUserFeatures = async (userId: number) => {
+    setLoadingFeatures(true);
+    try {
+      const data = await fetchWithAuth(`/admin/users/${userId}/features`);
+      setUserFeatures(data);
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setLoadingFeatures(false);
+    }
+  };
+
+  const toggleUserFeature = async (featureKey: string, currentlyEnabled: boolean) => {
+    if (!selectedUser) return;
+    try {
+      await fetchWithAuth(`/admin/users/${selectedUser.id}/features`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          featureKey,
+          isEnabled: !currentlyEnabled,
+          reason: currentlyEnabled ? 'Disabled by admin' : ''
+        })
+      });
+      loadUserFeatures(selectedUser.id);
+      toast({
+        title: "Feature updated",
+        description: `${featureKey} has been ${currentlyEnabled ? 'disabled' : 'enabled'} for this user.`,
+      });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
   const handleDelete = async (id: number) => {
     if (!confirm("Are you sure you want to delete this user? This cannot be undone.")) return;
     try {
@@ -114,20 +167,24 @@ const ManageUsers = () => {
       (u.businessName || '').toLowerCase().includes(search.toLowerCase());
 
     if (statusFilter === "all") return matchesSearch;
-    if (statusFilter === "disabled") return matchesSearch && u.isDisabled;
-    if (statusFilter === "unverified") return matchesSearch && !u.isVerified && !u.isDisabled;
-    if (statusFilter === "verified") return matchesSearch && u.isVerified && !u.isDisabled;
+    if (statusFilter === "disabled") return matchesSearch && (u.isDisabled || u.accountStatus === 'disabled');
+    if (statusFilter === "suspended") return matchesSearch && (u.isSuspended || u.accountStatus === 'suspended');
+    if (statusFilter === "unverified") return matchesSearch && !u.isVerified && !u.isDisabled && !u.isSuspended;
+    if (statusFilter === "verified") return matchesSearch && u.isVerified && !u.isDisabled && !u.isSuspended;
     return matchesSearch;
   });
 
   const getStatusBadge = (user: any) => {
-    if (user.isDisabled) {
+    if (user.isDisabled || user.accountStatus === 'disabled') {
       return <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-red-50 text-red-600">Disabled</span>;
+    }
+    if (user.isSuspended || user.accountStatus === 'suspended') {
+      return <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-orange-50 text-orange-600">Suspended</span>;
     }
     if (user.isVerified) {
       return <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-50 text-emerald-600">Verified</span>;
     }
-    return <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-orange-50 text-orange-600">Unverified</span>;
+    return <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-50 text-amber-600">Unverified</span>;
   };
 
   return (
@@ -166,6 +223,7 @@ const ManageUsers = () => {
             <option value="verified">Verified</option>
             <option value="unverified">Unverified</option>
             <option value="disabled">Disabled</option>
+            <option value="suspended">Suspended</option>
           </select>
         </div>
 
@@ -292,6 +350,13 @@ const ManageUsers = () => {
                         }}>
                           <Shield className="w-4 h-4 mr-2" /> Manage Roles
                         </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => {
+                          setSelectedUser(user);
+                          loadUserFeatures(user.id);
+                          setFeaturesOpen(true);
+                        }}>
+                          <Flag className="w-4 h-4 mr-2" /> Manage Features
+                        </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => handleVerify(user.id, !user.isVerified)} className={user.isVerified ? "text-orange-600" : "text-emerald-600"}>
                           <UserCheck className="w-4 h-4 mr-2" /> {user.isVerified ? "Unverify Account" : "Verify Account"}
@@ -299,6 +364,10 @@ const ManageUsers = () => {
                         <DropdownMenuItem onClick={() => handleDisable(user.id, !user.isDisabled)} className={user.isDisabled ? "text-emerald-600" : "text-red-600"}>
                           {user.isDisabled ? <UserCheck className="w-4 h-4 mr-2" /> : <Ban className="w-4 h-4 mr-2" />}
                           {user.isDisabled ? "Enable Account" : "Disable Account"}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleSuspend(user.id, !user.isSuspended)} className={user.isSuspended ? "text-emerald-600" : "text-orange-600"}>
+                          {user.isSuspended ? <UserCheck className="w-4 h-4 mr-2" /> : <AlertTriangle className="w-4 h-4 mr-2" />}
+                          {user.isSuspended ? "Unsuspend Account" : "Suspend Account"}
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => handleDelete(user.id)} className="text-red-600 focus:text-red-600 focus:bg-red-50">
@@ -388,7 +457,7 @@ const ManageUsers = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-3 bg-slate-50 rounded-xl">
                   <div className="flex items-center gap-2 text-xs text-slate-500 mb-1">Transaction Limit</div>
-                  <p className="text-sm font-bold text-slate-900">KES {(userDetails.transactionLimit || 5000).toLocaleString()}</p>
+                  <p className="text-sm font-bold text-slate-900">KES {(userDetails.transactionLimit || 1000).toLocaleString()}</p>
                 </div>
                 <div className="p-3 bg-slate-50 rounded-xl">
                   <div className="flex items-center gap-2 text-xs text-slate-500 mb-1">Pending Payouts</div>
@@ -438,6 +507,51 @@ const ManageUsers = () => {
         onClose={() => setCreateUserOpen(false)}
         onSuccess={loadUsers}
       />
+
+      {/* Manage Features Dialog */}
+      <Dialog open={featuresOpen} onOpenChange={setFeaturesOpen}>
+        <DialogContent className="max-w-md bg-white">
+          <DialogHeader>
+            <DialogTitle>Manage Features</DialogTitle>
+            <DialogDescription>
+              Enable or disable specific features for {selectedUser?.fullName || selectedUser?.email || 'this user'}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 max-h-[400px] overflow-y-auto py-2">
+            {loadingFeatures ? (
+              <div className="py-8 text-center text-sm text-slate-400">Loading features...</div>
+            ) : userFeatures.length === 0 ? (
+              <div className="py-8 text-center text-sm text-slate-400">No features found.</div>
+            ) : (
+              userFeatures.map((f: any) => (
+                <div key={f.id} className="flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:bg-slate-50">
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">{f.name}</p>
+                    <p className="text-[10px] text-slate-400">{f.description}</p>
+                    {f.userOverride && (
+                      <p className="text-[10px] text-orange-500 font-medium mt-0.5">
+                        {f.effectiveIsEnabled ? '' : 'Disabled for this user'}
+                        {f.overrideReason ? ` — ${f.overrideReason}` : ''}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => toggleUserFeature(f.key, f.effectiveIsEnabled)}
+                    className={`relative w-10 h-5 rounded-full transition-colors ${
+                      f.effectiveIsEnabled ? 'bg-emerald-500' : 'bg-slate-200'
+                    }`}
+                  >
+                    <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
+                      f.effectiveIsEnabled ? 'left-5.5 translate-x-0' : 'left-0.5'
+                    }`} />
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
     </AdminLayout>
   );
 };
@@ -446,7 +560,7 @@ const ManageUsers = () => {
 const EditUserModal = ({ isOpen, user, onClose, onSuccess }: { isOpen: boolean, user: any, onClose: () => void, onSuccess: () => void }) => {
   const [formData, setFormData] = useState({
     fullName: '', phone: '', businessName: '', location: '', payoutMethod: 'mpesa',
-    kycStatus: 'none', kybStatus: 'none', transactionLimit: 5000
+    kycStatus: 'none', kybStatus: 'none', transactionLimit: 1000
   });
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
@@ -461,7 +575,7 @@ const EditUserModal = ({ isOpen, user, onClose, onSuccess }: { isOpen: boolean, 
         payoutMethod: user.payoutMethod || 'mpesa',
         kycStatus: user.kycStatus || 'none',
         kybStatus: user.kybStatus || 'none',
-        transactionLimit: user.transactionLimit || 5000
+        transactionLimit: user.transactionLimit || 1000
       });
     }
   }, [user, isOpen]);

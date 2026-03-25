@@ -2,7 +2,7 @@ import { useState, ReactNode, useEffect } from "react";
 import {
   LayoutDashboard, Users, Building2, BarChart3,
   Settings, LogOut, ShieldCheck, Menu, X, CreditCard, Bell, Ticket, AppWindow, Shield,
-  ChevronDown, Key, LifeBuoy, Wallet, Globe, Flag
+  ChevronDown, Key, LifeBuoy, Wallet, Globe, Flag, Receipt
 } from "lucide-react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useAppContext } from "@/contexts/AppContext";
@@ -54,6 +54,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
       label: "Payments",
       icon: CreditCard,
       items: [
+        { icon: Receipt, label: "Transactions", to: "/admin/transactions" },
         { icon: Wallet, label: "Payouts", to: "/admin/payouts" },
         { icon: Key, label: "API Keys", to: "/admin/api-keys" },
         { icon: Ticket, label: "Referral Codes", to: "/admin/referrals" },

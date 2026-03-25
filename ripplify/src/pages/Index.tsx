@@ -8,10 +8,13 @@ import StatsCards from "@/components/dashboard/StatsCards";
 import RecentActivity from "@/components/dashboard/RecentActivity";
 import MyCards from "@/components/dashboard/MyCards";
 import PaymentLinks from "@/components/dashboard/PaymentLinks";
+import DisabledFeaturesBanner from "@/components/dashboard/DisabledFeaturesBanner";
+
 const Index = () => {
   usePageTitle("Dashboard");
   return (
     <DashboardLayout>
+      <DisabledFeaturesBanner />
       <BalanceCard />
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <CashFlowChart />

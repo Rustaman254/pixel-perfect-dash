@@ -1,4 +1,5 @@
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import FeatureGuard from "@/components/FeatureGuard";
 import { Send, Users, Plus, Trash2, Search, Smartphone, Building, User, ArrowUpRight, ArrowDownLeft, RefreshCw } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { useAppContext } from "@/contexts/AppContext";
@@ -200,6 +201,7 @@ const TransfersPage = () => {
 
     return (
         <DashboardLayout>
+            <FeatureGuard featureKey="transfers">
             <div className="max-w-5xl mx-auto space-y-6">
                 {/* Header */}
                 <div className="flex items-center justify-between">
@@ -474,6 +476,7 @@ const TransfersPage = () => {
                     )}
                 </div>
             </div>
+            </FeatureGuard>
         </DashboardLayout>
     );
 };

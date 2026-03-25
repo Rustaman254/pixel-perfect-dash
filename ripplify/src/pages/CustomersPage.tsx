@@ -1,5 +1,6 @@
 import { useState } from "react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import FeatureGuard from "@/components/FeatureGuard";
 import { Search, Download, Users, MoreHorizontal, ChevronLeft, ChevronRight, Mail } from "lucide-react";
 import { useAppContext } from "@/contexts/AppContext";
 import usePageTitle from "@/hooks/usePageTitle";
@@ -48,6 +49,7 @@ const CustomersPage = () => {
 
     return (
         <DashboardLayout>
+            <FeatureGuard featureKey="customers">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
                 <h1 className="text-xl md:text-2xl font-bold text-foreground">Customers</h1>
                 <button className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
@@ -170,6 +172,7 @@ const CustomersPage = () => {
                     </div>
                 </div>
             </div>
+            </FeatureGuard>
         </DashboardLayout>
     );
 };

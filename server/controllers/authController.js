@@ -38,7 +38,7 @@ export const registerUser = async (req, res) => {
         // Determine KYC/KYB status and transaction limits
         let kycStatus = "none";
         let kybStatus = "none";
-        let transactionLimit = 5000; // Base limit if no KYC provided
+        let transactionLimit = 1000; // Base limit if no KYC provided
 
         if (idNumber && idNumber.trim() !== "") {
             kycStatus = "pending";

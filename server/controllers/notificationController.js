@@ -1,5 +1,7 @@
 import Notification from "../models/Notification.js";
 import User from "../models/User.js";
+import { getDb } from "../config/db.js";
+import smsService from "../services/smsService.js";
 
 // @desc    Get my notifications
 // @route   GET /api/notifications
@@ -56,21 +58,115 @@ export const deleteNotification = async (req, res) => {
 // @access  Admin
 export const adminSendNotification = async (req, res) => {
     try {
-        const { userId, title, message, type, actionUrl, actionLabel, targetRole, appName = 'ripplify' } = req.body;
-        
-        // If userId is provided, send to specific user. If null, it's a broadcast.
-        const notification = await Notification.create({
-            userId: userId || null,
-            title,
-            message,
-            type: type || 'info',
-            actionUrl: actionUrl || null,
-            actionLabel: actionLabel || null,
-            targetRole: targetRole || null,
-            appName
+        const {
+            userId, title, message, type, actionUrl, actionLabel,
+            targetRole, appName = 'ripplify', deliveryChannel = 'app'
+        } = req.body;
+
+        if (!title || !message) {
+            return res.status(400).json({ message: "Title and message are required" });
+        }
+
+        // deliveryChannel: 'app', 'sms', 'both'
+        const sendApp = deliveryChannel === 'app' || deliveryChannel === 'both';
+        const sendSMS = deliveryChannel === 'sms' || deliveryChannel === 'both';
+
+        // Create in-app notification (if applicable)
+        let notification = null;
+        if (sendApp) {
+            notification = await Notification.create({
+                userId: userId || null,
+                title,
+                message,
+                type: type || 'info',
+                actionUrl: actionUrl || null,
+                actionLabel: actionLabel || null,
+                targetRole: targetRole || null,
+                appName,
+                deliveryChannel
+            });
+        }
+
+        // Send SMS notifications
+        if (sendSMS) {
+            let recipients = [];
+
+            if (userId) {
+                // Send to specific user
+                const user = await User.findById(userId);
+                if (user?.phone) {
+                    recipients.push(user);
+                }
+            } else if (targetRole) {
+                // Send to all users with that role
+                const db = getDb();
+                recipients = await db.all(
+                    `SELECT id, phone, fullName FROM users WHERE role = ? AND phone != '' AND (isDisabled = 0 OR isDisabled IS NULL)`,
+                    [targetRole]
+                );
+            } else {
+                // Broadcast to all users
+                const db = getDb();
+                recipients = await db.all(
+                    `SELECT id, phone, fullName FROM users WHERE phone != '' AND role != 'admin' AND (isDisabled = 0 OR isDisabled IS NULL)`
+                );
+            }
+
+            // Send SMS to each recipient
+            for (const user of recipients) {
+                try {
+                    const smsMessage = `${title}: ${message}`;
+                    await smsService.sendSMS(user.phone, smsMessage);
+                } catch (e) {
+                    console.error(`SMS failed for user ${user.id}:`, e.message);
+                }
+            }
+        }
+
+        res.status(201).json({
+            notification,
+            deliveryChannel,
+            message: `Notification sent via ${deliveryChannel === 'both' ? 'app + SMS' : deliveryChannel}`
         });
-        
-        res.status(201).json(notification);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Admin mark notification as read
+// @route   PUT /api/notifications/admin/:id/read
+// @access  Admin
+export const adminMarkRead = async (req, res) => {
+    try {
+        const db = getDb();
+        await db.run(`UPDATE notifications SET isRead = 1 WHERE id = ?`, req.params.id);
+        res.json({ message: "Notification marked as read" });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Admin mark all notifications as read
+// @route   PUT /api/notifications/admin/read-all
+// @access  Admin
+export const adminMarkAllRead = async (req, res) => {
+    try {
+        const db = getDb();
+        await db.run(`UPDATE notifications SET isRead = 1`);
+        res.json({ message: "All notifications marked as read" });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Admin delete notification
+// @route   DELETE /api/notifications/admin/:id
+// @access  Admin
+export const adminDeleteNotification = async (req, res) => {
+    try {
+        const db = getDb();
+        await db.run(`DELETE FROM notifications WHERE id = ?`, req.params.id);
+        res.json({ message: "Notification deleted" });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

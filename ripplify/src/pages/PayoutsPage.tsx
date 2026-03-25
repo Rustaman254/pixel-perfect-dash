@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import FeatureGuard from "@/components/FeatureGuard";
 import { Download, ArrowUpRight, Clock, CheckCircle2, Wallet, AlertCircle, ShieldCheck, Smartphone, Building, ChevronRight } from "lucide-react";
 import { useAppContext } from "@/contexts/AppContext";
 import { fetchWithAuth } from "@/lib/api";
@@ -113,6 +114,7 @@ const PayoutsPage = () => {
 
     return (
         <DashboardLayout>
+            <FeatureGuard featureKey="payouts">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
                 <h1 className="text-xl md:text-2xl font-bold text-foreground">Payouts</h1>
                 <button
@@ -391,6 +393,7 @@ const PayoutsPage = () => {
                     </div>
                 </div>
             )}
+            </FeatureGuard>
         </DashboardLayout>
     );
 };

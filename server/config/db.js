@@ -31,7 +31,7 @@ const connectDB = async () => {
         businessLogo TEXT,
         kycStatus TEXT DEFAULT 'none',
         kybStatus TEXT DEFAULT 'none',
-        transactionLimit REAL DEFAULT 5000,
+        transactionLimit REAL DEFAULT 1000,
         isVerified BOOLEAN DEFAULT 0,
         createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
       )
@@ -126,7 +126,7 @@ const connectDB = async () => {
     } catch (e) { }
 
     try {
-      await dbInstance.exec(`ALTER TABLE users ADD COLUMN transactionLimit REAL DEFAULT 5000`);
+      await dbInstance.exec(`ALTER TABLE users ADD COLUMN transactionLimit REAL DEFAULT 1000`);
     } catch (e) { }
 
     // Create Transactions Table
@@ -410,6 +410,9 @@ const connectDB = async () => {
     try {
       await dbInstance.exec(`ALTER TABLE notifications ADD COLUMN appName TEXT DEFAULT 'ripplify'`);
     } catch (e) { }
+    try {
+      await dbInstance.exec(`ALTER TABLE notifications ADD COLUMN deliveryChannel TEXT DEFAULT 'app'`);
+    } catch (e) { }
 
     // Create Apps Table (Admin Managed)
     await dbInstance.exec(`
@@ -421,6 +424,21 @@ const connectDB = async () => {
         url TEXT,
         isActive BOOLEAN DEFAULT 1,
         createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Per-user feature overrides (admin can disable specific features for specific users)
+    await dbInstance.exec(`
+      CREATE TABLE IF NOT EXISTS user_feature_overrides (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        userId INTEGER NOT NULL,
+        featureKey TEXT NOT NULL,
+        isEnabled BOOLEAN DEFAULT 1,
+        reason TEXT DEFAULT '',
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (userId) REFERENCES users (id),
+        UNIQUE(userId, featureKey)
       )
     `);
 

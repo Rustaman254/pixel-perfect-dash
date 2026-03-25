@@ -22,6 +22,7 @@ export const submitTicket = async (req, res) => {
         // Notify Admin
         await Notification.create({
             userId: null,
+            targetRole: 'admin',
             title: "New Support Ticket",
             message: `A new ticket "${subject}" has been submitted by ${email}.`,
             type: 'alert'

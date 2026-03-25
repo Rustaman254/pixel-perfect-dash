@@ -1,7 +1,7 @@
 import { getDb } from '../config/db.js';
 
 /**
- * Middleware to check if a feature is enabled globally.
+ * Middleware to check if a feature is enabled globally AND not overridden for the user.
  * Use: requireFeature('payment_links') on routes that map to a feature flag key.
  */
 export const requireFeature = (featureKey) => {
@@ -13,6 +13,23 @@ export const requireFeature = (featureKey) => {
             }
 
             const db = getDb();
+
+            // Check per-user override first
+            if (req.user?.id) {
+                const userOverride = await db.get(
+                    `SELECT isEnabled FROM user_feature_overrides WHERE userId = ? AND featureKey = ?`,
+                    req.user.id, featureKey
+                );
+                if (userOverride && !userOverride.isEnabled) {
+                    return res.status(403).json({
+                        message: `The "${featureKey}" feature has been disabled for your account.`,
+                        featureDisabled: true,
+                        userDisabled: true
+                    });
+                }
+            }
+
+            // Check global feature flag
             const flag = await db.get(`SELECT isEnabled FROM feature_flags WHERE key = ?`, featureKey);
 
             // If no flag exists, allow by default
@@ -63,8 +80,9 @@ export const requireVerified = (req, res, next) => {
 
     if (!isAllowed) {
         return res.status(403).json({
-            message: "Your account is not verified. Complete verification to access this feature.",
-            unverified: true
+            message: `Your account is not verified. Transaction limit: KES ${(req.user.transactionLimit || 1000).toLocaleString()}. Complete KYC verification in Settings to unlock full access.`,
+            unverified: true,
+            transactionLimit: req.user.transactionLimit || 1000
         });
     }
 
@@ -72,18 +90,44 @@ export const requireVerified = (req, res, next) => {
 };
 
 /**
- * Check both: user not disabled AND feature enabled
+ * Check both: user not disabled AND not suspended
  */
 export const enforceUserStatus = (req, res, next) => {
     if (!req.user) {
         return res.status(401).json({ message: "Not authenticated" });
     }
 
-    if (req.user.isDisabled) {
-        return res.status(403).json({
-            message: "Your account has been disabled. Contact support for assistance.",
-            accountDisabled: true
-        });
+    // Disabled users cannot do anything except support/help center
+    if (req.user.isDisabled || req.user.accountStatus === 'disabled') {
+        const path = req.originalUrl || req.url;
+        const allowedForDisabled = ['/api/support', '/api/auth/me', '/api/notifications'];
+        const isAllowed = allowedForDisabled.some(a => path.startsWith(a));
+
+        if (!isAllowed) {
+            return res.status(403).json({
+                message: "Your account has been disabled. You can only contact support via the Help Center or email.",
+                accountDisabled: true,
+                accountStatus: 'disabled'
+            });
+        }
+    }
+
+    // Suspended users cannot do anything except support/help center
+    if (req.user.isSuspended || req.user.accountStatus === 'suspended') {
+        const path = req.originalUrl || req.url;
+        const allowedForSuspended = ['/api/support', '/api/auth/me', '/api/notifications'];
+        const isAllowed = allowedForSuspended.some(a => path.startsWith(a));
+
+        if (!isAllowed) {
+            return res.status(403).json({
+                message: req.user.suspendReason
+                    ? `Account suspended: ${req.user.suspendReason}. Contact support to resolve.`
+                    : "Your account has been suspended. Contact support to resolve.",
+                accountSuspended: true,
+                accountStatus: 'suspended',
+                reason: req.user.suspendReason || null
+            });
+        }
     }
 
     next();

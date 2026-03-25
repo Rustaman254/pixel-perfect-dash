@@ -14,7 +14,7 @@ export const createLink = async (req, res) => {
         }
 
         const linkPrice = price || 0;
-        const transactionLimit = user.transactionLimit || 5000;
+        const transactionLimit = user.transactionLimit || 1000;
 
         if (linkPrice > transactionLimit) {
             return res.status(400).json({ message: `Please complete KYC verification to create links with prices higher than ${transactionLimit}.` });

@@ -3,6 +3,7 @@ import { getDb } from '../config/db.js';
 import User from '../models/User.js';
 import rbacService from '../utils/rbacService.js';
 import ApiKey from '../models/ApiKey.js';
+import Notification from '../models/Notification.js';
 import Transaction from '../models/Transaction.js';
 import SupportedCurrency from '../models/SupportedCurrency.js';
 import ReferralCode from '../models/ReferralCode.js';
@@ -98,7 +99,8 @@ export const getCompanyStats = async (req, res) => {
 
         // Merge with full user details
         const users = await db.all(`
-            SELECT id, email, fullName, businessName, isVerified, isDisabled, kycStatus, kybStatus,
+            SELECT id, email, fullName, businessName, isVerified, isDisabled, isSuspended, accountStatus,
+                   suspendReason, kycStatus, kybStatus,
                    transactionLimit, location, phone, payoutMethod, createdAt
             FROM users WHERE businessName IS NOT NULL AND businessName != ''
         `);
@@ -125,6 +127,7 @@ export const getAllUsers = async (req, res) => {
         const db = getDb();
         const users = await db.all(`
             SELECT u.id, u.email, u.fullName, u.role, u.phone, u.businessName, u.isVerified, u.isDisabled,
+                   u.isSuspended, u.accountStatus, u.suspendReason,
                    u.kycStatus, u.kybStatus, u.transactionLimit, u.location, u.payoutMethod, u.createdAt,
             GROUP_CONCAT(r.name) as rbacRoles
             FROM users u
@@ -144,9 +147,15 @@ export const deleteUser = async (req, res) => {
         const db = getDb();
         const { id } = req.params;
 
-        // Simple safety check: don't delete yourself
+        // Safety checks
         if (req.user.id === parseInt(id)) {
             return res.status(400).json({ message: "You cannot delete your own admin account." });
+        }
+
+        // Prevent deleting other admins
+        const targetUser = await db.get(`SELECT role FROM users WHERE id = ?`, id);
+        if (targetUser?.role === 'admin') {
+            return res.status(403).json({ message: "Cannot delete an admin account. Demote to seller first." });
         }
 
         // Cleanup related data
@@ -200,8 +209,27 @@ export const createUser = async (req, res) => {
 
 export const updatePlatformStatus = async (req, res) => {
     try {
-        const { isVerified, isDisabled } = req.body;
+        const { isVerified, isDisabled, isSuspended, accountStatus, suspendReason } = req.body;
         const db = getDb();
+        const userId = req.params.id;
+
+        // Get current user status to detect changes
+        const currentUser = await db.get(`SELECT * FROM users WHERE id = ?`, userId);
+        if (!currentUser) return res.status(404).json({ message: "User not found" });
+
+        // Prevent disabling/unverifying/suspending admins
+        if (currentUser.role === 'admin') {
+            if (isDisabled || accountStatus === 'disabled') {
+                return res.status(403).json({ message: "Cannot disable an admin account." });
+            }
+            if (isSuspended || accountStatus === 'suspended') {
+                return res.status(403).json({ message: "Cannot suspend an admin account." });
+            }
+            if (isVerified === false) {
+                return res.status(403).json({ message: "Cannot unverify an admin account." });
+            }
+        }
+
         const updates = [];
         const values = [];
         if (isVerified !== undefined) {
@@ -211,12 +239,110 @@ export const updatePlatformStatus = async (req, res) => {
         if (isDisabled !== undefined) {
             updates.push('isDisabled = ?');
             values.push(isDisabled ? 1 : 0);
+            if (isDisabled) {
+                updates.push('accountStatus = ?');
+                values.push('disabled');
+            } else {
+                updates.push('accountStatus = ?');
+                values.push(isSuspended ? 'suspended' : 'active');
+            }
+        }
+        if (isSuspended !== undefined) {
+            updates.push('isSuspended = ?');
+            values.push(isSuspended ? 1 : 0);
+            if (isSuspended) {
+                updates.push('accountStatus = ?');
+                values.push('suspended');
+            } else if (!isDisabled) {
+                updates.push('accountStatus = ?');
+                values.push('active');
+            }
+        }
+        if (accountStatus !== undefined) {
+            updates.push('accountStatus = ?');
+            values.push(accountStatus);
+            updates.push('isDisabled = ?');
+            values.push(accountStatus === 'disabled' ? 1 : 0);
+            updates.push('isSuspended = ?');
+            values.push(accountStatus === 'suspended' ? 1 : 0);
+        }
+        if (suspendReason !== undefined) {
+            updates.push('suspendReason = ?');
+            values.push(suspendReason);
         }
         if (updates.length === 0) {
             return res.status(400).json({ message: "No status fields provided" });
         }
-        values.push(req.params.id);
+        values.push(userId);
         await db.run(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, values);
+
+        // Send notifications based on what changed
+        try {
+            const notifUserId = parseInt(userId);
+
+            if (isDisabled !== undefined) {
+                if (isDisabled && !currentUser.isDisabled) {
+                    await Notification.create({
+                        userId: notifUserId,
+                        title: "Account Disabled",
+                        message: "Your account has been disabled by the administrator. You cannot perform any actions. Contact support to appeal.",
+                        type: 'alert',
+                        actionUrl: '/help-center',
+                        actionLabel: 'Contact Support'
+                    });
+                } else if (!isDisabled && currentUser.isDisabled) {
+                    await Notification.create({
+                        userId: notifUserId,
+                        title: "Account Re-enabled",
+                        message: "Your account has been re-enabled by the administrator. You now have full access.",
+                        type: 'success'
+                    });
+                }
+            }
+
+            if (isSuspended !== undefined) {
+                if (isSuspended && !currentUser.isSuspended) {
+                    await Notification.create({
+                        userId: notifUserId,
+                        title: "Account Suspended",
+                        message: `Your account has been suspended.${suspendReason ? ` Reason: ${suspendReason}` : ''} Contact support to resolve.`,
+                        type: 'warning',
+                        actionUrl: '/help-center',
+                        actionLabel: 'Contact Support'
+                    });
+                } else if (!isSuspended && currentUser.isSuspended) {
+                    await Notification.create({
+                        userId: notifUserId,
+                        title: "Suspension Lifted",
+                        message: "Your account suspension has been lifted. You can now resume normal activity.",
+                        type: 'success'
+                    });
+                }
+            }
+
+            if (isVerified !== undefined) {
+                if (!isVerified && currentUser.isVerified) {
+                    await Notification.create({
+                        userId: notifUserId,
+                        title: "Verification Removed",
+                        message: `Your account verification has been removed. Transaction limit is now KES ${(currentUser.transactionLimit || 1000).toLocaleString()}. Complete KYC in Settings to restore full access.`,
+                        type: 'warning',
+                        actionUrl: '/settings',
+                        actionLabel: 'Verify Now'
+                    });
+                } else if (isVerified && !currentUser.isVerified) {
+                    await Notification.create({
+                        userId: notifUserId,
+                        title: "Account Verified",
+                        message: "Congratulations! Your account has been verified. You now have full transaction access.",
+                        type: 'success'
+                    });
+                }
+            }
+        } catch (notifErr) {
+            console.error('Failed to send status notification:', notifErr.message);
+        }
+
         res.json({ message: "User status updated" });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -529,12 +655,243 @@ export const updateFeatureFlag = async (req, res) => {
     }
 };
 
-// Get feature flags for current user (seller-facing)
+// Get feature flags for current user (seller-facing) - includes per-user overrides
 export const getEnabledFeatures = async (req, res) => {
     try {
         const db = getDb();
-        const flags = await db.all(`SELECT key, isEnabled FROM feature_flags`);
-        res.json(flags);
+        const globalFlags = await db.all(`SELECT key, isEnabled FROM feature_flags`);
+
+        if (req.user?.id && req.user.role !== 'admin') {
+            // Check per-user overrides
+            const overrides = await db.all(`SELECT featureKey, isEnabled FROM user_feature_overrides WHERE userId = ?`, req.user.id);
+            const overrideMap = {};
+            overrides.forEach(o => { overrideMap[o.featureKey] = o.isEnabled; });
+
+            // Merge: user override takes priority over global
+            const merged = globalFlags.map(f => ({
+                key: f.key,
+                isEnabled: overrideMap[f.key] !== undefined ? overrideMap[f.key] : f.isEnabled
+            }));
+            return res.json(merged);
+        }
+
+        res.json(globalFlags);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// ==================== ADMIN TRANSACTIONS ====================
+
+// Get all transactions across the platform, categorized
+export const getAllTransactions = async (req, res) => {
+    try {
+        const db = getDb();
+        const { category, status, search, page = 1, limit = 50 } = req.query;
+        const offset = (parseInt(page) - 1) * parseInt(limit);
+
+        // Payments (from transactions table)
+        let paymentsQuery = `
+            SELECT t.id, t.transactionId, t.amount, t.fee, t.currency, t.status, t.type,
+                   t.buyerName, t.buyerEmail, t.buyerPhone, t.createdAt,
+                   'payment' as category, u.fullName as sellerName, u.businessName,
+                   p.name as linkName
+            FROM transactions t
+            LEFT JOIN users u ON t.userId = u.id
+            LEFT JOIN payment_links p ON t.linkId = p.id
+        `;
+
+        // Payouts
+        let payoutsQuery = `
+            SELECT p.id, ('PO-' || p.id) as transactionId, p.amount, p.fee, p.currency, p.status,
+                   p.method as type, '' as buyerName, u.email as buyerEmail, '' as buyerPhone,
+                   p.createdAt, 'payout' as category, u.fullName as sellerName, u.businessName,
+                   p.details as linkName
+            FROM payouts p
+            LEFT JOIN users u ON p.userId = u.id
+        `;
+
+        // Transfers
+        let transfersQuery = `
+            SELECT t.id, ('TR-' || t.id) as transactionId, t.amount, t.fee, t.currency, t.status,
+                   t.method as type, t.receiverPhone as buyerName, u.email as buyerEmail,
+                   t.receiverEmail as buyerPhone, t.createdAt, 'transfer' as category,
+                   u.fullName as sellerName, u.businessName, t.note as linkName
+            FROM transfers t
+            LEFT JOIN users u ON t.senderId = u.id
+        `;
+
+        const conditions = [];
+        const params = [];
+
+        if (status) {
+            conditions.push(`status = ?`);
+            params.push(status);
+        }
+
+        if (search) {
+            conditions.push(`(buyerName LIKE ? OR buyerEmail LIKE ? OR transactionId LIKE ? OR sellerName LIKE ? OR businessName LIKE ?)`);
+            const searchParam = `%${search}%`;
+            params.push(searchParam, searchParam, searchParam, searchParam, searchParam);
+        }
+
+        const whereClause = conditions.length > 0 ? ` WHERE ${conditions.join(' AND ')}` : '';
+
+        let finalQuery;
+        let countQuery;
+
+        if (category === 'payment') {
+            finalQuery = paymentsQuery + whereClause + ` ORDER BY t.createdAt DESC LIMIT ? OFFSET ?`;
+            countQuery = `SELECT COUNT(*) as total FROM transactions t LEFT JOIN users u ON t.userId = u.id LEFT JOIN payment_links p ON t.linkId = p.id` + whereClause;
+        } else if (category === 'payout') {
+            finalQuery = payoutsQuery + whereClause + ` ORDER BY p.createdAt DESC LIMIT ? OFFSET ?`;
+            countQuery = `SELECT COUNT(*) as total FROM payouts p LEFT JOIN users u ON p.userId = u.id` + whereClause;
+        } else if (category === 'transfer') {
+            finalQuery = transfersQuery + whereClause + ` ORDER BY t.createdAt DESC LIMIT ? OFFSET ?`;
+            countQuery = `SELECT COUNT(*) as total FROM transfers t LEFT JOIN users u ON t.senderId = u.id` + whereClause;
+        } else {
+            // All - combine all three
+            finalQuery = `
+                SELECT * FROM (
+                    ${paymentsQuery}
+                    UNION ALL
+                    ${payoutsQuery}
+                    UNION ALL
+                    ${transfersQuery}
+                ) AS combined
+                ${whereClause ? whereClause.replace('WHERE', 'WHERE') : ''}
+                ORDER BY createdAt DESC
+                LIMIT ? OFFSET ?
+            `;
+            countQuery = `
+                SELECT SUM(c) as total FROM (
+                    SELECT COUNT(*) as c FROM transactions t LEFT JOIN users u ON t.userId = u.id ${conditions.length > 0 ? 'WHERE ' + conditions.map(c => c.replace('buyerName', 't.buyerName').replace('buyerEmail', 't.buyerEmail').replace('sellerName', 'u.fullName').replace('businessName', 'u.businessName')).join(' AND ') : ''}
+                    UNION ALL
+                    SELECT COUNT(*) as c FROM payouts p LEFT JOIN users u ON p.userId = u.id ${conditions.length > 0 ? 'WHERE ' + conditions.map(c => c.replace('buyerName', '').replace('buyerEmail', 'u.email').replace('sellerName', 'u.fullName').replace('businessName', 'u.businessName')).filter(c => c).join(' AND ') : ''}
+                    UNION ALL
+                    SELECT COUNT(*) as c FROM transfers t LEFT JOIN users u ON t.senderId = u.id ${conditions.length > 0 ? 'WHERE ' + conditions.map(c => c.replace('buyerName', 't.receiverPhone').replace('buyerEmail', 'u.email').replace('sellerName', 'u.fullName').replace('businessName', 'u.businessName')).filter(c => c).join(' AND ') : ''}
+                )
+            `;
+        }
+
+        const transactions = await db.all(finalQuery, [...params, parseInt(limit), offset]);
+
+        // Get category counts
+        const paymentCount = await db.get(`SELECT COUNT(*) as count FROM transactions`);
+        const payoutCount = await db.get(`SELECT COUNT(*) as count FROM payouts`);
+        const transferCount = await db.get(`SELECT COUNT(*) as count FROM transfers`);
+
+        // Get status counts
+        const completedCount = await db.get(`SELECT COUNT(*) as count FROM transactions WHERE status IN ('Completed', 'Funds locked')`);
+        const pendingCount = await db.get(`SELECT COUNT(*) as count FROM transactions WHERE status = 'Pending'`);
+        const disputedCount = await db.get(`SELECT COUNT(*) as count FROM transactions WHERE status = 'Disputed'`);
+
+        res.json({
+            transactions,
+            categories: {
+                payments: paymentCount?.count || 0,
+                payouts: payoutCount?.count || 0,
+                transfers: transferCount?.count || 0,
+                total: (paymentCount?.count || 0) + (payoutCount?.count || 0) + (transferCount?.count || 0)
+            },
+            statuses: {
+                completed: completedCount?.count || 0,
+                pending: pendingCount?.count || 0,
+                disputed: disputedCount?.count || 0
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// ==================== PER-USER FEATURE OVERRIDES ====================
+
+// Get feature overrides for a specific user
+export const getUserFeatureOverrides = async (req, res) => {
+    try {
+        const db = getDb();
+        const { userId } = req.params;
+
+        // Get all global feature flags
+        const globalFlags = await db.all(`SELECT * FROM feature_flags ORDER BY category, name`);
+
+        // Get user-specific overrides
+        const overrides = await db.all(`SELECT * FROM user_feature_overrides WHERE userId = ?`, userId);
+        const overrideMap = {};
+        overrides.forEach(o => { overrideMap[o.featureKey] = o; });
+
+        // Merge: global flag + user override
+        const merged = globalFlags.map(flag => ({
+            ...flag,
+            userOverride: overrideMap[flag.key] || null,
+            effectiveIsEnabled: overrideMap[flag.key] ? !!overrideMap[flag.key].isEnabled : !!flag.isEnabled,
+            overrideReason: overrideMap[flag.key]?.reason || ''
+        }));
+
+        res.json(merged);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// Set a feature override for a specific user
+export const setUserFeatureOverride = async (req, res) => {
+    try {
+        const db = getDb();
+        const { userId } = req.params;
+        const { featureKey, isEnabled, reason } = req.body;
+
+        if (!featureKey) return res.status(400).json({ message: "featureKey is required" });
+
+        // Check if override exists
+        const existing = await db.get(
+            `SELECT * FROM user_feature_overrides WHERE userId = ? AND featureKey = ?`,
+            userId, featureKey
+        );
+
+        if (existing) {
+            await db.run(
+                `UPDATE user_feature_overrides SET isEnabled = ?, reason = ?, updatedAt = CURRENT_TIMESTAMP WHERE userId = ? AND featureKey = ?`,
+                isEnabled ? 1 : 0, reason || '', userId, featureKey
+            );
+        } else {
+            await db.run(
+                `INSERT INTO user_feature_overrides (userId, featureKey, isEnabled, reason) VALUES (?, ?, ?, ?)`,
+                userId, featureKey, isEnabled ? 1 : 0, reason || ''
+            );
+        }
+
+        // Notify user about the feature change
+        const user = await db.get(`SELECT * FROM users WHERE id = ?`, userId);
+        const flag = await db.get(`SELECT name FROM feature_flags WHERE key = ?`, featureKey);
+        if (user) {
+            const flagName = flag?.name || featureKey;
+            await Notification.create({
+                userId: parseInt(userId),
+                title: isEnabled ? "Feature Enabled" : "Feature Disabled",
+                message: isEnabled
+                    ? `The "${flagName}" feature has been enabled for your account.`
+                    : `The "${flagName}" feature has been disabled for your account.${reason ? ` Reason: ${reason}` : ''}`,
+                type: isEnabled ? 'success' : 'warning',
+                actionUrl: '/help-center',
+                actionLabel: 'Contact Support'
+            });
+        }
+
+        res.json({ message: `Feature ${featureKey} ${isEnabled ? 'enabled' : 'disabled'} for user ${userId}` });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// Remove a feature override for a user (reverts to global setting)
+export const removeUserFeatureOverride = async (req, res) => {
+    try {
+        const db = getDb();
+        const { userId, featureKey } = req.params;
+        await db.run(`DELETE FROM user_feature_overrides WHERE userId = ? AND featureKey = ?`, userId, featureKey);
+        res.json({ message: `Override removed. User ${userId} now uses global setting for ${featureKey}.` });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

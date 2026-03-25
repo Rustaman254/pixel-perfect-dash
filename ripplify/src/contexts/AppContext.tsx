@@ -94,6 +94,12 @@ export interface UserProfile {
     payoutDetails: string;
     isVerified: boolean;
     isDisabled?: boolean;
+    isSuspended?: boolean;
+    accountStatus?: 'active' | 'disabled' | 'suspended' | 'unverified';
+    suspendReason?: string;
+    transactionLimit?: number;
+    kycStatus?: string;
+    kybStatus?: string;
 }
 
 interface AppContextType {

@@ -40,6 +40,7 @@ import ManageApps from "./pages/admin/ManageApps";
 import ManageRoles from "./pages/admin/ManageRoles";
 import AdminPayoutsPage from "./pages/admin/AdminPayoutsPage";
 import ManageFeatureFlags from "./pages/admin/ManageFeatureFlags";
+import AdminTransactionsPage from "./pages/admin/AdminTransactionsPage";
 
 import { AppProvider, useAppContext } from "./contexts/AppContext";
 
@@ -53,15 +54,18 @@ const ProtectedRoute = ({ children, role }: { children: React.ReactNode, role?: 
 
   if (!isAuthenticated || !userProfile) return <Navigate to={loginRoute} replace />;
 
-  // Check if user account is disabled
-  if ((userProfile as any).isDisabled) {
+  // Check if user account is disabled/suspended
+  if ((userProfile as any).isDisabled || userProfile.accountStatus === 'disabled') {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('ripplify_profile');
     return <Navigate to={`${loginRoute}?error=disabled`} replace />;
   }
 
+  if (userProfile.isSuspended || userProfile.accountStatus === 'suspended') {
+    // Suspended users stay logged in but see a banner - don't redirect
+  }
+
   if (role && userProfile.role !== role) {
-    // Wrong role: redirect to their correct dashboard
     if (userProfile.role === "admin") return <Navigate to="/admin" replace />;
     return <Navigate to="/" replace />;
   }
@@ -116,6 +120,7 @@ const AppRoutes = () => {
         <Route path="/admin/apps" element={<ProtectedRoute role="admin"><ManageApps /></ProtectedRoute>} />
         <Route path="/admin/roles" element={<ProtectedRoute role="admin"><ManageRoles /></ProtectedRoute>} />
         <Route path="/admin/features" element={<ProtectedRoute role="admin"><ManageFeatureFlags /></ProtectedRoute>} />
+        <Route path="/admin/transactions" element={<ProtectedRoute role="admin"><AdminTransactionsPage /></ProtectedRoute>} />
 
         {/* Public Routes */}
         <Route path="/pay/:slug" element={<PublicPaymentPage />} />

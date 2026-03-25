@@ -376,7 +376,7 @@ const AddCompanyModal = ({ isOpen, onClose, onSuccess }: { isOpen: boolean, onCl
 const EditCompanyModal = ({ isOpen, company, onClose, onSuccess }: { isOpen: boolean, company: any, onClose: () => void, onSuccess: () => void }) => {
   const [formData, setFormData] = useState({
     fullName: '', phone: '', businessName: '', location: '', payoutMethod: 'mpesa',
-    kycStatus: 'none', kybStatus: 'none', transactionLimit: 5000
+    kycStatus: 'none', kybStatus: 'none', transactionLimit: 1000
   });
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
@@ -391,7 +391,7 @@ const EditCompanyModal = ({ isOpen, company, onClose, onSuccess }: { isOpen: boo
         payoutMethod: company.payoutMethod || 'mpesa',
         kycStatus: company.kycStatus || 'none',
         kybStatus: company.kybStatus || 'none',
-        transactionLimit: company.transactionLimit || 5000
+        transactionLimit: company.transactionLimit || 1000
       });
     }
   }, [company, isOpen]);

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import FeatureGuard from "@/components/FeatureGuard";
 import { useToast } from "@/hooks/use-toast";
 import { Copy, ExternalLink, MoreHorizontal, Plus, Search, Filter, X, MousePointerClick, Calendar, Clock, Package, Truck, CheckCircle2, AlertTriangle, DollarSign, Share2, Image as ImageIcon, Eye, QrCode, Download, User, Mail, Phone, Heart, BarChart3 } from "lucide-react";
 import { useAppContext } from "@/contexts/AppContext";
@@ -180,6 +181,7 @@ const PaymentLinksPage = () => {
 
     return (
         <DashboardLayout>
+            <FeatureGuard featureKey="payment_links">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
                 <div>
                     <h1 className="text-xl md:text-2xl font-bold text-foreground">Payment Links</h1>
@@ -736,6 +738,7 @@ const PaymentLinksPage = () => {
                     </div>
                 </>
             )}
+            </FeatureGuard>
         </DashboardLayout>
     );
 };

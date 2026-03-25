@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import {
   LayoutDashboard, Link2, ArrowLeftRight, CreditCard,
   BarChart3, Globe, Wallet, Settings, HelpCircle,
-  ChevronDown, X, Users, LogOut, TerminalSquare, Plus, Bell, Send
+  ChevronDown, X, Users, LogOut, TerminalSquare, Plus, Bell, Send, Lock
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NavLink, useNavigate } from "react-router-dom";
@@ -10,21 +10,21 @@ import { useAppContext } from "@/contexts/AppContext";
 import { useToast } from "@/hooks/use-toast";
 import { fetchWithAuth } from "@/lib/api";
 import Logo from "../Logo";
+import { ROUTE_FEATURES, FEATURE_LABELS } from "@/hooks/useFeature";
 
 const generalItems = [
-  { icon: LayoutDashboard, label: "Overview", to: "/" },
-  { icon: Link2, label: "Payment Links", to: "/payment-links" },
-  { icon: ArrowLeftRight, label: "Orders", to: "/orders" },
-  { icon: CreditCard, label: "Payment Methods", to: "/payment-methods" },
-  { icon: Globe, label: "Currencies", to: "/currencies" },
+  { icon: LayoutDashboard, label: "Overview", to: "/", featureKey: null },
+  { icon: Link2, label: "Payment Links", to: "/payment-links", featureKey: "payment_links" },
+  { icon: ArrowLeftRight, label: "Orders", to: "/orders", featureKey: "orders" },
+  { icon: CreditCard, label: "Payment Methods", to: "/payment-methods", featureKey: "payment_methods" },
+  { icon: Globe, label: "Currencies", to: "/currencies", featureKey: "currencies" },
 ];
 
 const manageItems = [
-  { icon: BarChart3, label: "Statistics", to: "/statistics" },
-  { icon: Send, label: "Transfers", to: "/transfers" },
-  // { icon: Wallet, label: "Wallets", to: "/wallets" },
-  { icon: Wallet, label: "Payouts", to: "/payouts" },
-  { icon: Users, label: "Customers", to: "/customers" },
+  { icon: BarChart3, label: "Statistics", to: "/statistics", featureKey: "analytics" },
+  { icon: Send, label: "Transfers", to: "/transfers", featureKey: "transfers" },
+  { icon: Wallet, label: "Payouts", to: "/payouts", featureKey: "payouts" },
+  { icon: Users, label: "Customers", to: "/customers", featureKey: "customers" },
 ];
 
 const externalLinks = [
@@ -43,7 +43,7 @@ interface SidebarProps {
 }
 
 const Sidebar = ({ open, onClose }: SidebarProps) => {
-  const { userProfile, logout } = useAppContext();
+  const { userProfile, logout, isFeatureEnabled } = useAppContext();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [showWorkspaceModal, setShowWorkspaceModal] = useState(false);
@@ -93,57 +93,95 @@ const Sidebar = ({ open, onClose }: SidebarProps) => {
         <div className="px-4 flex-1 overflow-y-auto">
           <p className="text-[11px] font-medium uppercase tracking-wider px-2 mb-2" style={{ color: '#999999' }}>General</p>
           <nav className="space-y-0.5">
-            {generalItems.map((item) => (
-              <NavLink
-                key={item.label}
-                to={item.to}
-                onClick={onClose}
-                className={({ isActive }) =>
-                  cn(
-                    "flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-sm transition-colors",
-                    isActive
-                      ? "font-medium"
-                      : "hover:bg-[#ebeef1]"
-                  )
-                }
-                style={({ isActive }) => ({
-                  backgroundColor: isActive ? 'rgba(2, 88, 100, 0.08)' : undefined,
-                  color: isActive ? '#025864' : '#333333',
-                })}
-                end={item.to === "/"}
-              >
-                <div className="flex items-center gap-3">
-                  <item.icon className="w-4 h-4" />
-                  <span>{item.label}</span>
-                </div>
-              </NavLink>
-            ))}
+            {generalItems.map((item) => {
+              const isDisabled = item.featureKey && !isFeatureEnabled(item.featureKey);
+              if (isDisabled) {
+                return (
+                  <div
+                    key={item.label}
+                    className="flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-sm opacity-40 cursor-not-allowed"
+                    style={{ color: '#999999' }}
+                    title={`${item.label} is disabled`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <item.icon className="w-4 h-4" />
+                      <span>{item.label}</span>
+                    </div>
+                    <Lock className="w-3 h-3" />
+                  </div>
+                );
+              }
+              return (
+                <NavLink
+                  key={item.label}
+                  to={item.to}
+                  onClick={onClose}
+                  className={({ isActive }) =>
+                    cn(
+                      "flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-sm transition-colors",
+                      isActive
+                        ? "font-medium"
+                        : "hover:bg-[#ebeef1]"
+                    )
+                  }
+                  style={({ isActive }) => ({
+                    backgroundColor: isActive ? 'rgba(2, 88, 100, 0.08)' : undefined,
+                    color: isActive ? '#025864' : '#333333',
+                  })}
+                  end={item.to === "/"}
+                >
+                  <div className="flex items-center gap-3">
+                    <item.icon className="w-4 h-4" />
+                    <span>{item.label}</span>
+                  </div>
+                </NavLink>
+              );
+            })}
           </nav>
 
           <p className="text-[11px] font-medium uppercase tracking-wider px-2 mb-2 mt-6" style={{ color: '#999999' }}>Manage</p>
           <nav className="space-y-0.5">
-            {manageItems.map((item) => (
-              <NavLink
-                key={item.label}
-                to={item.to}
-                onClick={onClose}
-                className={({ isActive }) =>
-                  cn(
-                    "flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm transition-colors",
-                    isActive
-                      ? "font-medium"
-                      : "hover:bg-[#ebeef1]"
-                  )
-                }
-                style={({ isActive }) => ({
-                  backgroundColor: isActive ? 'rgba(2, 88, 100, 0.08)' : undefined,
-                  color: isActive ? '#025864' : '#333333',
-                })}
-              >
-                <item.icon className="w-4 h-4" />
-                <span>{item.label}</span>
-              </NavLink>
-            ))}
+            {manageItems.map((item) => {
+              const isDisabled = item.featureKey && !isFeatureEnabled(item.featureKey);
+              if (isDisabled) {
+                return (
+                  <div
+                    key={item.label}
+                    className="flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-sm opacity-40 cursor-not-allowed"
+                    style={{ color: '#999999' }}
+                    title={`${item.label} is disabled`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <item.icon className="w-4 h-4" />
+                      <span>{item.label}</span>
+                    </div>
+                    <Lock className="w-3 h-3" />
+                  </div>
+                );
+              }
+              return (
+                <NavLink
+                  key={item.label}
+                  to={item.to}
+                  onClick={onClose}
+                  className={({ isActive }) =>
+                    cn(
+                      "flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm transition-colors",
+                      isActive
+                        ? "font-medium"
+                        : "hover:bg-[#ebeef1]"
+                    )
+                  }
+                  style={({ isActive }) => ({
+                    backgroundColor: isActive ? 'rgba(2, 88, 100, 0.08)' : undefined,
+                    color: isActive ? '#025864' : '#333333',
+                  })}
+                >
+                  <item.icon className="w-4 h-4" />
+                  <span>{item.label}</span>
+                </NavLink>
+              );
+            })}
           </nav>
 
           {/* <p className="text-[11px] font-medium uppercase tracking-wider px-2 mb-2 mt-6" style={{ color: '#999999' }}>Products</p>

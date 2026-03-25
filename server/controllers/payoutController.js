@@ -49,7 +49,7 @@ export const requestPayout = async (req, res) => {
             return res.status(400).json({ message: "Only M-Pesa and Bank withdrawals are supported." });
         }
 
-        const transactionLimit = user.transactionLimit || 5000;
+        const transactionLimit = user.transactionLimit || 1000;
         if (amount > transactionLimit) {
             return res.status(400).json({ message: `Please complete KYC verification to request payouts higher than ${transactionLimit}.` });
         }
@@ -153,6 +153,7 @@ export const requestPayout = async (req, res) => {
 
         await Notification.create({
             userId: null,
+            targetRole: 'admin',
             title: "Payout Initiated",
             message: `Payout of KES ${netAmount.toLocaleString()} (${payoutMethod.method}) initiated for ${user.email}.`,
             type: 'info'
