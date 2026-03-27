@@ -10,9 +10,23 @@ const __dirname = path.dirname(__filename);
 export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
-    port: 5175,
+    port: 8082,
     hmr: {
       overlay: true,
+    },
+    proxy: {
+      "/api/auth": {
+        target: "http://localhost:3001",
+        changeOrigin: true,
+      },
+      "/sso.html": {
+        target: "http://localhost:3001",
+        changeOrigin: true,
+      },
+      "/api": {
+        target: "http://localhost:3004",
+        changeOrigin: true,
+      },
     },
   },
   plugins: [

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head><title>Sokostack SSO Hub</title></head>
+<body>
+<script>
+(function() {
+  const STORAGE_KEY_TOKEN = 'auth_token';
+  const STORAGE_KEY_PROFILE = 'sokostack_profile';
+
+  const allowedOrigins = [
+    'https://ripplify.sokostack.xyz',
+    'https://shopalize.sokostack.xyz',
+    'https://watchtower.sokostack.xyz',
+    'https://admin.sokostack.xyz',
+    'https://auth.sokostack.xyz',
+    'http://localhost:8080',
+    'http://localhost:8081',
+    'http://localhost:8082',
+    'http://localhost:8083',
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://localhost:5175',
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://127.0.0.1:8080',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:5175',
+    'http://127.0.0.1:3000'
+  ];
+
+  window.addEventListener('message', function(event) {
+    if (allowedOrigins.indexOf(event.origin) === -1) return;
+
+    const data = event.data;
+    const source = event.source;
+
+    if (data.type === 'GET_AUTH') {
+      const token = localStorage.getItem(STORAGE_KEY_TOKEN);
+      const profile = localStorage.getItem(STORAGE_KEY_PROFILE);
+      source.postMessage({
+        type: 'AUTH_STATE',
+        token: token || null,
+        userProfile: profile ? JSON.parse(profile) : null
+      }, event.origin);
+    }
+
+    if (data.type === 'SET_AUTH') {
+      localStorage.setItem(STORAGE_KEY_TOKEN, data.token);
+      localStorage.setItem(STORAGE_KEY_PROFILE, JSON.stringify(data.userProfile));
+      source.postMessage({
+        type: 'AUTH_STATE',
+        token: data.token,
+        userProfile: data.userProfile
+      }, event.origin);
+    }
+
+    if (data.type === 'CLEAR_AUTH') {
+      localStorage.removeItem(STORAGE_KEY_TOKEN);
+      localStorage.removeItem(STORAGE_KEY_PROFILE);
+      source.postMessage({
+        type: 'AUTH_STATE',
+        token: null,
+        userProfile: null
+      }, event.origin);
+    }
+  });
+})();
+</script>
+</body>
+</html>

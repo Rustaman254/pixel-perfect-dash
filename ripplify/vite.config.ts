@@ -13,8 +13,20 @@ export default defineConfig(({ mode }) => ({
       overlay: true,
     },
     proxy: {
-      "/api": {
+      "/api/auth": {
         target: "http://localhost:3001",
+        changeOrigin: true,
+      },
+      "/api/oauth": {
+        target: "http://localhost:3001",
+        changeOrigin: true,
+      },
+      "/sso.html": {
+        target: "http://localhost:3001",
+        changeOrigin: true,
+      },
+      "/api": {
+        target: "http://localhost:3002",
         changeOrigin: true,
       },
     },

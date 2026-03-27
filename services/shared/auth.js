@@ -1,0 +1,108 @@
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-key-change-in-production';
+const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || 'internal-sokostack-2026-secret';
+
+// JWT authentication middleware - used by ALL services
+export const protect = (getDb) => async (req, res, next) => {
+  let token;
+
+  if (req.headers.authorization?.startsWith('Bearer')) {
+    try {
+      token = req.headers.authorization.split(' ')[1];
+
+      // API Key auth (rf_ prefix) - only valid on auth/ripplify service
+      if (token.startsWith('rf_')) {
+        const db = getDb();
+        const apiKeyRecord = await db('api_keys').where({ key: token, status: 'Active' }).first();
+        if (!apiKeyRecord) {
+          return res.status(401).json({ message: 'Invalid or inactive API Key' });
+        }
+        const user = await db('users').where({ id: apiKeyRecord.userId }).first();
+        if (!user) {
+          return res.status(401).json({ message: 'User associated with API Key not found' });
+        }
+        req.user = sanitizeUser(user);
+      } else {
+        // Standard JWT auth
+        const decoded = jwt.verify(token, JWT_SECRET);
+        const db = getDb();
+        const user = await db('users').where({ id: decoded.id }).first();
+        if (!user) {
+          return res.status(401).json({ message: 'Not authorized, user not found' });
+        }
+        req.user = sanitizeUser(user);
+      }
+
+      if (req.user.isDisabled) {
+        return res.status(403).json({ message: 'Your account has been disabled. Contact support for assistance.' });
+      }
+
+      return next();
+    } catch (error) {
+      if (error.name === 'TokenExpiredError') {
+        return res.status(401).json({ message: 'Token expired' });
+      }
+      console.error('Auth verification error:', error.message);
+      return res.status(401).json({ message: 'Not authorized, token failed' });
+    }
+  }
+
+  if (!token) {
+    return res.status(401).json({ message: 'Not authorized, no token' });
+  }
+};
+
+// JWT-only auth (no API key support) - for services that don't have api_keys table
+export const protectJwt = async (req, res, next) => {
+  let token;
+
+  if (req.headers.authorization?.startsWith('Bearer')) {
+    try {
+      token = req.headers.authorization.split(' ')[1];
+      const decoded = jwt.verify(token, JWT_SECRET);
+      req.user = { id: decoded.id, email: decoded.email, role: decoded.role };
+      return next();
+    } catch (error) {
+      if (error.name === 'TokenExpiredError') {
+        return res.status(401).json({ message: 'Token expired' });
+      }
+      return res.status(401).json({ message: 'Not authorized, token failed' });
+    }
+  }
+
+  if (!token) {
+    return res.status(401).json({ message: 'Not authorized, no token' });
+  }
+};
+
+// Admin check middleware
+export const admin = async (req, res, next) => {
+  if (req.user?.role === 'admin') return next();
+  res.status(403).json({ message: 'Not authorized as an admin' });
+};
+
+// Internal service-to-service auth middleware
+export const internalAuth = (req, res, next) => {
+  const key = req.headers['x-internal-api-key'];
+  if (!key || key !== INTERNAL_API_KEY) {
+    return res.status(403).json({ message: 'Forbidden: invalid internal API key' });
+  }
+  next();
+};
+
+// Generate JWT token
+export const generateToken = (id, email, role) => {
+  return jwt.sign({ id, email, role }, JWT_SECRET, { expiresIn: '1d' });
+};
+
+// Verify JWT token (for internal use)
+export const verifyToken = (token) => {
+  return jwt.verify(token, JWT_SECRET);
+};
+
+// Strip sensitive fields from user object
+function sanitizeUser(user) {
+  const { password, pin, ...safe } = user;
+  return safe;
+}

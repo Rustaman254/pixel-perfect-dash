@@ -7,7 +7,6 @@ export const useSSOSync = (onSync?: (token: string | null, userProfile: any | nu
   useEffect(() => {
     const backendOrigin = new URL(SSO_HUB_URL).origin;
 
-    // Create hidden iframe
     const iframe = document.createElement("iframe");
     iframe.src = SSO_HUB_URL;
     iframe.style.display = "none";

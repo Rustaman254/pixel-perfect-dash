@@ -2,10 +2,10 @@ const getBaseUrl = () => {
     if (typeof window !== "undefined") {
         const hostname = window.location.hostname;
         if (hostname === "localhost" || hostname === "127.0.0.1") {
-            return "http://localhost:3004/api";
+            return "http://localhost:3003/api";
         }
     }
-    return import.meta.env.VITE_API_URL || "https://watchtower.sokostack.xyz/api";
+    return import.meta.env.VITE_API_URL || "https://shopalize.sokostack.xyz/api";
 };
 
 export const BASE_URL = getBaseUrl();
@@ -32,9 +32,9 @@ export const PRODUCTS = {
 
 export const fetchWithAuth = async (endpoint: string, options: RequestInit = {}) => {
     const token = localStorage.getItem('auth_token');
-    const headers = {
+    const headers: Record<string, string> = {
         'Content-Type': 'application/json',
-        ...options.headers,
+        ...(options.headers as Record<string, string> || {}),
         ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
     };
 
@@ -47,7 +47,7 @@ export const fetchWithAuth = async (endpoint: string, options: RequestInit = {})
         if (response.status === 401) {
             localStorage.removeItem('auth_token');
             localStorage.removeItem('sokostack_profile');
-            if (window.location.pathname !== '/login') {
+            if (window.location.pathname !== '/login' && window.location.pathname !== '/') {
                 window.location.href = '/login';
             }
         }
@@ -63,7 +63,7 @@ export const publicFetch = async (endpoint: string, options: RequestInit = {}) =
         ...options,
         headers: {
             'Content-Type': 'application/json',
-            ...options.headers,
+            ...(options.headers as Record<string, string> || {}),
         },
     });
 
