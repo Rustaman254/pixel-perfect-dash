@@ -1,5 +1,8 @@
 module.exports = {
   apps: [
+    // ============================================================
+    // Backend Microservices
+    // ============================================================
     {
       name: 'auth-service',
       cwd: './services/auth-service',
@@ -9,6 +12,10 @@ module.exports = {
       autorestart: true,
       max_restarts: 10,
       restart_delay: 3000,
+      watch: false,
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      error_file: './logs/auth-service-error.log',
+      out_file: './logs/auth-service-out.log',
     },
     {
       name: 'ripplify-service',
@@ -19,6 +26,10 @@ module.exports = {
       autorestart: true,
       max_restarts: 10,
       restart_delay: 3000,
+      watch: false,
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      error_file: './logs/ripplify-service-error.log',
+      out_file: './logs/ripplify-service-out.log',
     },
     {
       name: 'shopalize-service',
@@ -29,6 +40,10 @@ module.exports = {
       autorestart: true,
       max_restarts: 10,
       restart_delay: 3000,
+      watch: false,
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      error_file: './logs/shopalize-service-error.log',
+      out_file: './logs/shopalize-service-out.log',
     },
     {
       name: 'watchtower-service',
@@ -39,6 +54,10 @@ module.exports = {
       autorestart: true,
       max_restarts: 10,
       restart_delay: 3000,
+      watch: false,
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      error_file: './logs/watchtower-service-error.log',
+      out_file: './logs/watchtower-service-out.log',
     },
     {
       name: 'admin-service',
@@ -49,6 +68,90 @@ module.exports = {
       autorestart: true,
       max_restarts: 10,
       restart_delay: 3000,
+      watch: false,
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      error_file: './logs/admin-service-error.log',
+      out_file: './logs/admin-service-out.log',
+    },
+
+    // ============================================================
+    // Frontend Previews (serve built static files)
+    // ============================================================
+    {
+      name: 'ripplify-frontend',
+      cwd: './ripplify',
+      script: 'npx',
+      args: 'vite preview --port 8080 --host 127.0.0.1',
+      env: { NODE_ENV: 'production' },
+      instances: 1,
+      autorestart: true,
+      max_restarts: 5,
+      restart_delay: 5000,
+      watch: false,
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      error_file: './logs/ripplify-frontend-error.log',
+      out_file: './logs/ripplify-frontend-out.log',
+    },
+    {
+      name: 'shopalize-frontend',
+      cwd: './shopalize',
+      script: 'npx',
+      args: 'vite preview --port 8081 --host 127.0.0.1',
+      env: { NODE_ENV: 'production' },
+      instances: 1,
+      autorestart: true,
+      max_restarts: 5,
+      restart_delay: 5000,
+      watch: false,
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      error_file: './logs/shopalize-frontend-error.log',
+      out_file: './logs/shopalize-frontend-out.log',
+    },
+    {
+      name: 'watchtower-frontend',
+      cwd: './watchtower',
+      script: 'npx',
+      args: 'vite preview --port 8082 --host 127.0.0.1',
+      env: { NODE_ENV: 'production' },
+      instances: 1,
+      autorestart: true,
+      max_restarts: 5,
+      restart_delay: 5000,
+      watch: false,
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      error_file: './logs/watchtower-frontend-error.log',
+      out_file: './logs/watchtower-frontend-out.log',
+    },
+    {
+      name: 'admin-frontend',
+      cwd: './admin',
+      script: 'npx',
+      args: 'vite preview --port 8083 --host 127.0.0.1',
+      env: { NODE_ENV: 'production' },
+      instances: 1,
+      autorestart: true,
+      max_restarts: 5,
+      restart_delay: 5000,
+      watch: false,
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      error_file: './logs/admin-frontend-error.log',
+      out_file: './logs/admin-frontend-out.log',
     },
   ],
+
+  // ============================================================
+  // Deployment Configuration
+  // ============================================================
+  deploy: {
+    production: {
+      user: 'deploy',
+      host: ['sokostack.xyz'],
+      ref: 'origin/main',
+      repo: 'git@github.com:your-org/ripplify.git',
+      path: '/var/www/ripplify',
+      'pre-deploy-local': '',
+      'post-deploy': 'npm install && npm run build:all && pm2 reload ecosystem.config.cjs --env production',
+      'pre-setup': '',
+    },
+  },
 };

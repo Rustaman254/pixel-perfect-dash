@@ -23,52 +23,31 @@ import OAuthConsentPage from "./pages/OAuthConsentPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import TransfersPage from "./pages/TransfersPage";
 
-// Auth & Admin
+// Auth
 import Login from "./pages/auth/Login";
-import AdminLogin from "./pages/auth/AdminLogin";
 import Signup from "./pages/auth/Signup";
 import ForgotPassword from "./pages/auth/ForgotPassword";
-import AdminDashboard from "./pages/admin/AdminDashboard";
-import ManageUsers from "./pages/admin/ManageUsers";
-import ManageCompanies from "./pages/admin/ManageCompanies";
-import ManageApiKeys from "./pages/admin/ManageApiKeys";
-import SystemSettings from "./pages/admin/SystemSettings";
-import ManageSupport from "./pages/admin/ManageSupport";
-import AdminNotificationsPage from "./pages/admin/AdminNotificationsPage";
-import ManageReferralCodes from "./pages/admin/ManageReferralCodes";
-import ManageApps from "./pages/admin/ManageApps";
-import ManageRoles from "./pages/admin/ManageRoles";
-import AdminPayoutsPage from "./pages/admin/AdminPayoutsPage";
-import ManageFeatureFlags from "./pages/admin/ManageFeatureFlags";
-import AdminTransactionsPage from "./pages/admin/AdminTransactionsPage";
-import AdminAnalyticsPage from "./pages/admin/AdminAnalyticsPage";
 
 import { AppProvider, useAppContext } from "./contexts/AppContext";
 
 const queryClient = new QueryClient();
 
-const ProtectedRoute = ({ children, role }: { children: React.ReactNode, role?: "seller" | "admin" }) => {
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, userProfile } = useAppContext();
 
-  // Determine correct login route based on requested role
-  const loginRoute = role === "admin" ? "/admin/login" : "/login";
-
-  if (!isAuthenticated || !userProfile) return <Navigate to={loginRoute} replace />;
+  if (!isAuthenticated || !userProfile) return <Navigate to="/login" replace />;
 
   // Check if user account is disabled/suspended
   if ((userProfile as any).isDisabled || userProfile.accountStatus === 'disabled') {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('ripplify_profile');
-    return <Navigate to={`${loginRoute}?error=disabled`} replace />;
+    return <Navigate to="/login?error=disabled" replace />;
   }
 
-  if (userProfile.isSuspended || userProfile.accountStatus === 'suspended') {
-    // Suspended users stay logged in but see a banner - don't redirect
-  }
-
-  if (role && userProfile.role !== role) {
-    if (userProfile.role === "admin") return <Navigate to="/admin" replace />;
-    return <Navigate to="/" replace />;
+  // Redirect admin users to the admin panel
+  if (userProfile.role === "admin") {
+    window.location.href = "http://localhost:8083";
+    return null;
   }
 
   return <>{children}</>;
@@ -82,46 +61,26 @@ const AppRoutes = () => {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/admin/login" element={<AdminLogin />} />
 
         {/* Seller Dashboard */}
-        <Route path="/" element={<ProtectedRoute role="seller"><Index /></ProtectedRoute>} />
-        <Route path="/payment-links" element={<ProtectedRoute role="seller"><PaymentLinksPage /></ProtectedRoute>} />
-        <Route path="/notifications" element={<ProtectedRoute role="seller"><NotificationsPage /></ProtectedRoute>} />
-        <Route path="/orders" element={<ProtectedRoute role="seller"><OrdersPage /></ProtectedRoute>} />
-        <Route path="/payment-methods" element={<ProtectedRoute role="seller"><PaymentMethodsPage /></ProtectedRoute>} />
-        <Route path="/currencies" element={<ProtectedRoute role="seller"><CurrenciesPage /></ProtectedRoute>} />
-        <Route path="/analytics" element={<ProtectedRoute role="seller"><StatisticsPage /></ProtectedRoute>} />
-        <Route path="/statistics" element={<ProtectedRoute role="seller"><StatisticsPage /></ProtectedRoute>} />
-        <Route path="/payouts" element={<ProtectedRoute role="seller"><PayoutsPage /></ProtectedRoute>} />
-        <Route path="/transfers" element={<ProtectedRoute role="seller"><TransfersPage /></ProtectedRoute>} />
-        <Route path="/wallets" element={<ProtectedRoute role="seller"><WalletsPage /></ProtectedRoute>} />
+        <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+        <Route path="/payment-links" element={<ProtectedRoute><PaymentLinksPage /></ProtectedRoute>} />
+        <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
+        <Route path="/orders" element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />
+        <Route path="/payment-methods" element={<ProtectedRoute><PaymentMethodsPage /></ProtectedRoute>} />
+        <Route path="/currencies" element={<ProtectedRoute><CurrenciesPage /></ProtectedRoute>} />
+        <Route path="/analytics" element={<ProtectedRoute><StatisticsPage /></ProtectedRoute>} />
+        <Route path="/statistics" element={<ProtectedRoute><StatisticsPage /></ProtectedRoute>} />
+        <Route path="/payouts" element={<ProtectedRoute><PayoutsPage /></ProtectedRoute>} />
+        <Route path="/transfers" element={<ProtectedRoute><TransfersPage /></ProtectedRoute>} />
+        <Route path="/wallets" element={<ProtectedRoute><WalletsPage /></ProtectedRoute>} />
         <Route path="/wallet" element={<Navigate to="/wallets" replace />} />
-        <Route path="/customers" element={<ProtectedRoute role="seller"><CustomersPage /></ProtectedRoute>} />
-        <Route path="/settings" element={<ProtectedRoute role="seller"><SettingsPage /></ProtectedRoute>} />
-        <Route path="/help-center" element={<ProtectedRoute role="seller"><HelpCenterPage /></ProtectedRoute>} />
-        <Route path="/developer-docs" element={<ProtectedRoute role="seller"><DeveloperDocsPage /></ProtectedRoute>} />
-        <Route path="/developer/settings" element={<ProtectedRoute role="seller"><DeveloperSettings /></ProtectedRoute>} />
+        <Route path="/customers" element={<ProtectedRoute><CustomersPage /></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+        <Route path="/help-center" element={<ProtectedRoute><HelpCenterPage /></ProtectedRoute>} />
+        <Route path="/developer-docs" element={<ProtectedRoute><DeveloperDocsPage /></ProtectedRoute>} />
+        <Route path="/developer/settings" element={<ProtectedRoute><DeveloperSettings /></ProtectedRoute>} />
         <Route path="/oauth/authorize" element={<ProtectedRoute><OAuthConsentPage /></ProtectedRoute>} />
-
-
-        {/* Admin Dashboard */}
-        <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
-        <Route path="/admin/analytics" element={<ProtectedRoute role="admin"><AdminAnalyticsPage /></ProtectedRoute>} />
-        <Route path="/admin/users" element={<ProtectedRoute role="admin"><ManageUsers /></ProtectedRoute>} />
-        <Route path="/admin/companies" element={<ProtectedRoute role="admin"><ManageCompanies /></ProtectedRoute>} />
-        <Route path="/admin/api-keys" element={<ProtectedRoute role="admin"><ManageApiKeys /></ProtectedRoute>} />
-        <Route path="/admin/revenue" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
-        <Route path="/admin/payouts" element={<ProtectedRoute role="admin"><AdminPayoutsPage /></ProtectedRoute>} />
-        <Route path="/admin/currencies" element={<ProtectedRoute role="admin"><SystemSettings /></ProtectedRoute>} />
-        <Route path="/admin/settings" element={<ProtectedRoute role="admin"><SystemSettings /></ProtectedRoute>} />
-        <Route path="/admin/support" element={<ProtectedRoute role="admin"><ManageSupport /></ProtectedRoute>} />
-        <Route path="/admin/notifications" element={<ProtectedRoute role="admin"><AdminNotificationsPage /></ProtectedRoute>} />
-        <Route path="/admin/referrals" element={<ProtectedRoute role="admin"><ManageReferralCodes /></ProtectedRoute>} />
-        <Route path="/admin/apps" element={<ProtectedRoute role="admin"><ManageApps /></ProtectedRoute>} />
-        <Route path="/admin/roles" element={<ProtectedRoute role="admin"><ManageRoles /></ProtectedRoute>} />
-        <Route path="/admin/features" element={<ProtectedRoute role="admin"><ManageFeatureFlags /></ProtectedRoute>} />
-        <Route path="/admin/transactions" element={<ProtectedRoute role="admin"><AdminTransactionsPage /></ProtectedRoute>} />
 
         {/* Public Routes */}
         <Route path="/pay/:slug" element={<PublicPaymentPage />} />

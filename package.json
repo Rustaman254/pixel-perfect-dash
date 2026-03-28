@@ -1,0 +1,33 @@
+{
+  "name": "ripplify-ecosystem",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Sokostack Ripplify Ecosystem - Monorepo root",
+  "scripts": {
+    "build:shared": "echo 'Shared package is consumed via path aliases'",
+    "build:ripplify": "cd ripplify && npm run build",
+    "build:admin": "cd admin && npm run build",
+    "build:shopalize": "cd shopalize && npm run build 2>/dev/null || echo 'Shopalize build skipped'",
+    "build:watchtower": "cd watchtower && npm run build 2>/dev/null || echo 'Watchtower build skipped'",
+    "build:all": "npm run build:ripplify && npm run build:admin && npm run build:shopalize && npm run build:watchtower",
+    "dev:ripplify": "cd ripplify && npm run dev",
+    "dev:admin": "cd admin && npm run dev",
+    "pm2:start": "pm2 start ecosystem.config.cjs",
+    "pm2:stop": "pm2 stop ecosystem.config.cjs",
+    "pm2:restart": "pm2 restart ecosystem.config.cjs",
+    "pm2:reload": "pm2 reload ecosystem.config.cjs",
+    "pm2:status": "pm2 status",
+    "pm2:logs": "pm2 logs --lines 100",
+    "pm2:delete": "pm2 delete ecosystem.config.cjs",
+    "deploy:nginx": "sudo cp nginx/ecosystem.conf /etc/nginx/sites-enabled/ && sudo nginx -t && sudo systemctl reload nginx",
+    "deploy:ssl": "sudo bash nginx/setup-ssl.sh",
+    "deploy:all": "npm run build:all && npm run pm2:reload",
+    "test:health": "bash scripts/test-deployment.sh"
+  },
+  "workspaces": [
+    "packages/*",
+    "ripplify",
+    "admin",
+    "services/*"
+  ]
+}

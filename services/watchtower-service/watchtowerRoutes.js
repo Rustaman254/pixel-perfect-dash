@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { protectJwt, internalAuth } from '../shared/auth.js';
 import * as ctrl from './watchtowerController.js';
+import * as adminCtrl from './adminController.js';
 
 const router = Router();
 
@@ -21,5 +22,13 @@ router.get('/internal/platform-overview', internalAuth, ctrl.getPlatformOverview
 router.post('/internal/events', internalAuth, ctrl.pushEvent);
 router.get('/internal/overview', internalAuth, ctrl.internalGetOverview);
 router.get('/internal/sessions', internalAuth, ctrl.internalGetSessions);
+
+// Internal admin routes (service-to-service auth)
+router.get('/internal/admin/stats', internalAuth, adminCtrl.getStats);
+router.get('/internal/admin/analytics', internalAuth, adminCtrl.getAnalytics);
+router.get('/internal/admin/sessions', internalAuth, adminCtrl.getSessions);
+router.get('/internal/admin/users', internalAuth, adminCtrl.getUsers);
+router.get('/internal/admin/settings', internalAuth, adminCtrl.getSettings);
+router.put('/internal/admin/settings', internalAuth, adminCtrl.updateSettings);
 
 export default router;
