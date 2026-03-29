@@ -42,83 +42,80 @@ export default function AdminLayout() {
         key={item.label}
         onClick={() => navigate(item.path)}
         className={cn(
-          "flex items-center w-full rounded-lg text-sm transition-colors",
-          collapsed ? "justify-center px-2 py-2.5" : "gap-3 px-3 py-2.5",
-          active ? "font-medium" : "hover:bg-[#ebeef1]"
+          "flex items-center w-full rounded-xl text-sm transition-all duration-200",
+          collapsed ? "justify-center px-2 py-3" : "gap-3 px-3 py-3",
+          active ? "bg-[#D4F655] text-black font-semibold shadow-md shadow-[#D4F655]/10" : "text-gray-400 hover:text-white hover:bg-white/5 font-medium"
         )}
-        style={{
-          backgroundColor: active ? 'rgba(124, 58, 237, 0.08)' : undefined,
-          color: active ? '#7C3AED' : '#333333',
-        }}
         title={collapsed ? item.label : undefined}
       >
-        <item.icon className="w-4 h-4 shrink-0" />
+        <item.icon className={cn("shrink-0 transition-transform", active ? "w-5 h-5" : "w-[18px] h-[18px]")} />
         {!collapsed && <span>{item.label}</span>}
       </button>
     );
   };
 
   return (
-    <div className="flex h-screen bg-white overflow-hidden">
+    <div className="flex h-screen bg-[#F8F9FA] overflow-hidden selection:bg-[#D4F655] selection:text-black font-sans">
       {/* Sidebar */}
       <aside className={cn(
-        "hidden md:flex flex-col h-screen fixed left-0 top-0 z-50 transition-all duration-300 border-r border-border",
-        collapsed ? "w-[68px]" : "w-[240px]"
-      )} style={{ backgroundColor: '#f5f7f9' }}>
+        "hidden md:flex flex-col h-screen fixed left-0 top-0 z-50 transition-all duration-300 bg-[#0A0A0A] border-r border-[#1a1a1a]",
+        collapsed ? "w-[80px]" : "w-[260px]"
+      )}>
         {/* Logo */}
-        <div className={cn("pt-5 pb-4 flex items-center", collapsed ? "px-3 justify-center" : "px-5 justify-between")}>
+        <div className={cn("pt-6 pb-6 flex items-center", collapsed ? "px-4 justify-center" : "px-6 justify-between")}>
           {collapsed ? (
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-sm" style={{ backgroundColor: '#7C3AED' }}>S</div>
+            <div className="w-10 h-10 rounded-xl bg-[#D4F655] flex items-center justify-center text-black font-bold text-lg shadow-sm">S</div>
           ) : (
-            <div className="flex items-center gap-2">
-              <ShoppingCart className="w-6 h-6" style={{ color: '#7C3AED' }} />
-              <span className="text-lg font-bold" style={{ color: '#333333', fontFamily: 'Rebond Grotesque, sans-serif' }}>Shopalize</span>
+            <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => navigate('/dashboard')}>
+              <div className="w-8 h-8 bg-[#D4F655] rounded-bl-lg rounded-tr-lg flex items-center justify-center relative shadow-sm">
+                <ShoppingCart className="w-4 h-4 text-black absolute top-2 left-2" />
+              </div>
+              <span className="text-xl font-bold text-white tracking-tight">Shopalize</span>
             </div>
           )}
           <button
             onClick={() => setCollapsed(!collapsed)}
-            className="p-1.5 rounded-lg hover:bg-[#ebeef1] transition-colors"
-            style={{ color: '#333333' }}
+            className="p-1.5 rounded-lg hover:bg-white/10 transition-colors text-gray-400"
           >
             <ChevronDown className={cn("w-4 h-4 transition-transform", collapsed ? "rotate-90" : "-rotate-90")} />
           </button>
         </div>
 
-        {/* General */}
-        <div className={cn("flex-1 overflow-y-auto", collapsed ? "px-2" : "px-4")}>
-          {!collapsed && <p className="text-[11px] font-medium uppercase tracking-wider px-2 mb-2" style={{ color: '#999999' }}>General</p>}
-          <nav className="space-y-0.5">
+        {/* Navigation Area */}
+        <div className={cn("flex-1 overflow-y-auto seamless-scrollbar", collapsed ? "px-3" : "px-5")}>
+          {!collapsed && <p className="text-[10px] font-bold uppercase tracking-widest px-3 mb-3 text-gray-500 mt-2">General</p>}
+          <nav className="space-y-1">
             {generalItems.map(renderNavItem)}
           </nav>
 
-          {!collapsed && <p className="text-[11px] font-medium uppercase tracking-wider px-2 mb-2 mt-6" style={{ color: '#999999' }}>Manage</p>}
-          {collapsed && <div className="my-3 mx-2 border-t border-slate-200" />}
-          <nav className="space-y-0.5">
+          {!collapsed && <p className="text-[10px] font-bold uppercase tracking-widest px-3 mb-3 mt-8 text-gray-500">Manage</p>}
+          {collapsed && <div className="my-4 mx-3 border-t border-gray-800" />}
+          <nav className="space-y-1">
             {manageItems.map(renderNavItem)}
           </nav>
         </div>
 
-        {/* Bottom */}
-        <div className={cn("pb-4 space-y-0.5 border-t pt-4", collapsed ? "px-2" : "px-4")}>
+        {/* Bottom Connectors */}
+        <div className={cn("pb-6 space-y-1 pt-4 mx-5 border-t border-gray-800", collapsed ? "mx-3" : "mx-5")}>
           {bottomItems.map(renderNavItem)}
 
-          {/* User */}
-          <div className="pt-2">
+          {/* User Profile */}
+          <div className="pt-4 mt-2">
             {!collapsed ? (
-              <div className="flex items-center justify-between px-3 py-3 border-t border-border group cursor-pointer hover:bg-black/5 rounded-xl transition-colors">
+              <div className="flex items-center justify-between p-3 bg-white/5 rounded-2xl border border-white/5 group cursor-pointer hover:bg-white/10 transition-all">
                 <div className="flex items-center gap-3 overflow-hidden">
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold text-white shrink-0" style={{ backgroundColor: '#7C3AED' }}>
+                  <div className="w-9 h-9 rounded-full bg-[#D4F655] flex items-center justify-center text-sm font-bold text-black shrink-0">
                     {(userProfile?.fullName || userProfile?.email || 'U').substring(0, 1).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate" style={{ color: '#333333' }}>{userProfile?.businessName || userProfile?.fullName || 'User'}</p>
-                    <p className="text-[11px] truncate" style={{ color: '#999999' }}>{userProfile?.email || ''}</p>
+                    <p className="text-sm font-semibold text-white truncate">{userProfile?.businessName || userProfile?.fullName || 'User Account'}</p>
+                    <p className="text-[11px] text-gray-400 truncate">{userProfile?.email || 'Admin'}</p>
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="flex justify-center py-2 border-t border-border">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold text-white" style={{ backgroundColor: '#7C3AED' }}>
+              <div className="flex justify-center mt-2">
+                <div className="w-10 h-10 rounded-full bg-[#D4F655] flex items-center justify-center text-sm font-bold text-black cursor-pointer hover:scale-105 transition-transform">
                   {(userProfile?.fullName || userProfile?.email || 'U').substring(0, 1).toUpperCase()}
                 </div>
               </div>
@@ -127,64 +124,65 @@ export default function AdminLayout() {
             <button
               onClick={() => { logout(); navigate('/login'); }}
               className={cn(
-                "flex items-center w-full mt-1 rounded-lg text-sm text-red-500 hover:bg-red-50 transition-colors",
-                collapsed ? "justify-center px-2 py-2.5" : "gap-3 px-3 py-2.5"
+                "flex items-center w-full mt-3 rounded-xl text-sm text-red-400 hover:bg-red-400/10 font-medium transition-colors",
+                collapsed ? "justify-center px-2 py-3" : "gap-3 px-3 py-3"
               )}
               title={collapsed ? "Sign Out" : undefined}
             >
-              <LogOut className="w-4 h-4 shrink-0" />
+              <LogOut className="w-5 h-5 shrink-0" />
               {!collapsed && <span>Sign Out</span>}
             </button>
           </div>
-
-          {!collapsed && <p className="text-[10px] px-3 mt-4" style={{ color: '#bbbbbb' }}>© 2026 Shopalize Inc.</p>}
         </div>
       </aside>
 
-      {/* Main Content */}
+      {/* Main Content Area */}
       <div className={cn(
         "flex-1 flex flex-col min-w-0 transition-all duration-300",
-        collapsed ? "md:ml-[68px]" : "md:ml-[240px]"
+        collapsed ? "md:ml-[80px]" : "md:ml-[260px]"
       )}>
-        {/* TopBar */}
-        <header className="flex items-center justify-between h-14 px-4 md:px-6 bg-white border-b border-border sticky top-0 z-40">
-          <div className="flex items-center gap-3">
-            <button className="md:hidden p-1.5 rounded-lg hover:bg-muted transition-colors" onClick={() => setCollapsed(!collapsed)}>
-              <Menu className="w-5 h-5 text-foreground" />
+        {/* Top Header */}
+        <header className="flex items-center justify-between h-20 px-6 md:px-10 bg-white/80 backdrop-blur-md border-b border-gray-200/60 sticky top-0 z-40">
+          <div className="flex items-center gap-4">
+            <button className="md:hidden p-2 rounded-xl bg-gray-100 hover:bg-gray-200 transition-colors" onClick={() => setCollapsed(!collapsed)}>
+              <Menu className="w-5 h-5 text-black" />
             </button>
-            <div className="hidden sm:flex items-center gap-2 bg-muted rounded-lg px-3 py-1.5 focus-within:ring-1 focus-within:ring-primary/20">
-              <Search className="w-4 h-4 text-muted-foreground" />
+            <div className="hidden sm:flex items-center gap-3 bg-[#F8F9FA] border border-gray-200 rounded-full px-5 py-2.5 focus-within:border-black focus-within:ring-1 focus-within:ring-black transition-all">
+              <Search className="w-4 h-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search"
-                className="bg-transparent border-none outline-none text-sm text-foreground w-24 lg:w-48 placeholder:text-muted-foreground/60"
+                placeholder="Search anything..."
+                className="bg-transparent border-none outline-none text-sm text-black w-32 md:w-64 placeholder:text-gray-400"
               />
-              <span className="text-[11px] text-muted-foreground/60 ml-4 hidden lg:inline">⌘ + F</span>
+              <span className="text-[10px] uppercase font-bold text-gray-400 bg-white px-2 py-0.5 rounded shadow-sm border border-gray-100 hidden lg:inline">⌘ K</span>
             </div>
           </div>
-          <div className="flex items-center gap-2 md:gap-4">
-            <div className="relative">
-              <button className="p-1.5 rounded-lg hover:bg-muted transition-colors relative">
-                <Bell className="w-5 h-5 text-muted-foreground hover:text-foreground" />
-              </button>
-            </div>
-            <button className="p-1.5 rounded-lg hover:bg-muted transition-colors" title="View store">
-              <ExternalLink className="w-5 h-5 text-muted-foreground hover:text-foreground" />
+          
+          <div className="flex items-center gap-3">
+            <button className="w-10 h-10 rounded-full bg-[#F8F9FA] border border-gray-200 flex items-center justify-center hover:bg-gray-100 transition-colors relative">
+              <Bell className="w-5 h-5 text-gray-600" />
+              <div className="absolute top-2 right-2.5 w-2 h-2 bg-[#D4F655] rounded-full border-2 border-white" />
             </button>
-            <div className="flex items-center gap-2 pl-2 border-l border-border ml-2">
+            <button className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-full border border-gray-200 hover:bg-gray-50 transition-colors text-sm font-medium">
+              <ExternalLink className="w-4 h-4 text-gray-500" /> View Store
+            </button>
+            <div className="h-8 w-px bg-gray-200 mx-2 hidden sm:block" />
+            <div className="flex items-center gap-3 cursor-pointer group">
               <div className="hidden sm:block text-right">
-                <p className="text-xs font-medium text-foreground">{userProfile?.fullName || userProfile?.businessName || 'User'}</p>
-                <p className="text-[10px] text-muted-foreground">Seller Account</p>
+                <p className="text-sm font-semibold text-black group-hover:text-gray-600 transition-colors">{userProfile?.fullName || 'Shop Admin'}</p>
+                <p className="text-[11px] text-gray-500 font-medium">Platform Manager</p>
               </div>
-              <div className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold text-white cursor-pointer" style={{ backgroundColor: '#7C3AED' }}>
-                {(userProfile?.fullName || userProfile?.email || 'U').substring(0, 1).toUpperCase()}
+              <div className="w-10 h-10 rounded-full bg-[#D4F655] flex items-center justify-center text-sm font-bold text-black border-2 border-white shadow-sm">
+                {(userProfile?.fullName || 'U').substring(0, 1).toUpperCase()}
               </div>
             </div>
           </div>
         </header>
 
-        <main className="flex-1 p-4 md:p-6 space-y-4 overflow-auto" style={{ backgroundColor: '#f5f7f9' }}>
-          <Outlet />
+        <main className="flex-1 p-6 md:p-10 overflow-auto bg-[#F8F9FA]">
+          <div className="max-w-7xl mx-auto">
+             <Outlet />
+          </div>
         </main>
       </div>
     </div>

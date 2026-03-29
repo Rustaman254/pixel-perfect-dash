@@ -1,43 +1,38 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStore } from '@/store';
+import { templates } from '@/data/templates';
 import StorePreview from '@/components/StorePreview';
-import { ArrowLeft, Download, Monitor, Tablet, Smartphone, Settings2, Loader2 } from 'lucide-react';
+import { ShoppingCart, ArrowLeft, Download, Monitor, Tablet, Smartphone, Search, Wand2, Loader2 } from 'lucide-react';
 
-export default function PreviewPage() {
-  const { projectId } = useParams<{ projectId: string }>();
+export default function TemplatePreviewPage() {
+  const { templateId } = useParams<{ templateId: string }>();
   const navigate = useNavigate();
-  const { currentProject, loadProject } = useStore();
+  const { createProject } = useStore();
   const [viewport, setViewport] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
+  const [creating, setCreating] = useState(false);
 
-  useEffect(() => {
-    if (projectId) loadProject(projectId);
-  }, [projectId, loadProject]);
+  const template = templates.find(t => t.id === templateId);
 
-  const handleExport = async () => {
-    if (!currentProject) return;
-    const JSZip = (await import('jszip')).default;
-    const zip = new JSZip();
-    zip.file('index.html', '<!DOCTYPE html><html><body><h1>' + currentProject.name + '</h1><p>Export from Shopalize</p></body></html>');
-    const blob = await zip.generateAsync({ type: 'blob' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${currentProject.name.replace(/\s+/g, '-').toLowerCase()}.zip`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  if (!currentProject) {
+  if (!template) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F8F9FA]">
-        <div className="flex flex-col items-center">
-          <Loader2 className="w-10 h-10 animate-spin text-[#0A0A0A] mb-4" />
-          <p className="text-[14px] font-bold text-gray-500 uppercase tracking-widest">Loading project...</p>
+        <div className="text-center p-8 bg-white rounded-3xl border border-gray-200 shadow-xl max-w-sm">
+           <Search className="w-10 h-10 text-gray-300 mx-auto mb-4" />
+           <h3 className="text-xl font-bold text-black mb-2" style={{ fontFamily: 'Rebond Grotesque, sans-serif' }}>Template Not Found</h3>
+           <p className="text-gray-500 text-sm mb-6">The template you are trying to preview does not exist.</p>
+           <button onClick={() => navigate('/gallery')} className="w-full bg-[#0A0A0A] hover:bg-black text-white px-4 py-3 rounded-xl font-bold transition-all">Back to Gallery</button>
         </div>
       </div>
     );
   }
+
+  const handleLaunch = async () => {
+    setCreating(true);
+    const project = await createProject(template);
+    setCreating(false);
+    if (project) navigate(`/editor/${project.id}`);
+  };
 
   const viewportWidth = viewport === 'desktop' ? '100%' : viewport === 'tablet' ? '768px' : '375px';
 
@@ -46,14 +41,15 @@ export default function PreviewPage() {
       {/* Top Navbar */}
       <nav className="fixed top-0 inset-x-0 h-16 bg-[#0A0A0A] text-white flex items-center justify-between px-4 z-50 border-b border-white/10">
         <div className="flex items-center gap-4">
-          <button onClick={() => navigate(`/editor/${currentProject.id}`)} className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors text-white/70 hover:text-white">
+          <button onClick={() => navigate('/gallery')} className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors text-white/70 hover:text-white">
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div className="flex items-center gap-3 border-l border-white/10 pl-4">
              <div className="flex flex-col">
-               <span className="text-[12px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Live Preview</span>
-               <span className="text-[14px] font-bold leading-none">{currentProject.name}</span>
+               <span className="text-[12px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Previewing Theme</span>
+               <span className="text-[14px] font-bold leading-none">{template.name}</span>
              </div>
+             {template.isPremium && <span className="ml-2 text-[10px] bg-[#D4F655] text-black px-2 py-0.5 rounded font-bold uppercase tracking-widest hidden sm:inline-block">Premium</span>}
           </div>
         </div>
 
@@ -76,16 +72,11 @@ export default function PreviewPage() {
           </div>
           
           <button 
-             onClick={() => navigate(`/editor/${currentProject.id}`)} 
-             className="flex items-center gap-2 px-5 py-2.5 bg-white/10 hover:bg-white/20 text-[14px] font-bold text-white rounded-lg transition-all border border-white/10"
+             onClick={handleLaunch} 
+             disabled={creating}
+             className="flex items-center gap-2 px-5 py-2.5 bg-[#D4F655] hover:bg-[#c1e247] shadow-[0_0_15px_rgba(212,246,85,0.2)] text-[14px] font-bold text-black rounded-lg transition-all disabled:opacity-70"
           >
-            <Settings2 className="w-4 h-4" /> Open Editor
-          </button>
-          <button 
-             onClick={handleExport} 
-             className="hidden md:flex items-center gap-2 px-5 py-2.5 bg-[#D4F655] hover:bg-[#c1e247] shadow-[0_0_15px_rgba(212,246,85,0.2)] text-[14px] font-bold text-black rounded-lg transition-all"
-          >
-            <Download className="w-4 h-4" /> Download ZIP
+            {creating ? <><Loader2 className="w-4 h-4 animate-spin" /> Launching...</> : <><Wand2 className="w-4 h-4" /> Use this theme</>}
           </button>
         </div>
       </nav>
@@ -100,13 +91,14 @@ export default function PreviewPage() {
           {viewport !== 'desktop' && (
             <div className="h-12 bg-gray-100 border-b border-gray-200 flex items-center justify-center px-4">
                <div className="h-6 bg-white border border-gray-200 rounded-full w-48 mx-auto flex items-center justify-center">
-                  <span className="text-[10px] text-gray-400 font-medium font-mono">{currentProject.name.toLowerCase().replace(/\s+/g, '')}.shopalize.com</span>
+                  <span className="text-[10px] text-gray-400 font-medium font-mono">{template.name.toLowerCase().replace(/\s+/g, '')}.shopalize.com</span>
                </div>
             </div>
           )}
           
-          <div className="h-full pointer-events-auto">
-            <StorePreview project={currentProject} interactive={true} />
+          <div className="h-full pointer-events-none">
+            {/* Create a mock project object to render the template natively using existing StorePreview */}
+            <StorePreview project={{ ...template, templateId: template.id, createdAt: 0, updatedAt: 0 } as any} interactive={false} />
           </div>
         </div>
       </main>

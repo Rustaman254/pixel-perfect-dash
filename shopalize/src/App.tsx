@@ -5,6 +5,7 @@ import HomePage from '@/pages/HomePage'
 import GalleryPage from '@/pages/GalleryPage'
 import EditorPage from '@/pages/EditorPage'
 import PreviewPage from '@/pages/PreviewPage'
+import TemplatePreviewPage from '@/pages/TemplatePreviewPage'
 import DashboardPage from '@/pages/DashboardPage'
 import ProductsPage from '@/pages/ProductsPage'
 import ProductEditPage from '@/pages/ProductEditPage'
@@ -17,6 +18,9 @@ import MarketingPage from '@/pages/MarketingPage'
 import DiscountsPage from '@/pages/DiscountsPage'
 import LoginPage from '@/pages/LoginPage'
 import SignupPage from '@/pages/SignupPage'
+
+import IntegrationsPage from '@/pages/IntegrationsPage'
+import ResetPasswordPage from '@/pages/ResetPasswordPage'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading } = useAuth()
@@ -32,9 +36,12 @@ function AppRoutes() {
       <Route path="/" element={<HomePage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/gallery" element={<GalleryPage />} />
+      <Route path="/integrations" element={<IntegrationsPage />} />
       <Route path="/editor/:projectId" element={<EditorPage />} />
       <Route path="/preview/:projectId" element={<PreviewPage />} />
+      <Route path="/preview-template/:templateId" element={<TemplatePreviewPage />} />
 
       {/* Admin (protected with sidebar layout) */}
       <Route path="/" element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>

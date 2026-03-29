@@ -7,10 +7,17 @@ export interface Product {
   category: string;
 }
 
+export interface StoreBlock {
+  id: string;
+  type: string;
+  props: Record<string, unknown>;
+}
+
 export interface StoreSection {
   id: string;
   type: 'hero' | 'products' | 'features' | 'testimonials' | 'footer' | 'header' | 'gallery' | 'cta' | 'newsletter' | 'faq';
   props: Record<string, unknown>;
+  blocks?: StoreBlock[];
 }
 
 export interface StoreTheme {
@@ -35,6 +42,7 @@ export interface Template {
   description: string;
   category: string;
   image: string;
+  isPremium?: boolean;
   pages: StorePage[];
   theme: StoreTheme;
   products: Product[];

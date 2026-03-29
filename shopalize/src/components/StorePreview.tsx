@@ -115,49 +115,61 @@ function SectionRenderer({ section, theme, products, interactive }: {
       );
     }
 
-    case 'features':
+    case 'features': {
+      const defaultFeatures = [
+        { icon: '🚀', title: 'Fast Delivery', desc: 'Get your order in 2-3 days' },
+        { icon: '🔒', title: 'Secure Payment', desc: 'Your data is always protected' },
+        { icon: '💚', title: 'Quality Guarantee', desc: '30-day money back guarantee' },
+      ];
+      const features = section.blocks && section.blocks.length > 0 
+        ? section.blocks.map(b => b.props as any) 
+        : defaultFeatures;
+        
       return (
         <section className="py-10 sm:py-16 px-4" style={{ backgroundColor: theme.primaryColor + '08' }}>
           <h2 className="text-2xl sm:text-3xl font-bold text-center mb-8" style={{ color: theme.textColor }}>
             {String(p.title || 'Features')}
           </h2>
           <div className="grid sm:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            {[
-              { icon: '🚀', title: 'Fast Delivery', desc: 'Get your order in 2-3 days' },
-              { icon: '🔒', title: 'Secure Payment', desc: 'Your data is always protected' },
-              { icon: '💚', title: 'Quality Guarantee', desc: '30-day money back guarantee' },
-            ].map((f, i) => (
-              <div key={i} className="text-center p-6 rounded-xl bg-white/80">
-                <div className="text-3xl mb-3">{f.icon}</div>
-                <h3 className="font-semibold mb-1" style={{ color: theme.textColor }}>{f.title}</h3>
-                <p className="text-sm" style={{ color: theme.textColor + '88' }}>{f.desc}</p>
+            {features.map((f, i) => (
+              <div key={i} className="text-center p-6 rounded-xl bg-white/80 border" style={{ borderColor: theme.textColor + '05' }}>
+                <div className="text-3xl mb-3">{f.icon || '✨'}</div>
+                <h3 className="font-semibold mb-1" style={{ color: theme.textColor }}>{f.title || 'Feature'}</h3>
+                <p className="text-sm" style={{ color: theme.textColor + '88' }}>{f.desc || f.text || ''}</p>
               </div>
             ))}
           </div>
         </section>
       );
+    }
 
-    case 'testimonials':
+    case 'testimonials': {
+      const defaultTestimonials = [
+        { name: 'Sarah J.', text: '"Amazing quality and fast shipping!"', stars: 5 },
+        { name: 'Mike R.', text: '"Best online shopping experience ever."', stars: 5 },
+        { name: 'Emily C.', text: '"Will definitely buy again. Love it!"', stars: 5 },
+      ];
+      const testimonials = section.blocks && section.blocks.length > 0 
+        ? section.blocks.map(b => b.props as any) 
+        : defaultTestimonials;
+        
       return (
         <section className="py-10 sm:py-16 px-4">
           <h2 className="text-2xl sm:text-3xl font-bold text-center mb-8" style={{ color: theme.textColor }}>
             {String(p.title || 'Testimonials')}
           </h2>
           <div className="grid sm:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            {[
-              { name: 'Sarah J.', text: '"Amazing quality and fast shipping!"', stars: 5 },
-              { name: 'Mike R.', text: '"Best online shopping experience ever."', stars: 5 },
-              { name: 'Emily C.', text: '"Will definitely buy again. Love it!"', stars: 5 },
-            ].map((t, i) => (
-              <div key={i} className="p-6 rounded-xl border" style={{ borderColor: theme.textColor + '15' }}>
-                <div className="text-yellow-500 mb-2">{'★'.repeat(t.stars)}</div>
-                <p className="text-sm mb-3 italic" style={{ color: theme.textColor + 'cc' }}>{t.text}</p>
-                <p className="text-sm font-semibold" style={{ color: theme.textColor }}>— {t.name}</p>
+            {testimonials.map((t, i) => (
+              <div key={i} className="p-6 rounded-xl border bg-white/50" style={{ borderColor: theme.textColor + '15' }}>
+                <div className="text-yellow-500 mb-2">{'★'.repeat(Number(t.stars) || 5)}</div>
+                <p className="text-sm mb-3 italic" style={{ color: theme.textColor + 'cc' }}>{t.text || t.content || ''}</p>
+                <p className="text-sm font-semibold" style={{ color: theme.textColor }}>— {t.name || 'Customer'}</p>
               </div>
             ))}
           </div>
         </section>
       );
+    }
 
     case 'gallery':
       return (
@@ -220,24 +232,30 @@ function SectionRenderer({ section, theme, products, interactive }: {
         </section>
       );
 
-    case 'faq':
+    case 'faq': {
+      const defaultFaqs = [
+        { q: 'How do I track my order?', a: 'You will receive a tracking email once shipped.' },
+        { q: 'What is your return policy?', a: 'We offer 30-day hassle-free returns on all items.' },
+        { q: 'Do you ship internationally?', a: 'Yes, we ship to over 50 countries worldwide.' },
+      ];
+      const faqs = section.blocks && section.blocks.length > 0
+        ? section.blocks.map(b => b.props as any)
+        : defaultFaqs;
+        
       return (
         <section className="py-10 sm:py-16 px-4 max-w-2xl mx-auto">
           <h2 className="text-2xl sm:text-3xl font-bold text-center mb-8" style={{ color: theme.textColor }}>
             {String(p.title || 'FAQ')}
           </h2>
-          {[
-            { q: 'How do I track my order?', a: 'You will receive a tracking email once shipped.' },
-            { q: 'What is your return policy?', a: 'We offer 30-day hassle-free returns on all items.' },
-            { q: 'Do you ship internationally?', a: 'Yes, we ship to over 50 countries worldwide.' },
-          ].map((item, i) => (
+          {faqs.map((item, i) => (
             <div key={i} className="mb-4 border-b pb-4" style={{ borderColor: theme.textColor + '15' }}>
-              <h3 className="font-semibold mb-1" style={{ color: theme.textColor }}>{item.q}</h3>
-              <p className="text-sm" style={{ color: theme.textColor + '88' }}>{item.a}</p>
+              <h3 className="font-semibold mb-1" style={{ color: theme.textColor }}>{item.q || item.question || 'Question'}</h3>
+              <p className="text-sm" style={{ color: theme.textColor + '88' }}>{item.a || item.answer || 'Answer'}</p>
             </div>
           ))}
         </section>
       );
+    }
 
     case 'footer':
       return (
