@@ -52,7 +52,7 @@ const AdminNotificationsPage = () => {
     const loadData = async () => {
         try {
             const [notifsData, usersData] = await Promise.all([
-                fetchWithAuth('/notifications/admin/all'),
+                fetchWithAuth('/admin/notifications'),
                 fetchWithAuth('/admin/users')
             ]);
             setNotifications(notifsData);
@@ -74,7 +74,7 @@ const AdminNotificationsPage = () => {
 
         setSending(true);
         try {
-            await fetchWithAuth('/notifications/admin/send', {
+            await fetchWithAuth('/admin/notifications', {
                 method: 'POST',
                 body: JSON.stringify({
                     userId: targetUserId || null,
@@ -105,7 +105,7 @@ const AdminNotificationsPage = () => {
 
     const handleDelete = async (id: number) => {
         try {
-            await fetchWithAuth(`/notifications/admin/${id}`, { method: 'DELETE' });
+            await fetchWithAuth(`/admin/notifications/${id}`, { method: 'DELETE' });
             setNotifications(notifications.filter(n => n.id !== id));
             toast({ title: "Deleted", description: "Notification removed" });
         } catch (error) {
@@ -115,7 +115,7 @@ const AdminNotificationsPage = () => {
 
     const handleMarkRead = async (id: number) => {
         try {
-            await fetchWithAuth(`/notifications/admin/${id}/read`, { method: 'PUT' });
+            await fetchWithAuth(`/admin/notifications/${id}/read`, { method: 'PUT' });
             setNotifications(notifications.map(n => n.id === id ? { ...n, isRead: true } : n));
         } catch (error) {
             toast({ title: "Error", description: "Failed to mark as read", variant: "destructive" });
@@ -124,7 +124,7 @@ const AdminNotificationsPage = () => {
 
     const handleMarkAllRead = async () => {
         try {
-            await fetchWithAuth('/notifications/admin/read-all', { method: 'PUT' });
+            await fetchWithAuth('/admin/notifications/read-all', { method: 'PUT' });
             setNotifications(notifications.map(n => ({ ...n, isRead: true })));
             toast({ title: "Done", description: "All notifications marked as read" });
         } catch (error) {

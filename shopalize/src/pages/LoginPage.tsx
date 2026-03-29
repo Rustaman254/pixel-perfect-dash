@@ -1,17 +1,20 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { Mail, Lock, LogIn, Eye, EyeOff, ShoppingCart } from 'lucide-react';
 
 export default function LoginPage() {
-  const { login } = useAuth();
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email || !password) return;
     setError('');
     setLoading(true);
     try {
@@ -19,64 +22,65 @@ export default function LoginPage() {
       navigate('/dashboard');
     } catch (err: any) {
       setError(err.message || 'Login failed');
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-pink-50">
-      <div className="w-full max-w-md p-8 bg-white rounded-2xl shadow-xl">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Welcome back</h1>
-          <p className="text-gray-500 mt-2">Sign in to your Shopalize account</p>
+    <div className="min-h-screen flex flex-col items-center justify-center p-4" style={{ backgroundColor: '#f5f7f9' }}>
+      <div className="w-full max-w-md bg-white rounded-3xl shadow-xl border overflow-hidden" style={{ borderColor: '#e2e8f0' }}>
+        <div className="p-8">
+          <div className="mb-8 flex justify-center">
+            <div className="flex items-center gap-2">
+              <ShoppingCart className="w-10 h-10" style={{ color: '#7C3AED' }} />
+              <span className="text-2xl font-bold" style={{ color: '#333333', fontFamily: 'Rebond Grotesque, sans-serif' }}>Shopalize</span>
+            </div>
+          </div>
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-bold" style={{ color: '#1a1a1a', fontFamily: 'Rebond Grotesque, sans-serif' }}>Welcome Back</h2>
+            <p className="text-sm mt-1" style={{ color: '#999999' }}>Log in to manage your store.</p>
+          </div>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {error && <div className="bg-red-50 text-destructive text-sm px-4 py-3 rounded-xl font-medium">{error}</div>}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium" style={{ color: '#555555' }}>Email Address</label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-3 w-5 h-5" style={{ color: '#aaaaaa' }} />
+                <input type="email" placeholder="Enter your email" value={email} onChange={e => setEmail(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 rounded-xl text-sm outline-none transition-all" style={{ backgroundColor: '#f5f7f9', border: '1px solid #e2e8f0' }}
+                  onFocus={e => { e.target.style.borderColor = '#7C3AED'; e.target.style.boxShadow = '0 0 0 2px rgba(124,58,237,0.1)'; }}
+                  onBlur={e => { e.target.style.borderColor = '#e2e8f0'; e.target.style.boxShadow = 'none'; }}
+                  required />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium" style={{ color: '#555555' }}>Password</label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-3 w-5 h-5" style={{ color: '#aaaaaa' }} />
+                <input type={showPassword ? 'text' : 'password'} placeholder="Enter your password" value={password} onChange={e => setPassword(e.target.value)}
+                  className="w-full pl-10 pr-12 py-3 rounded-xl text-sm outline-none transition-all" style={{ backgroundColor: '#f5f7f9', border: '1px solid #e2e8f0' }}
+                  onFocus={e => { e.target.style.borderColor = '#7C3AED'; e.target.style.boxShadow = '0 0 0 2px rgba(124,58,237,0.1)'; }}
+                  onBlur={e => { e.target.style.borderColor = '#e2e8f0'; e.target.style.boxShadow = 'none'; }}
+                  required />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-3" style={{ color: '#aaaaaa' }}>
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
+            </div>
+            <button type="submit" disabled={loading}
+              className="w-full py-4 rounded-xl font-bold text-white flex items-center justify-center gap-2 mt-4 transition-all disabled:opacity-70"
+              style={{ backgroundColor: '#7C3AED' }}
+              onMouseEnter={e => (e.target as HTMLElement).style.backgroundColor = '#6D28D9'}
+              onMouseLeave={e => (e.target as HTMLElement).style.backgroundColor = '#7C3AED'}>
+              {loading ? 'Logging in...' : 'Log In'} <LogIn className="w-5 h-5" />
+            </button>
+          </form>
+          <p className="text-center text-sm mt-6" style={{ color: '#999999' }}>
+            Don't have an account? <button onClick={() => navigate('/signup')} className="font-bold" style={{ color: '#7C3AED' }}>Sign up</button>
+          </p>
         </div>
-
-        {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition"
-              placeholder="you@example.com"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition"
-              placeholder="••••••••"
-              required
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 bg-purple-600 text-white font-semibold rounded-xl hover:bg-purple-700 transition disabled:opacity-50"
-          >
-            {loading ? 'Signing in...' : 'Sign In'}
-          </button>
-        </form>
-
-        <p className="mt-6 text-center text-sm text-gray-500">
-          Don't have an account?{' '}
-          <Link to="/signup" className="text-purple-600 font-semibold hover:underline">
-            Sign up
-          </Link>
-        </p>
       </div>
+      <p className="mt-8 text-xs" style={{ color: '#bbbbbb' }}>© 2026 Shopalize Inc. All rights reserved.</p>
     </div>
   );
 }

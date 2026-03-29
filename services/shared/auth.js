@@ -78,7 +78,8 @@ export const protectJwt = async (req, res, next) => {
 
 // Admin check middleware
 export const admin = async (req, res, next) => {
-  if (req.user?.role === 'admin') return next();
+  const role = req.user?.role?.toLowerCase();
+  if (role === 'admin' || role === 'super admin') return next();
   res.status(403).json({ message: 'Not authorized as an admin' });
 };
 

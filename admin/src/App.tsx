@@ -21,6 +21,13 @@ import ManageSupport from "@/pages/ManageSupport";
 import AdminNotificationsPage from "@/pages/AdminNotificationsPage";
 import WatchtowerDashboard from "@/pages/WatchtowerDashboard";
 import ShopalizeDashboard from "@/pages/ShopalizeDashboard";
+import StoreManagement from "@/pages/StoreManagement";
+import OrderManagement from "@/pages/OrderManagement";
+import ProductManagement from "@/pages/ProductManagement";
+import CustomerManagement from "@/pages/CustomerManagement";
+import ShopalizeAnalytics from "@/pages/ShopalizeAnalytics";
+import ShopalizeFeatureFlags from "@/pages/ShopalizeFeatureFlags";
+import ShopalizeSettings from "@/pages/ShopalizeSettings";
 
 const queryClient = new QueryClient();
 
@@ -50,7 +57,15 @@ const AppRoutes = () => (
       <Route path="/support" element={<ProtectedRoute><ManageSupport /></ProtectedRoute>} />
       <Route path="/notifications" element={<ProtectedRoute><AdminNotificationsPage /></ProtectedRoute>} />
       <Route path="/watchtower" element={<ProtectedRoute><WatchtowerDashboard /></ProtectedRoute>} />
+      {/* Shopalize Admin Routes */}
       <Route path="/shopalize" element={<ProtectedRoute><ShopalizeDashboard /></ProtectedRoute>} />
+      <Route path="/shopalize/stores" element={<ProtectedRoute><StoreManagement /></ProtectedRoute>} />
+      <Route path="/shopalize/orders" element={<ProtectedRoute><OrderManagement /></ProtectedRoute>} />
+      <Route path="/shopalize/products" element={<ProtectedRoute><ProductManagement /></ProtectedRoute>} />
+      <Route path="/shopalize/customers" element={<ProtectedRoute><CustomerManagement /></ProtectedRoute>} />
+      <Route path="/shopalize/analytics" element={<ProtectedRoute><ShopalizeAnalytics /></ProtectedRoute>} />
+      <Route path="/shopalize/features" element={<ProtectedRoute><ShopalizeFeatureFlags /></ProtectedRoute>} />
+      <Route path="/shopalize/settings" element={<ProtectedRoute><ShopalizeSettings /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   </BrowserRouter>

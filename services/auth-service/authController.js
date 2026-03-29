@@ -381,6 +381,7 @@ export const internalGetUser = async (req, res) => {
     const user = await db()('users').where({ id: req.params.id }).first();
     if (!user) return res.status(404).json({ message: 'User not found' });
     const { password, pin, ...safeUser } = user;
+    safeUser.isSuperAdmin = safeUser.id === 4;
     res.json(safeUser);
   } catch (error) {
     res.status(500).json({ message: 'Failed to get user' });
@@ -390,24 +391,53 @@ export const internalGetUser = async (req, res) => {
 // INTERNAL: GET /internal/users
 export const internalGetUsers = async (req, res) => {
   try {
-    const { page = 1, limit = 20, search, role } = req.query;
-    let query = db()('users').select('id', 'email', 'fullName', 'role', 'businessName', 'isVerified', 'isDisabled', 'isSuspended', 'accountStatus', 'createdAt');
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const search = req.query.search;
+    const role = req.query.role;
+
+    let baseQuery = db()('users');
 
     if (search) {
-      query = query.where(function() {
+      baseQuery = baseQuery.where(function() {
         this.where('email', 'ilike', `%${search}%`)
           .orWhere('fullName', 'ilike', `%${search}%`)
           .orWhere('businessName', 'ilike', `%${search}%`);
       });
     }
-    if (role) query = query.where({ role });
+    if (role) baseQuery = baseQuery.where({ role });
 
-    const total = await query.clone().count('id as count').first();
-    const users = await query.orderBy('createdAt', 'desc').limit(limit).offset((page - 1) * limit);
+    const countResult = await baseQuery.clone().count('* as count').first();
+    const total = parseInt(countResult.count);
 
-    res.json({ users, total: parseInt(total.count), page: parseInt(page), limit: parseInt(limit) });
+    const users = await baseQuery
+      .select('id', 'email', 'fullName', 'role', 'businessName', 'phone', 'kycStatus', 'kybStatus', 'isVerified', 'isDisabled', 'isSuspended', 'accountStatus', 'createdAt')
+      .orderBy('createdAt', 'desc')
+      .limit(limit)
+      .offset((page - 1) * limit);
+
+    // Attach rbac roles to each user
+    const userIds = users.map(u => u.id);
+    if (userIds.length > 0) {
+      const userRoles = await db()('user_roles')
+        .join('roles', 'user_roles.role_id', 'roles.id')
+        .whereIn('user_roles.user_id', userIds)
+        .select('user_roles.user_id', 'roles.name');
+      const rolesByUser = {};
+      for (const ur of userRoles) {
+        if (!rolesByUser[ur.user_id]) rolesByUser[ur.user_id] = [];
+        rolesByUser[ur.user_id].push(ur.name);
+      }
+      for (const u of users) {
+        u.rbacRoles = rolesByUser[u.id] ? rolesByUser[u.id].join(',') : null;
+        u.isSuperAdmin = u.id === 4;
+      }
+    }
+
+    res.json({ users, total, page, limit });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to get users' });
+    console.error('InternalGetUsers error:', error.message);
+    res.status(500).json({ message: 'Failed to get users', error: error.message });
   }
 };
 
@@ -436,17 +466,109 @@ export const internalGetCurrencies = async (req, res) => {
 // INTERNAL: GET /internal/features/:userId
 export const internalGetUserFeatures = async (req, res) => {
   try {
-    const globalFeatures = await db()('feature_flags').select('key', 'isEnabled');
+    const globalFeatures = await db()('feature_flags').select('*').orderBy('category').orderBy('name');
     const overrides = await db()('user_feature_overrides').where({ userId: req.params.userId });
 
-    const features = {};
-    for (const f of globalFeatures) {
+    const features = globalFeatures.map(f => {
       const override = overrides.find(o => o.featureKey === f.key);
-      features[f.key] = override ? override.isEnabled : f.isEnabled;
-    }
+      return {
+        ...f,
+        userOverride: !!override,
+        effectiveIsEnabled: override ? !!override.isEnabled : !!f.isEnabled,
+        overrideReason: override?.reason || '',
+      };
+    });
     res.json(features);
   } catch (error) {
     res.status(500).json({ message: 'Failed to get features' });
+  }
+};
+
+// INTERNAL: PUT /internal/features/:userId
+export const internalUpdateUserFeature = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { featureKey, isEnabled, reason } = req.body;
+
+    const existing = await db()('user_feature_overrides').where({ userId, featureKey }).first();
+    if (existing) {
+      await db()('user_feature_overrides').where({ userId, featureKey }).update({
+        isEnabled: isEnabled ? 1 : 0,
+        reason: reason || '',
+        updatedAt: new Date().toISOString(),
+      });
+    } else {
+      await db()('user_feature_overrides').insert({
+        userId,
+        featureKey,
+        isEnabled: isEnabled ? 1 : 0,
+        reason: reason || '',
+      });
+    }
+    res.json({ message: 'Feature override updated' });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to update user feature' });
+  }
+};
+
+// INTERNAL: GET /internal/features
+export const internalGetAllFeatureFlags = async (req, res) => {
+  try {
+    const flags = await db()('feature_flags').select('*').orderBy('category').orderBy('name');
+    res.json(flags);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to get feature flags' });
+  }
+};
+
+// INTERNAL: PATCH /internal/features/:id/toggle
+export const internalToggleFeatureFlag = async (req, res) => {
+  try {
+    const { isEnabled } = req.body;
+    await db()('feature_flags').where({ id: req.params.id }).update({ isEnabled: isEnabled ? 1 : 0, updatedAt: new Date().toISOString() });
+    res.json({ message: `Feature ${isEnabled ? 'enabled' : 'disabled'}` });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to toggle feature flag' });
+  }
+};
+
+// INTERNAL: DELETE /internal/features/:id
+export const internalDeleteFeatureFlag = async (req, res) => {
+  try {
+    await db()('feature_flags').where({ id: req.params.id }).del();
+    res.json({ message: 'Feature flag deleted' });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to delete feature flag' });
+  }
+};
+
+// INTERNAL: PUT /internal/features/:id
+export const internalUpdateFeatureFlag = async (req, res) => {
+  try {
+    const { name, description, category, isEnabled } = req.body;
+    const updates = {};
+    if (name !== undefined) updates.name = name;
+    if (description !== undefined) updates.description = description;
+    if (category !== undefined) updates.category = category;
+    if (isEnabled !== undefined) updates.isEnabled = isEnabled;
+    updates.updatedAt = new Date().toISOString();
+    await db()('feature_flags').where({ id: req.params.id }).update(updates);
+    const flag = await db()('feature_flags').where({ id: req.params.id }).first();
+    res.json(flag);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to update feature flag' });
+  }
+};
+
+// INTERNAL: POST /internal/features
+export const internalCreateFeatureFlag = async (req, res) => {
+  try {
+    const { key, name, description, category } = req.body;
+    const [id] = await db()('feature_flags').insert({ key, name, description: description || '', category: category || 'general' });
+    const flag = await db()('feature_flags').where({ id }).first();
+    res.status(201).json(flag);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to create feature flag' });
   }
 };
 
@@ -479,10 +601,240 @@ export const internalGetStats = async (req, res) => {
   }
 };
 
+// INTERNAL: DELETE /internal/users/:id
+export const internalDeleteUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db()('users').where({ id }).delete();
+    res.json({ message: 'User deleted' });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to delete user' });
+  }
+};
+
+// INTERNAL: PATCH /internal/users/:id
+export const internalUpdateUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { fullName, phone, businessName, location, payoutMethod, kycStatus, kybStatus, transactionLimit } = req.body;
+    const updates = {};
+    if (fullName !== undefined) updates.fullName = fullName;
+    if (phone !== undefined) updates.phone = phone;
+    if (businessName !== undefined) updates.businessName = businessName;
+    if (location !== undefined) updates.location = location;
+    if (payoutMethod !== undefined) updates.payoutMethod = payoutMethod;
+    if (kycStatus !== undefined) updates.kycStatus = kycStatus;
+    if (kybStatus !== undefined) updates.kybStatus = kybStatus;
+    if (transactionLimit !== undefined) updates.transactionLimit = transactionLimit;
+    if (Object.keys(updates).length === 0) return res.status(400).json({ message: 'No fields to update' });
+    await db()('users').where({ id }).update(updates);
+
+    // Sync KYC/KYB to user's stores
+    if (kycStatus !== undefined || kybStatus !== undefined) {
+      const storeUpdates = {};
+      if (kycStatus !== undefined) storeUpdates.kycStatus = kycStatus;
+      if (kybStatus !== undefined) storeUpdates.kybStatus = kybStatus;
+      storeUpdates.updatedAt = new Date().toISOString();
+      await db()('stores').where({ userId: id }).update(storeUpdates);
+    }
+
+    const user = await db()('users').where({ id }).first();
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    const { password, pin, ...safeUser } = user;
+    res.json(safeUser);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to update user' });
+  }
+};
+
+// INTERNAL: PUT /internal/users/:id/status
+export const internalUpdateUserStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { isDisabled, isSuspended, suspendReason, isVerified } = req.body;
+    
+    const updateData = {};
+    if (typeof isDisabled === 'boolean') updateData.isDisabled = isDisabled;
+    if (typeof isSuspended === 'boolean') updateData.isSuspended = isSuspended;
+    if (typeof isVerified === 'boolean') updateData.isVerified = isVerified;
+    if (suspendReason !== undefined) updateData.suspendReason = suspendReason;
+    if (isDisabled) updateData.accountStatus = 'disabled';
+    else if (isSuspended) updateData.accountStatus = 'suspended';
+    else updateData.accountStatus = 'active';
+
+    await db()('users').where({ id }).update(updateData);
+    res.json({ message: 'User status updated' });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to update user status' });
+  }
+};
+
+// INTERNAL: GET /internal/roles
+export const internalGetRoles = async (req, res) => {
+  try {
+    const roles = await db()('roles').where({ is_deprecated: false });
+    res.json(roles);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to get roles' });
+  }
+};
+
+// INTERNAL: POST /internal/roles
+export const internalCreateRole = async (req, res) => {
+  try {
+    const { name, description, isSystem, parentRoleId, tenantId } = req.body;
+    const [role] = await db()('roles').insert({
+      name,
+      description: description || '',
+      is_system: isSystem || false,
+      parent_role_id: parentRoleId || null,
+      tenant_id: tenantId || 'global',
+      is_deprecated: false,
+    }).returning('*');
+    res.status(201).json(role);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to create role' });
+  }
+};
+
+// INTERNAL: POST /internal/roles/assign
+export const internalAssignRole = async (req, res) => {
+  try {
+    const { userId, roleId, scopeId, scopeType, expiresAt } = req.body;
+    await db()('user_roles').insert({
+      user_id: userId,
+      role_id: roleId,
+      scope_id: scopeId || 'global',
+      scope_type: scopeType || 'platform',
+      expires_at: expiresAt || null,
+    }).onConflict(['user_id', 'role_id', 'scope_id']).merge();
+    res.json({ message: 'Role assigned' });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to assign role' });
+  }
+};
+
+// INTERNAL: GET /internal/permissions
+export const internalGetPermissions = async (req, res) => {
+  try {
+    const permissions = await db()('permissions').where({ is_deprecated: false });
+    res.json(permissions);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to get permissions' });
+  }
+};
+
+// INTERNAL: GET /internal/api-keys
+export const internalGetApiKeys = async (req, res) => {
+  try {
+    const keys = await db()('api_keys').select('*').orderBy('createdAt', 'desc');
+    res.json(keys || []);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to get API keys' });
+  }
+};
+
+// INTERNAL: POST /internal/api-keys
+export const internalCreateApiKey = async (req, res) => {
+  try {
+    const { name, userId } = req.body;
+    const key = `rf_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
+    const [created] = await db()('api_keys').insert({
+      userId: userId || 1,
+      name: name || 'API Key',
+      key,
+      status: 'Active',
+      createdAt: new Date(),
+    }).returning('*');
+    res.json(created);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to create API key' });
+  }
+};
+
+// INTERNAL: DELETE /internal/api-keys/:id
+export const internalDeleteApiKey = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db()('api_keys').where({ id }).delete();
+    res.json({ message: 'API key deleted' });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to delete API key' });
+  }
+};
+
+// INTERNAL: GET /internal/stores
+export const internalGetStores = async (req, res) => {
+  try {
+    const { userId } = req.query;
+    let query = db()('stores').orderBy('createdAt', 'desc');
+    if (userId) query = query.where({ userId: parseInt(userId) });
+    const stores = await query;
+    res.json(stores);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to get stores' });
+  }
+};
+
+// INTERNAL: POST /internal/stores
+export const internalCreateStore = async (req, res) => {
+  try {
+    const { userId, name, description, logo, location, phone, email, category } = req.body;
+    if (!userId || !name) return res.status(400).json({ message: 'userId and name are required' });
+    const slugify = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    let slug = slugify(name);
+    const existing = await db()('stores').where({ slug }).first();
+    if (existing) slug = `${slug}-${Date.now()}`;
+    const [id] = await db()('stores').insert({ userId, name, slug, description: description || '', logo: logo || '', location: location || '', phone: phone || '', email: email || '', category: category || 'general' });
+    const store = await db()('stores').where({ id }).first();
+    res.status(201).json(store);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to create store' });
+  }
+};
+
+// INTERNAL: PUT /internal/stores/:id
+export const internalUpdateStore = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description, logo, location, phone, email, category, isActive } = req.body;
+    const updates = {};
+    if (name !== undefined) updates.name = name;
+    if (description !== undefined) updates.description = description;
+    if (logo !== undefined) updates.logo = logo;
+    if (location !== undefined) updates.location = location;
+    if (phone !== undefined) updates.phone = phone;
+    if (email !== undefined) updates.email = email;
+    if (category !== undefined) updates.category = category;
+    if (isActive !== undefined) updates.isActive = isActive;
+    updates.updatedAt = new Date().toISOString();
+    await db()('stores').where({ id }).update(updates);
+    const store = await db()('stores').where({ id }).first();
+    res.json(store);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to update store' });
+  }
+};
+
+// INTERNAL: DELETE /internal/stores/:id
+export const internalDeleteStore = async (req, res) => {
+  try {
+    await db()('stores').where({ id: req.params.id }).del();
+    res.json({ message: 'Store deleted' });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to delete store' });
+  }
+};
+
 export default {
   register, login, getMe, updateProfile,
   sendOTP, verifyOTP, forgotPassword, resetPassword,
   setPin, verifyPin, getPinStatus, getFeatures, getFees, validateReferral,
-  internalGetUser, internalGetUsers, internalGetSettings,
-  internalGetCurrencies, internalGetUserFeatures, internalValidateKey, internalGetStats,
+  internalGetUser, internalGetUsers, internalUpdateUser, internalGetSettings,
+  internalGetCurrencies, internalGetUserFeatures, internalUpdateUserFeature, internalGetAllFeatureFlags,
+  internalToggleFeatureFlag, internalDeleteFeatureFlag, internalUpdateFeatureFlag, internalCreateFeatureFlag,
+  internalValidateKey, internalGetStats,
+  internalDeleteUser, internalUpdateUserStatus, internalGetRoles, internalCreateRole, internalAssignRole, internalGetPermissions,
+  internalGetApiKeys, internalCreateApiKey, internalDeleteApiKey,
+  internalGetStores, internalCreateStore, internalUpdateStore, internalDeleteStore,
 };

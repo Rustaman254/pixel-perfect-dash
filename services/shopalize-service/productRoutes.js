@@ -4,6 +4,8 @@ import * as ctrl from './productController.js';
 
 const router = Router();
 
+router.get('/dashboard', protectJwt, ctrl.getDashboardStats);
+router.get('/customers', protectJwt, ctrl.getCustomers);
 router.post('/', protectJwt, ctrl.createProduct);
 router.get('/', protectJwt, ctrl.getProducts);
 router.get('/:id', protectJwt, ctrl.getProduct);

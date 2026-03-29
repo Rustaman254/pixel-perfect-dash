@@ -6,15 +6,14 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { useStore } from '@/store'
 import { templates } from '@/data/templates'
-import LoginModal from '@/components/LoginModal'
-import { ShoppingCart, ArrowLeft, Search } from 'lucide-react'
+import { ShoppingCart, ArrowLeft, Search, Loader2 } from 'lucide-react'
 
 export default function GalleryPage() {
   const navigate = useNavigate();
-  const { createProject, canCreateProject } = useStore();
-  const [showLogin, setShowLogin] = useState(false);
+  const { createProject } = useStore();
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
 
   const categories = useMemo(() => {
     const cats = [...new Set(templates.map(t => t.category))];
@@ -29,18 +28,14 @@ export default function GalleryPage() {
     });
   }, [search, selectedCategory]);
 
-  const handleSelect = (templateId: string) => {
-    if (!canCreateProject()) {
-      setShowLogin(true);
-      return;
-    }
+  const handleSelect = async (templateId: string) => {
     const template = templates.find(t => t.id === templateId);
     if (!template) return;
-    const project = createProject(template);
+    setCreating(true);
+    const project = await createProject(template);
+    setCreating(false);
     if (project) {
       navigate(`/editor/${project.id}`);
-    } else {
-      setShowLogin(true);
     }
   };
 
@@ -48,7 +43,7 @@ export default function GalleryPage() {
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
       <nav className="container mx-auto px-4 py-4 flex items-center justify-between border-b">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
+          <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div className="flex items-center gap-2">
@@ -106,7 +101,7 @@ export default function GalleryPage() {
             <Card
               key={template.id}
               className="group cursor-pointer overflow-hidden hover:shadow-lg transition-shadow"
-              onClick={() => handleSelect(template.id)}
+              onClick={() => !creating && handleSelect(template.id)}
             >
               <div className="aspect-video overflow-hidden bg-muted relative">
                 <img
@@ -119,8 +114,9 @@ export default function GalleryPage() {
                   <Button
                     className="opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
                     size="sm"
+                    disabled={creating}
                   >
-                    Use Template
+                    {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Use Template'}
                   </Button>
                 </div>
               </div>
@@ -153,8 +149,6 @@ export default function GalleryPage() {
           </div>
         )}
       </main>
-
-      <LoginModal open={showLogin} onOpenChange={setShowLogin} />
     </div>
   );
 }

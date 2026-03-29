@@ -1,26 +1,6 @@
 import { Router } from 'express';
 import { protectJwt, admin } from '../shared/auth.js';
-import { callService } from '../shared/serviceClient.js';
 import * as ctrl from './adminController.js';
-
-const RIPPLIFY_SERVER = process.env.RIPPLIFY_SERVER_URL || 'http://127.0.0.1:3001';
-
-// Helper to proxy requests to the main ripplify server (port 3001) with JWT auth
-const proxyToRipplify = async (req, res, path) => {
-  const token = req.headers.authorization?.replace('Bearer ', '');
-  const qs = new URLSearchParams(req.query).toString();
-  const url = `${RIPPLIFY_SERVER}/api/admin/${path}${qs ? `?${qs}` : ''}`;
-  const response = await fetch(url, {
-    method: req.method,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    ...(req.method !== 'GET' && req.body ? { body: JSON.stringify(req.body) } : {}),
-  });
-  const data = await response.json();
-  res.status(response.status).json(data);
-};
 
 const router = Router();
 
@@ -33,7 +13,27 @@ router.get('/dashboard', ...adminOnly, ctrl.getDashboard);
 // Users
 router.get('/users', ...adminOnly, ctrl.getUsers);
 router.get('/users/:id', ...adminOnly, ctrl.getUserDetail);
+router.patch('/users/:id', ...adminOnly, ctrl.updateUser);
+router.get('/users/:id/roles', ...adminOnly, ctrl.getUserRoles);
+router.get('/users/:id/features', ...adminOnly, ctrl.getUserFeatureOverrides);
+router.put('/users/:id/features', ...adminOnly, ctrl.updateUserFeatureOverrides);
 router.put('/users/:id/status', ...adminOnly, ctrl.updateUserStatus);
+router.patch('/users/:id/status', ...adminOnly, ctrl.updateUserStatus);
+router.delete('/users/:id', ...adminOnly, ctrl.deleteUser);
+
+// Companies
+router.get('/companies', ...adminOnly, ctrl.getCompanies);
+router.post('/companies', ...adminOnly, ctrl.createCompany);
+router.put('/companies/:id', ...adminOnly, ctrl.updateCompany);
+router.delete('/companies/:id', ...adminOnly, ctrl.deleteCompany);
+
+// Permissions
+router.get('/permissions', ...adminOnly, ctrl.getPermissions);
+
+// API Keys
+router.get('/api-keys', ...adminOnly, ctrl.getApiKeys);
+router.post('/api-keys', ...adminOnly, ctrl.createApiKey);
+router.delete('/api-keys/:id', ...adminOnly, ctrl.deleteApiKey);
 
 // Transactions
 router.get('/transactions', ...adminOnly, ctrl.getTransactions);
@@ -63,11 +63,14 @@ router.get('/apps', ...adminOnly, ctrl.getApps);
 router.post('/apps', ...adminOnly, ctrl.createApp);
 router.put('/apps/:id', ...adminOnly, ctrl.updateApp);
 
-// Feature Flags
+// Feature Flags (also accessible as /feature-flags)
 router.get('/features', ...adminOnly, ctrl.getFeatureFlags);
 router.put('/features/:key', ...adminOnly, ctrl.updateFeatureFlag);
-router.get('/users/:id/features', ...adminOnly, ctrl.getUserFeatureOverrides);
-router.put('/users/:id/features', ...adminOnly, ctrl.updateUserFeatureOverrides);
+router.get('/feature-flags', ...adminOnly, ctrl.getFeatureFlags);
+router.post('/feature-flags', ...adminOnly, ctrl.createFeatureFlag);
+router.put('/feature-flags/:id', ...adminOnly, ctrl.updateFeatureFlag);
+router.patch('/feature-flags/:id/toggle', ...adminOnly, ctrl.toggleFeatureFlag);
+router.delete('/feature-flags/:id', ...adminOnly, ctrl.deleteFeatureFlag);
 
 // Referrals
 router.get('/referrals', ...adminOnly, ctrl.getReferralCodes);
@@ -84,163 +87,49 @@ router.get('/audit-logs', ...adminOnly, ctrl.getAuditLogs);
 // Notifications
 router.get('/notifications', ...adminOnly, ctrl.getNotifications);
 router.post('/notifications', ...adminOnly, ctrl.createNotification);
+router.put('/notifications/read-all', ...adminOnly, ctrl.markAllNotificationsRead);
+router.put('/notifications/:id/read', ...adminOnly, ctrl.markNotificationRead);
 router.delete('/notifications/:id', ...adminOnly, ctrl.deleteNotification);
+
+// Ripplify proxy routes
+router.get('/ripplify/stats', ...adminOnly, ctrl.getRipplifyStats);
+router.get('/ripplify/analytics', ...adminOnly, ctrl.getRipplifyAnalytics);
 
 // Support
 router.get('/support', ...adminOnly, ctrl.getSupportTickets);
 router.put('/support/:id', ...adminOnly, ctrl.updateSupportTicket);
 
-// ============================================================
-// Project-Specific Admin Routes (proxy to respective services)
-// ============================================================
+// ===== SHOPIFY-LIKE SHOPIZE ADMIN ROUTES =====
+// Stores
+router.get('/shopalize/stores', ...adminOnly, ctrl.getShopalizeStores);
+router.get('/shopalize/stores/:id', ...adminOnly, ctrl.getShopalizeStoreDetail);
+router.put('/shopalize/stores/:id', ...adminOnly, ctrl.updateShopalizeStore);
+router.delete('/shopalize/stores/:id', ...adminOnly, ctrl.deleteShopalizeStore);
+router.get('/shopalize/stats', ...adminOnly, ctrl.getShopalizeAdminStats);
 
-// Ripplify admin (proxy to main ripplify server on port 3001)
-router.get('/ripplify/stats', ...adminOnly, async (req, res) => {
-  try { await proxyToRipplify(req, res, 'stats'); }
-  catch (error) { console.error('Ripplify proxy stats error:', error.message); res.status(500).json({ message: 'Failed to load ripplify stats' }); }
-});
-router.get('/ripplify/analytics', ...adminOnly, async (req, res) => {
-  try { await proxyToRipplify(req, res, 'analytics'); }
-  catch (error) { console.error('Ripplify proxy analytics error:', error.message); res.status(500).json({ message: 'Failed to load ripplify analytics' }); }
-});
-router.get('/ripplify/users', ...adminOnly, async (req, res) => {
-  try { await proxyToRipplify(req, res, 'users'); }
-  catch (error) { console.error('Ripplify proxy users error:', error.message); res.status(500).json({ message: 'Failed to load ripplify users' }); }
-});
-router.get('/ripplify/transactions', ...adminOnly, async (req, res) => {
-  try { await proxyToRipplify(req, res, 'transactions'); }
-  catch (error) { console.error('Ripplify proxy transactions error:', error.message); res.status(500).json({ message: 'Failed to load ripplify transactions' }); }
-});
-router.get('/ripplify/payouts', ...adminOnly, async (req, res) => {
-  try { await proxyToRipplify(req, res, 'payouts'); }
-  catch (error) { console.error('Ripplify proxy payouts error:', error.message); res.status(500).json({ message: 'Failed to load ripplify payouts' }); }
-});
-router.get('/ripplify/settings', ...adminOnly, async (req, res) => {
-  try { await proxyToRipplify(req, res, 'settings'); }
-  catch (error) { console.error('Ripplify proxy settings error:', error.message); res.status(500).json({ message: 'Failed to load ripplify settings' }); }
-});
+// Orders
+router.get('/shopalize/orders', ...adminOnly, ctrl.getShopalizeOrders);
+router.put('/shopalize/orders/:id', ...adminOnly, ctrl.updateShopalizeOrder);
 
-// Watchtower admin (proxy to watchtower service)
-router.get('/watchtower/stats', ...adminOnly, async (req, res) => {
-  try {
-    const result = await callService('watchtower', '/internal/admin/stats');
-    res.json(result);
-  } catch (error) {
-    console.error('Watchtower proxy stats error:', error.message);
-    res.status(500).json({ message: 'Failed to load watchtower stats' });
-  }
-});
-router.get('/watchtower/analytics', ...adminOnly, async (req, res) => {
-  try {
-    const qs = new URLSearchParams(req.query).toString();
-    const result = await callService('watchtower', `/internal/admin/analytics?${qs}`);
-    res.json(result);
-  } catch (error) {
-    console.error('Watchtower proxy analytics error:', error.message);
-    res.status(500).json({ message: 'Failed to load watchtower analytics' });
-  }
-});
-router.get('/watchtower/sessions', ...adminOnly, async (req, res) => {
-  try {
-    const qs = new URLSearchParams(req.query).toString();
-    const result = await callService('watchtower', `/internal/admin/sessions?${qs}`);
-    res.json(result);
-  } catch (error) {
-    console.error('Watchtower proxy sessions error:', error.message);
-    res.status(500).json({ message: 'Failed to load watchtower sessions' });
-  }
-});
-router.get('/watchtower/users', ...adminOnly, async (req, res) => {
-  try {
-    const result = await callService('watchtower', '/internal/admin/users');
-    res.json(result);
-  } catch (error) {
-    console.error('Watchtower proxy users error:', error.message);
-    res.status(500).json({ message: 'Failed to load watchtower users' });
-  }
-});
-router.get('/watchtower/settings', ...adminOnly, async (req, res) => {
-  try {
-    const result = await callService('watchtower', '/internal/admin/settings');
-    res.json(result);
-  } catch (error) {
-    console.error('Watchtower proxy settings error:', error.message);
-    res.status(500).json({ message: 'Failed to load watchtower settings' });
-  }
-});
-router.put('/watchtower/settings', ...adminOnly, async (req, res) => {
-  try {
-    const result = await callService('watchtower', '/internal/admin/settings', {
-      method: 'PUT',
-      body: req.body,
-    });
-    res.json(result);
-  } catch (error) {
-    console.error('Watchtower proxy settings update error:', error.message);
-    res.status(500).json({ message: 'Failed to update watchtower settings' });
-  }
-});
+// Products
+router.get('/shopalize/products', ...adminOnly, ctrl.getShopalizeProducts);
+router.put('/shopalize/products/:id', ...adminOnly, ctrl.updateShopalizeProduct);
+router.delete('/shopalize/products/:id', ...adminOnly, ctrl.deleteShopalizeProduct);
 
-// Shopalize admin (proxy to shopalize service)
-router.get('/shopalize/stats', ...adminOnly, async (req, res) => {
-  try {
-    const result = await callService('shopalize', '/internal/admin/stats');
-    res.json(result);
-  } catch (error) {
-    console.error('Shopalize proxy stats error:', error.message);
-    res.status(500).json({ message: 'Failed to load shopalize stats' });
-  }
-});
-router.get('/shopalize/analytics', ...adminOnly, async (req, res) => {
-  try {
-    const qs = new URLSearchParams(req.query).toString();
-    const result = await callService('shopalize', `/internal/admin/analytics?${qs}`);
-    res.json(result);
-  } catch (error) {
-    console.error('Shopalize proxy analytics error:', error.message);
-    res.status(500).json({ message: 'Failed to load shopalize analytics' });
-  }
-});
-router.get('/shopalize/projects', ...adminOnly, async (req, res) => {
-  try {
-    const qs = new URLSearchParams(req.query).toString();
-    const result = await callService('shopalize', `/internal/admin/projects?${qs}`);
-    res.json(result);
-  } catch (error) {
-    console.error('Shopalize proxy projects error:', error.message);
-    res.status(500).json({ message: 'Failed to load shopalize projects' });
-  }
-});
-router.get('/shopalize/orders', ...adminOnly, async (req, res) => {
-  try {
-    const qs = new URLSearchParams(req.query).toString();
-    const result = await callService('shopalize', `/internal/admin/orders?${qs}`);
-    res.json(result);
-  } catch (error) {
-    console.error('Shopalize proxy orders error:', error.message);
-    res.status(500).json({ message: 'Failed to load shopalize orders' });
-  }
-});
-router.get('/shopalize/settings', ...adminOnly, async (req, res) => {
-  try {
-    const result = await callService('shopalize', '/internal/admin/settings');
-    res.json(result);
-  } catch (error) {
-    console.error('Shopalize proxy settings error:', error.message);
-    res.status(500).json({ message: 'Failed to load shopalize settings' });
-  }
-});
-router.put('/shopalize/settings', ...adminOnly, async (req, res) => {
-  try {
-    const result = await callService('shopalize', '/internal/admin/settings', {
-      method: 'PUT',
-      body: req.body,
-    });
-    res.json(result);
-  } catch (error) {
-    console.error('Shopalize proxy settings update error:', error.message);
-    res.status(500).json({ message: 'Failed to update shopalize settings' });
-  }
-});
+// Customers
+router.get('/shopalize/customers', ...adminOnly, ctrl.getShopalizeCustomers);
+
+// Analytics
+router.get('/shopalize/analytics', ...adminOnly, ctrl.getShopalizeAnalytics);
+
+// Settings
+router.get('/shopalize/settings', ...adminOnly, ctrl.getShopalizeSettings);
+router.put('/shopalize/settings', ...adminOnly, ctrl.updateShopalizeSettings);
+
+// Feature Flags
+router.get('/shopalize/feature-flags', ...adminOnly, ctrl.getShopalizeFeatureFlags);
+router.post('/shopalize/feature-flags', ...adminOnly, ctrl.createShopalizeFeatureFlag);
+router.put('/shopalize/feature-flags/:id', ...adminOnly, ctrl.updateShopalizeFeatureFlag);
+router.delete('/shopalize/feature-flags/:id', ...adminOnly, ctrl.deleteShopalizeFeatureFlag);
 
 export default router;

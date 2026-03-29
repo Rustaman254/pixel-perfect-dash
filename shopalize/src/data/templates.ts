@@ -10,8 +10,8 @@ const sampleProducts: Product[] = [
 ];
 
 const defaultTheme = {
-  primaryColor: '#6366f1',
-  secondaryColor: '#8b5cf6',
+  primaryColor: '#7C3AED',
+  secondaryColor: '#A78BFA',
   accentColor: '#f59e0b',
   backgroundColor: '#ffffff',
   textColor: '#1f2937',

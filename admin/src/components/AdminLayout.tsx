@@ -3,7 +3,8 @@ import {
   LayoutDashboard, Users, Building2, BarChart3,
   Settings, LogOut, ShieldCheck, Menu, X, CreditCard, Bell, Ticket, AppWindow, Shield,
   ChevronDown, Key, LifeBuoy, Wallet, Globe, Flag, Receipt,
-  ArrowLeftRight, LayoutGrid, ExternalLink, Eye, ShoppingCart, Activity
+  ArrowLeftRight, LayoutGrid, ExternalLink, Eye, ShoppingCart, Activity,
+  Package, Store, DollarSign, TrendingUp, Sliders
 } from "lucide-react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useAppContext } from "@/contexts/AppContext";
@@ -99,8 +100,28 @@ const shopalizeNavGroups: NavGroup[] = [
     label: "Overview",
     icon: ShoppingCart,
     items: [
-      { icon: ShoppingCart, label: "Dashboard", to: "/shopalize" },
-      { icon: BarChart3, label: "Analytics", to: "/shopalize" },
+      { icon: LayoutDashboard, label: "Dashboard", to: "/shopalize" },
+      { icon: BarChart3, label: "Analytics", to: "/shopalize/analytics" },
+    ],
+    projects: ["shopalize"],
+  },
+  {
+    label: "Store Management",
+    icon: Store,
+    items: [
+      { icon: Store, label: "All Stores", to: "/shopalize/stores" },
+      { icon: ShoppingCart, label: "Orders", to: "/shopalize/orders" },
+      { icon: Package, label: "Products", to: "/shopalize/products" },
+      { icon: Users, label: "Customers", to: "/shopalize/customers" },
+    ],
+    projects: ["shopalize"],
+  },
+  {
+    label: "Configuration",
+    icon: Sliders,
+    items: [
+      { icon: Flag, label: "Feature Flags", to: "/shopalize/features" },
+      { icon: Settings, label: "Settings", to: "/shopalize/settings" },
     ],
     projects: ["shopalize"],
   },

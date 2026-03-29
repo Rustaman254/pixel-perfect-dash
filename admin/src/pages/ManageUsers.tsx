@@ -357,22 +357,26 @@ const ManageUsers = () => {
                         }}>
                           <Flag className="w-4 h-4 mr-2" /> Manage Features
                         </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => handleVerify(user.id, !user.isVerified)} className={user.isVerified ? "text-orange-600" : "text-emerald-600"}>
-                          <UserCheck className="w-4 h-4 mr-2" /> {user.isVerified ? "Unverify Account" : "Verify Account"}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleDisable(user.id, !user.isDisabled)} className={user.isDisabled ? "text-emerald-600" : "text-red-600"}>
-                          {user.isDisabled ? <UserCheck className="w-4 h-4 mr-2" /> : <Ban className="w-4 h-4 mr-2" />}
-                          {user.isDisabled ? "Enable Account" : "Disable Account"}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleSuspend(user.id, !user.isSuspended)} className={user.isSuspended ? "text-emerald-600" : "text-orange-600"}>
-                          {user.isSuspended ? <UserCheck className="w-4 h-4 mr-2" /> : <AlertTriangle className="w-4 h-4 mr-2" />}
-                          {user.isSuspended ? "Unsuspend Account" : "Suspend Account"}
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => handleDelete(user.id)} className="text-red-600 focus:text-red-600 focus:bg-red-50">
-                          <Trash2 className="w-4 h-4 mr-2" /> Delete Permanently
-                        </DropdownMenuItem>
+                        {!user.isSuperAdmin && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleVerify(user.id, !user.isVerified)} className={user.isVerified ? "text-orange-600" : "text-emerald-600"}>
+                              <UserCheck className="w-4 h-4 mr-2" /> {user.isVerified ? "Unverify Account" : "Verify Account"}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDisable(user.id, !user.isDisabled)} className={user.isDisabled ? "text-emerald-600" : "text-red-600"}>
+                              {user.isDisabled ? <UserCheck className="w-4 h-4 mr-2" /> : <Ban className="w-4 h-4 mr-2" />}
+                              {user.isDisabled ? "Enable Account" : "Disable Account"}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleSuspend(user.id, !user.isSuspended)} className={user.isSuspended ? "text-emerald-600" : "text-orange-600"}>
+                              {user.isSuspended ? <UserCheck className="w-4 h-4 mr-2" /> : <AlertTriangle className="w-4 h-4 mr-2" />}
+                              {user.isSuspended ? "Unsuspend Account" : "Suspend Account"}
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleDelete(user.id)} className="text-red-600 focus:text-red-600 focus:bg-red-50">
+                              <Trash2 className="w-4 h-4 mr-2" /> Delete Permanently
+                            </DropdownMenuItem>
+                          </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </td>

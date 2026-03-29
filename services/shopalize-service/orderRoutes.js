@@ -6,6 +6,7 @@ const router = Router();
 
 router.get('/', protectJwt, ctrl.getOrders);
 router.get('/stats', protectJwt, ctrl.getOrderStats);
+router.put('/:id', protectJwt, ctrl.updateOrder);
 
 // Internal: called by Ripplify when payment is confirmed
 router.post('/internal/orders', internalAuth, ctrl.createOrder);
