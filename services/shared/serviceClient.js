@@ -4,11 +4,11 @@ dotenv.config();
 const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || 'internal-sokostack-2026-secret';
 
 const SERVICE_URLS = {
-  auth: process.env.AUTH_SERVICE_URL || 'http://127.0.0.1:3001',
-  ripplify: process.env.RIPPLIFY_SERVICE_URL || 'http://127.0.0.1:3002',
-  shopalize: process.env.SHOPALIZE_SERVICE_URL || 'http://127.0.0.1:3003',
-  watchtower: process.env.WATCHTOWER_SERVICE_URL || 'http://127.0.0.1:3004',
-  admin: process.env.ADMIN_SERVICE_URL || 'http://127.0.0.1:3005',
+  auth: process.env.AUTH_SERVICE_URL || 'http://localhost:3006',
+  ripplify: process.env.RIPPLIFY_SERVICE_URL || 'http://localhost:3007',
+  shopalize: process.env.SHOPALIZE_SERVICE_URL || 'http://localhost:3008',
+  watchtower: process.env.WATCHTOWER_SERVICE_URL || 'http://localhost:3009',
+  admin: process.env.ADMIN_SERVICE_URL || 'http://localhost:3010',
 };
 
 // Internal service-to-service HTTP client
@@ -47,12 +47,12 @@ export const callService = async (serviceName, path, options = {}) => {
 
 // Convenience methods
 export const authService = {
-  getUser: (userId) => callService('auth', `/internal/users/${userId}`),
-  getUsers: (query = '') => callService('auth', `/internal/users${query}`),
-  getSettings: () => callService('auth', '/internal/settings'),
-  getCurrencies: () => callService('auth', '/internal/currencies'),
-  getFeatures: (userId) => callService('auth', `/internal/features/${userId}`),
-  validateApiKey: (key) => callService('auth', '/internal/validate-key', {
+  getUser: (userId) => callService('auth', `/api/auth/internal/users/${userId}`),
+  getUsers: (query = '') => callService('auth', `/api/auth/internal/users${query}`),
+  getSettings: () => callService('auth', '/api/auth/internal/settings'),
+  getCurrencies: () => callService('auth', '/api/auth/internal/currencies'),
+  getFeatures: (userId) => callService('auth', `/api/auth/internal/features/${userId}`),
+  validateApiKey: (key) => callService('auth', '/api/auth/internal/validate-key', {
     method: 'POST',
     body: { key },
   }),
@@ -66,18 +66,36 @@ export const ripplifyService = {
 };
 
 export const watchtowerService = {
-  getOverview: (userId) => callService('watchtower', `/internal/overview?userId=${userId}`),
-  getSessions: (userId, query = '') => callService('watchtower', `/internal/sessions?userId=${userId}${query}`),
-  getPlatformOverview: () => callService('watchtower', '/internal/platform-overview'),
-  pushEvent: (data) => callService('watchtower', '/internal/events', {
+  getOverview: (userId) => callService('watchtower', `/api/watchtower/internal/overview?userId=${userId}`),
+  getSessions: (userId, query = '') => callService('watchtower', `/api/watchtower/internal/sessions?userId=${userId}${query}`),
+  getPlatformOverview: () => callService('watchtower', '/api/watchtower/internal/platform-overview'),
+  pushEvent: (data) => callService('watchtower', '/api/watchtower/internal/events', {
     method: 'POST',
     body: data,
   }),
 };
 
 export const shopalizeService = {
-  getStores: (userId) => callService('shopalize', `/internal/stores?userId=${userId}`),
-  getStoreStats: () => callService('shopalize', '/internal/stats'),
+  getStores: (userId) => callService('shopalize', `/api/shopalize/internal/stores?userId=${userId}`),
+  getStoreStats: () => callService('shopalize', '/api/shopalize/internal/stats'),
+  // Admin endpoints
+  getAllStores: (query = '') => callService('shopalize', `/api/shopalize/internal/admin/stores${query}`),
+  getStoreDetail: (id) => callService('shopalize', `/api/shopalize/internal/admin/stores/${id}`),
+  updateStore: (id, body) => callService('shopalize', `/api/shopalize/internal/admin/stores/${id}`, { method: 'PUT', body }),
+  deleteStore: (id) => callService('shopalize', `/api/shopalize/internal/admin/stores/${id}`, { method: 'DELETE' }),
+  getAllOrders: (query = '') => callService('shopalize', `/api/shopalize/internal/admin/orders${query}`),
+  updateOrder: (id, body) => callService('shopalize', `/api/shopalize/internal/admin/orders/${id}`, { method: 'PUT', body }),
+  getAllProducts: (query = '') => callService('shopalize', `/api/shopalize/internal/admin/products${query}`),
+  updateProduct: (id, body) => callService('shopalize', `/api/shopalize/internal/admin/products/${id}`, { method: 'PUT', body }),
+  deleteProduct: (id) => callService('shopalize', `/api/shopalize/internal/admin/products/${id}`, { method: 'DELETE' }),
+  getAllCustomers: (query = '') => callService('shopalize', `/api/shopalize/internal/admin/customers${query}`),
+  getAdminAnalytics: (query = '') => callService('shopalize', `/api/shopalize/internal/admin/analytics${query}`),
+  getAdminSettings: () => callService('shopalize', '/api/shopalize/internal/admin/settings'),
+  updateAdminSettings: (body) => callService('shopalize', '/api/shopalize/internal/admin/settings', { method: 'PUT', body }),
+  getFeatureFlags: () => callService('shopalize', '/api/shopalize/internal/admin/feature-flags'),
+  createFeatureFlag: (body) => callService('shopalize', '/api/shopalize/internal/admin/feature-flags', { method: 'POST', body }),
+  updateFeatureFlag: (id, body) => callService('shopalize', `/api/shopalize/internal/admin/feature-flags/${id}`, { method: 'PUT', body }),
+  deleteFeatureFlag: (id) => callService('shopalize', `/api/shopalize/internal/admin/feature-flags/${id}`, { method: 'DELETE' }),
 };
 
 export default callService;

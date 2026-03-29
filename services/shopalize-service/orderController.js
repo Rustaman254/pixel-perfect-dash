@@ -124,4 +124,30 @@ export const getOrderStats = async (req, res) => {
   }
 };
 
-export default { createOrder, getOrders, getOrderStats };
+// PUT /orders/:id - update order status
+export const updateOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, fulfillmentStatus, paymentStatus, notes } = req.body;
+
+    // Verify ownership
+    const userProjects = await db()('projects').where({ userId: req.user.id }).select('id');
+    const projectIds = userProjects.map(p => p.id);
+
+    const order = await db()('store_orders').where({ id: parseInt(id) }).whereIn('projectId', projectIds).first();
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    const updates = {};
+    if (status !== undefined) updates.status = status;
+    if (fulfillmentStatus !== undefined) updates.fulfillmentStatus = fulfillmentStatus;
+    if (paymentStatus !== undefined) updates.paymentStatus = paymentStatus;
+    if (notes !== undefined) updates.notes = notes;
+
+    const [updated] = await db()('store_orders').where({ id: parseInt(id) }).update(updates).returning('*');
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export default { createOrder, getOrders, getOrderStats, updateOrder };

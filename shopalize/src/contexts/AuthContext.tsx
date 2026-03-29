@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { useSSOSync } from '@/hooks/useSSOSync';
 import { fetchWithAuth, BASE_URL } from '@/lib/api';
 

@@ -16,6 +16,11 @@ import currencyRoutes from './currencyRoutes.js';
 import payoutMethodRoutes from './payoutMethodRoutes.js';
 import checkoutRoutes from './checkoutRoutes.js';
 
+import { internalAuth } from '../shared/auth.js';
+import * as transCtrl from './transactionController.js';
+import * as linkCtrl from './linkController.js';
+import * as payoutCtrl from './payoutController.js';
+
 dotenv.config({ path: path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '.env') });
 
 // Run migrations
@@ -84,6 +89,13 @@ app.use('/api/ripplify/payment-methods', paymentMethodRoutes);
 app.use('/api/ripplify/currencies', currencyRoutes);
 app.use('/api/ripplify/payout-methods', payoutMethodRoutes);
 app.use('/api/ripplify/checkout', checkoutRoutes);
+
+// Internal routes for admin service
+app.get('/internal/transactions', internalAuth, transCtrl.internalGetTransactions);
+app.get('/internal/transactions/all', internalAuth, transCtrl.internalGetAllTransactions);
+app.get('/internal/transactions/stats', internalAuth, transCtrl.internalGetTransactionStats);
+app.get('/internal/links', internalAuth, linkCtrl.internalGetLinks);
+app.get('/internal/payouts', internalAuth, payoutCtrl.internalGetPayouts);
 
 // Health check
 app.get('/health', (req, res) => res.json({ status: 'ok', service: 'ripplify' }));

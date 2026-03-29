@@ -87,10 +87,23 @@ export const getMyPayouts = async (req, res) => {
 // Internal: get payouts for a user
 export const internalGetPayouts = async (req, res) => {
   try {
-    const { userId } = req.query;
+    const { userId, page = 1, limit = 50 } = req.query;
     if (!userId) return res.status(400).json({ message: 'userId required' });
-    const payouts = await db()('payouts').where({ userId: parseInt(userId) }).orderBy('createdAt', 'desc');
-    res.json(payouts);
+    
+    const uid = parseInt(userId);
+    const pageNum = parseInt(page) || 1;
+    const limitNum = parseInt(limit) || 50;
+    
+    const payouts = await db()('payouts')
+      .where({ userId: uid })
+      .orderBy('createdAt', 'desc')
+      .limit(limitNum)
+      .offset((pageNum - 1) * limitNum);
+    
+    const countResult = await db()('payouts').where({ userId: uid }).count('* as count').first();
+    const total = parseInt(countResult.count) || 0;
+    
+    res.json({ payouts, total, page: pageNum, limit: limitNum });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

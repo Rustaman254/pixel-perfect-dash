@@ -179,10 +179,23 @@ export const updateTransactionStatus = async (req, res) => {
 // Internal: get transactions for a user
 export const internalGetTransactions = async (req, res) => {
   try {
-    const { userId } = req.query;
+    const { userId, page = 1, limit = 50 } = req.query;
     if (!userId) return res.status(400).json({ message: 'userId required' });
-    const transactions = await db()('transactions').where({ userId: parseInt(userId) }).orderBy('createdAt', 'desc');
-    res.json(transactions);
+    
+    const uid = parseInt(userId);
+    const pageNum = parseInt(page) || 1;
+    const limitNum = parseInt(limit) || 50;
+    
+    const transactions = await db()('transactions')
+      .where({ userId: uid })
+      .orderBy('createdAt', 'desc')
+      .limit(limitNum)
+      .offset((pageNum - 1) * limitNum);
+    
+    const countResult = await db()('transactions').where({ userId: uid }).count('* as count').first();
+    const total = parseInt(countResult.count) || 0;
+    
+    res.json({ transactions, total, page: pageNum, limit: limitNum });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -207,8 +220,43 @@ export const internalGetTransactionStats = async (req, res) => {
   }
 };
 
+// Internal: get ALL transactions for admin
+export const internalGetAllTransactions = async (req, res) => {
+  try {
+    const { page = 1, limit = 50, status, search } = req.query;
+    const pageNum = parseInt(page) || 1;
+    const limitNum = parseInt(limit) || 50;
+    
+    let query = db()('transactions');
+    
+    if (status) query = query.where({ status });
+    if (search) {
+      query = query.where(function() {
+        this.where('buyerName', 'ilike', `%${search}%`)
+          .orWhere('buyerEmail', 'ilike', `%${search}%`)
+          .orWhere('transactionId', 'ilike', `%${search}%`);
+      });
+    }
+    
+    const transactions = await query
+      .select('transactions.*', db.raw('users.fullName as sellerName, users.businessName as sellerBusinessName'))
+      .leftJoin('users', 'transactions.userId', 'users.id')
+      .orderBy('transactions.createdAt', 'desc')
+      .limit(limitNum)
+      .offset((pageNum - 1) * limitNum);
+    
+    const countResult = await query.clone().count('* as count').first();
+    const total = parseInt(countResult.count) || 0;
+    
+    res.json({ transactions, total, page: pageNum, limit: limitNum });
+  } catch (error) {
+    console.error('Get all transactions error:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 export default {
   getMyTransactions, getTransactionStats, getTransactionByToken,
   createTransaction, updateTransactionStatus,
-  internalGetTransactions, internalGetTransactionStats,
+  internalGetTransactions, internalGetAllTransactions, internalGetTransactionStats,
 };

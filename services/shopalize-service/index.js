@@ -13,6 +13,10 @@ import productRoutes from './productRoutes.js';
 import orderRoutes from './orderRoutes.js';
 import publicRoutes from './publicRoutes.js';
 import internalRoutes from './internalRoutes.js';
+import discountRoutes from './discountRoutes.js';
+import analyticsRoutes from './analyticsRoutes.js';
+import campaignRoutes from './campaignRoutes.js';
+import internalAdminRoutes from './internalAdminRoutes.js';
 
 dotenv.config({ path: path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '.env') });
 
@@ -72,8 +76,12 @@ app.use('/api/shopalize/pages', pageRoutes);
 app.use('/api/shopalize/templates', templateRoutes);
 app.use('/api/shopalize/products', productRoutes);
 app.use('/api/shopalize/orders', orderRoutes);
+app.use('/api/shopalize/discounts', discountRoutes);
+app.use('/api/shopalize/analytics', analyticsRoutes);
+app.use('/api/shopalize/campaigns', campaignRoutes);
 app.use('/api/shopalize', publicRoutes);
 app.use('/api/shopalize', internalRoutes);
+app.use('/api/shopalize', internalAdminRoutes);
 
 // Health check
 app.get('/health', (req, res) => res.json({ status: 'ok', service: 'shopalize' }));

@@ -238,6 +238,45 @@ export async function migrate() {
     t.timestamp('created_at').defaultTo(db.fn.now());
   });
 
+  // Stores / Businesses table
+  await createIfNotExists('stores', (t) => {
+    t.increments('id').primary();
+    t.integer('userId').unsigned().notNullable();
+    t.string('name').notNullable();
+    t.string('slug').unique().notNullable();
+    t.text('description').defaultTo('');
+    t.string('logo').defaultTo('');
+    t.string('location').defaultTo('');
+    t.string('phone').defaultTo('');
+    t.string('email').defaultTo('');
+    t.string('category').defaultTo('general');
+    t.string('kycStatus').defaultTo('none');
+    t.string('kybStatus').defaultTo('none');
+    t.boolean('isActive').defaultTo(true);
+    t.timestamp('createdAt').defaultTo(db.fn.now());
+    t.timestamp('updatedAt').defaultTo(db.fn.now());
+  });
+
+  // Migrate stores table columns if table already existed
+  try { await db.schema.raw('ALTER TABLE stores ADD COLUMN IF NOT EXISTS "kycStatus" TEXT DEFAULT \'none\''); } catch (e) {}
+  try { await db.schema.raw('ALTER TABLE stores ADD COLUMN IF NOT EXISTS "kybStatus" TEXT DEFAULT \'none\''); } catch (e) {}
+  try { await db.schema.raw('ALTER TABLE stores ADD COLUMN IF NOT EXISTS "phone" TEXT DEFAULT \'\''); } catch (e) {}
+  try { await db.schema.raw('ALTER TABLE stores ADD COLUMN IF NOT EXISTS "location" TEXT DEFAULT \'\''); } catch (e) {}
+  try { await db.schema.raw('ALTER TABLE stores ADD COLUMN IF NOT EXISTS "description" TEXT DEFAULT \'\''); } catch (e) {}
+  try { await db.schema.raw('ALTER TABLE stores ADD COLUMN IF NOT EXISTS "logo" TEXT DEFAULT \'\''); } catch (e) {}
+  try { await db.schema.raw('ALTER TABLE stores ADD COLUMN IF NOT EXISTS "email" TEXT DEFAULT \'\''); } catch (e) {}
+  try { await db.schema.raw('ALTER TABLE stores ADD COLUMN IF NOT EXISTS "category" TEXT DEFAULT \'general\''); } catch (e) {}
+
+  // Sync KYC/KYB from users to stores
+  await db.schema.raw(`
+    UPDATE stores SET "kycStatus" = (SELECT "kycStatus" FROM users WHERE users.id = stores."userId")
+    WHERE EXISTS (SELECT 1 FROM users WHERE users.id = stores."userId")
+  `);
+  await db.schema.raw(`
+    UPDATE stores SET "kybStatus" = (SELECT "kybStatus" FROM users WHERE users.id = stores."userId")
+    WHERE EXISTS (SELECT 1 FROM users WHERE users.id = stores."userId")
+  `);
+
   // Indexes
   await db.schema.raw('CREATE INDEX IF NOT EXISTS idx_user_roles_user ON user_roles(user_id)');
   await db.schema.raw('CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id)');
@@ -309,6 +348,37 @@ async function seedData(db) {
     ];
     await db('feature_flags').insert(features);
     console.log('Feature flags seeded.');
+  }
+
+  // Seed stores from existing user business data
+  const storeCount = await db('stores').count('id as count').first();
+  if (parseInt(storeCount.count) === 0) {
+    const users = await db('users').select('id', 'fullName', 'businessName', 'kycStatus', 'kybStatus', 'phone', 'location');
+    const slugify = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    const seenSlugs = new Set();
+    const storesToInsert = [];
+
+    for (const user of users) {
+      const name = user.businessName || user.fullName;
+      if (!name) continue;
+      let slug = slugify(name);
+      if (seenSlugs.has(slug)) slug = `${slug}-${user.id}`;
+      seenSlugs.add(slug);
+      storesToInsert.push({
+        userId: user.id,
+        name,
+        slug,
+        phone: user.phone || '',
+        location: user.location || '',
+        kycStatus: user.kycStatus || 'none',
+        kybStatus: user.kybStatus || 'none',
+      });
+    }
+
+    if (storesToInsert.length > 0) {
+      await db('stores').insert(storesToInsert);
+      console.log(`Seeded ${storesToInsert.length} stores from user data.`);
+    }
   }
 
   // Seed system settings

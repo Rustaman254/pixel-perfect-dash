@@ -2,32 +2,31 @@ const getBaseUrl = () => {
     if (typeof window !== "undefined") {
         const hostname = window.location.hostname;
         if (hostname === "localhost" || hostname === "127.0.0.1") {
-            return "http://localhost:3003/api";
+            return "/api";
         }
     }
-    return import.meta.env.VITE_API_URL || "https://shopalize.sokostack.xyz/api";
+    return "/api";
 };
 
 export const BASE_URL = getBaseUrl();
-export const BACKEND_URL = BASE_URL.replace('/api', '');
 
 // SSO hub URL - points to auth service
 export const SSO_HUB_URL = (() => {
     if (typeof window !== "undefined") {
         const hostname = window.location.hostname;
         if (hostname === "localhost" || hostname === "127.0.0.1") {
-            return "http://localhost:3001/sso.html";
+            return "http://localhost:3006/sso.html";
         }
     }
-    return import.meta.env.VITE_SSO_URL || "https://auth.sokostack.xyz/sso.html";
+    return "https://auth.sokostack.xyz/sso.html";
 })();
 
 // Product switcher URLs
 export const PRODUCTS = {
-    ripplify: import.meta.env.VITE_RIPPLIFY_URL || "https://ripplify.sokostack.xyz",
-    shopalize: import.meta.env.VITE_SHOPALIZE_URL || "https://shopalize.sokostack.xyz",
-    watchtower: import.meta.env.VITE_WATCHTOWER_URL || "https://watchtower.sokostack.xyz",
-    admin: import.meta.env.VITE_ADMIN_URL || "https://admin.sokostack.xyz",
+    ripplify: "https://ripplify.sokostack.xyz",
+    shopalize: "https://shopalize.sokostack.xyz",
+    watchtower: "https://watchtower.sokostack.xyz",
+    admin: "https://admin.sokostack.xyz",
 };
 
 export const fetchWithAuth = async (endpoint: string, options: RequestInit = {}) => {
