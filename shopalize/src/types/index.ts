@@ -27,6 +27,7 @@ export interface StoreTheme {
   backgroundColor: string;
   textColor: string;
   fontFamily: string;
+  isPublished?: boolean;
 }
 
 export interface StorePage {

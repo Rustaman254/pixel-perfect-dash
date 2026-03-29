@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStore } from '@/store';
 import StorePreview from '@/components/StorePreview';
-import { ShoppingCart, ArrowLeft, Eye, Download, GripVertical, Trash2, Palette, FileText, ChevronDown, Plus, Monitor, Tablet, Smartphone, Loader2, Save, Undo, Redo, LayoutTemplate, MoreHorizontal, Settings, ChevronRight } from 'lucide-react';
+import { ShoppingCart, ArrowLeft, Eye, Download, GripVertical, Trash2, Palette, FileText, ChevronDown, Plus, Monitor, Tablet, Smartphone, Loader2, Save, Undo, Redo, LayoutTemplate, MoreHorizontal, Settings, ChevronRight, CheckCircle2 } from 'lucide-react';
 import type { StoreSection, StoreBlock, Product, Project } from '@/types';
 
 type EditorView = 
@@ -17,7 +17,7 @@ export default function EditorPage() {
   
   const [view, setView] = useState<EditorView>({ type: 'main', tab: 'sections' });
   const [previewMode, setPreviewMode] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving] = useState<'idle' | 'saving' | 'saved'>('idle');
 
   useEffect(() => {
     if (projectId) loadProject(projectId);
@@ -99,8 +99,11 @@ export default function EditorPage() {
   }, [currentPage, updateProjectPages]);
 
   const handleSave = () => {
-    setSaving(true);
-    setTimeout(() => setSaving(false), 800);
+    setSaving('saving');
+    setTimeout(() => {
+       setSaving('saved');
+       setTimeout(() => setSaving('idle'), 2000);
+    }, 800);
   };
 
   const handleExport = useCallback(async () => {
@@ -165,8 +168,8 @@ export default function EditorPage() {
           <button onClick={() => navigate(`/preview/${currentProject.id}`)} className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg text-[13px] text-gray-600 hover:bg-gray-100 transition-colors font-bold">
             <Eye className="w-4 h-4" />
           </button>
-          <button onClick={handleSave} className="flex items-center gap-2 px-4 py-2 bg-[#D4F655] hover:bg-[#c1e247] shadow-[0_2px_10px_rgba(212,246,85,0.3)] text-[13px] font-black text-black rounded-lg transition-all">
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save'}
+          <button onClick={handleSave} className="flex items-center gap-2 px-4 py-2 bg-[#D4F655] hover:bg-[#c1e247] shadow-[0_2px_10px_rgba(212,246,85,0.3)] text-[13px] font-black text-black rounded-lg transition-all w-[100px] justify-center">
+            {saving === 'saving' ? <Loader2 className="w-4 h-4 animate-spin" /> : saving === 'saved' ? <><CheckCircle2 className="w-4 h-4"/> Saved</> : 'Save'}
           </button>
           <button onClick={handleExport} className="p-2 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors"><Download className="w-4 h-4" /></button>
         </div>
@@ -241,10 +244,10 @@ export default function EditorPage() {
                                <label className="text-[12px] font-bold text-gray-600 mb-2 capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</label>
                                <div className="flex gap-3">
                                   <div className="w-8 h-8 rounded-full border border-gray-200 relative overflow-hidden shadow-sm cursor-pointer hover:scale-105 transition-transform">
-                                    <input type="color" value={currentProject.theme[key as any] as string} onChange={(e) => updateProjectTheme({ [key]: e.target.value })} className="absolute inset-[-10px] w-20 h-20 opacity-0 cursor-pointer pointer-events-auto z-10" />
-                                    <div className="w-full h-full pointer-events-none" style={{ backgroundColor: currentProject.theme[key as any] as string }} />
+                                    <input type="color" value={currentProject.theme[key as keyof typeof currentProject.theme] as string} onChange={(e) => updateProjectTheme({ [key]: e.target.value })} className="absolute inset-[-10px] w-20 h-20 opacity-0 cursor-pointer pointer-events-auto z-10" />
+                                    <div className="w-full h-full pointer-events-none" style={{ backgroundColor: currentProject.theme[key as keyof typeof currentProject.theme] as string }} />
                                   </div>
-                                  <input value={currentProject.theme[key as any] as string} onChange={(e) => updateProjectTheme({ [key]: e.target.value })} className="flex-1 px-3 py-1.5 text-[13px] uppercase font-mono bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:border-black outline-none transition-colors" />
+                                  <input value={currentProject.theme[key as keyof typeof currentProject.theme] as string} onChange={(e) => updateProjectTheme({ [key]: e.target.value })} className="flex-1 px-3 py-1.5 text-[13px] uppercase font-mono bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:border-black outline-none transition-colors" />
                                </div>
                              </div>
                            ))}
@@ -386,6 +389,41 @@ function getDefaultBlockProps(type: string): Record<string, string> {
 }
 
 function generateExportHTML(project: Project): string {
-  // Omitted for brevity, assuming standard implementation since export structure hasn't changed.
-  return `<!DOCTYPE html><html><body>${project.name} Export</body></html>`;
+  const theme = project.theme;
+  const pages = project.pages;
+  const products = project.products;
+  const sections: StoreSection[] = pages[0]?.sections || [];
+
+  const sectionHTML = sections.map((s: StoreSection) => {
+    switch (s.type) {
+      case 'header':
+        return `<header style="padding:1rem 2rem;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between"><strong style="font-size:1.25rem">${String(s.props.storeName || 'Store')}</strong><nav><a href="#" style="margin-left:1rem;color:${theme.primaryColor}">Shop</a></nav></header>`;
+      case 'hero':
+        return `<section style="text-align:center;padding:4rem 2rem;background:linear-gradient(135deg,${theme.primaryColor}11,${theme.secondaryColor}11)"><h1 style="font-size:2.5rem;margin-bottom:1rem;color:${theme.textColor}">${String(s.props.title)}</h1><p style="font-size:1.125rem;color:${theme.textColor}88;margin-bottom:2rem">${String(s.props.subtitle)}</p><a href="#products" style="background:${theme.primaryColor};color:#fff;padding:0.75rem 2rem;border-radius:0.5rem;text-decoration:none;display:inline-block">${String(s.props.cta)}</a></section>`;
+      case 'products':
+        return `<section id="products" style="padding:3rem 2rem"><h2 style="text-align:center;font-size:1.75rem;margin-bottom:2rem">${String(s.props.title)}</h2><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:1.5rem">${products.map((p: Product) => `<div style="border:1px solid #e5e7eb;border-radius:0.75rem;overflow:hidden"><img src="${p.image}" alt="${p.name}" style="width:100%;height:200px;object-fit:cover"/><div style="padding:1rem"><h3>${p.name}</h3><p style="color:${theme.primaryColor};font-weight:600">$${p.price.toFixed(2)}</p><p style="color:#6b7280;font-size:0.875rem">${p.description}</p></div></div>`).join('')}</div></section>`;
+      case 'footer':
+        return `<footer style="padding:2rem;text-align:center;border-top:1px solid #e5e7eb;color:#6b7280">${String(s.props.text || '© 2026')}</footer>`;
+      default:
+        return `<section style="padding:3rem 2rem;text-align:center"><h2 style="font-size:1.5rem;margin-bottom:1rem">${String(s.props.title || s.type)}</h2></section>`;
+    }
+  }).join('\n');
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${project.name}</title>
+  <link href="https://fonts.googleapis.com/css2?family=${theme.fontFamily || 'Inter'}:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: '${theme.fontFamily || 'Inter'}', sans-serif; color: ${theme.textColor}; background: ${theme.backgroundColor}; }
+    img { max-width: 100%; }
+  </style>
+</head>
+<body>
+${sectionHTML}
+</body>
+</html>`;
 }

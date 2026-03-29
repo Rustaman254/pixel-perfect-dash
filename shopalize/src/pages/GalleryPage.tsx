@@ -33,7 +33,7 @@ export default function GalleryPage() {
     const project = await createProject(template);
     setCreating(null);
     if (project) {
-      navigate(`/editor/${project.id}`);
+      navigate(`/online-store`);
     }
   };
 

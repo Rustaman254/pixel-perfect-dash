@@ -13,8 +13,8 @@ interface AppState {
   deleteProject: (id: string) => Promise<void>;
   updateProjectTheme: (theme: Partial<StoreTheme>) => Promise<void>;
   updateProjectPages: (pages: StorePage[]) => Promise<void>;
-  updateProjectProducts: (products: Product[]) => Promise<void>;
   updateProjectName: (name: string) => Promise<void>;
+  publishProject: (id: string) => Promise<void>;
 }
 
 function parseTheme(themeJson: string | null): StoreTheme {
@@ -27,6 +27,7 @@ function parseTheme(themeJson: string | null): StoreTheme {
       backgroundColor: parsed.colors?.background || '#ffffff',
       textColor: parsed.colors?.text || '#111827',
       fontFamily: parsed.fonts?.body || 'Inter',
+      isPublished: parsed.isPublished === true,
     };
   } catch {
     return {
@@ -36,6 +37,7 @@ function parseTheme(themeJson: string | null): StoreTheme {
       backgroundColor: '#ffffff',
       textColor: '#111827',
       fontFamily: 'Inter',
+      isPublished: false,
     };
   }
 }
@@ -50,6 +52,7 @@ function themeToJson(theme: StoreTheme): string {
       text: theme.textColor,
     },
     fonts: { heading: theme.fontFamily, body: theme.fontFamily },
+    isPublished: theme.isPublished,
   });
 }
 
@@ -230,6 +233,36 @@ export const useStore = create<AppState>((set, get) => ({
       set({
         projects: get().projects.map(p => p.id === currentProject.id ? updatedProject : p),
         currentProject: updatedProject,
+      });
+    } catch { /* ignore */ }
+  },
+
+  publishProject: async (targetId: string) => {
+    try {
+      const { projects } = get();
+      const updatedProjects = await Promise.all(projects.map(async (p) => {
+        if (p.theme.isPublished && p.id !== targetId) {
+           const newTheme = { ...p.theme, isPublished: false };
+           await fetchWithAuth(`/shopalize/projects/${p.id}`, {
+             method: 'PUT',
+             body: JSON.stringify({ themeJson: themeToJson(newTheme) })
+           }).catch(() => {});
+           return { ...p, theme: newTheme, updatedAt: Date.now() };
+        }
+        if (p.id === targetId && !p.theme.isPublished) {
+           const newTheme = { ...p.theme, isPublished: true };
+           await fetchWithAuth(`/shopalize/projects/${p.id}`, {
+             method: 'PUT',
+             body: JSON.stringify({ themeJson: themeToJson(newTheme) })
+           }).catch(() => {});
+           return { ...p, theme: newTheme, updatedAt: Date.now() };
+        }
+        return p;
+      }));
+
+      set({
+        projects: updatedProjects,
+        currentProject: get().currentProject?.id ? updatedProjects.find(p => p.id === get().currentProject!.id) : null
       });
     } catch { /* ignore */ }
   },
