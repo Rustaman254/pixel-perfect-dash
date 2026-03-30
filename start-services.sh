@@ -11,19 +11,19 @@ pkill -9 -f "node.*services" 2>/dev/null
 sleep 1
 
 # Start all services
-PORT=3006 node /home/anwar/apps/pixel-perfect-dash/services/auth-service/index.js &
+node ./services/auth-service/index.js &
 echo "  [1/5] Auth service      → port 3006"
 
-PORT=3007 node /home/anwar/apps/pixel-perfect-dash/services/ripplify-service/index.js &
+node ./services/ripplify-service/index.js &
 echo "  [2/5] Ripplify service  → port 3007"
 
-PORT=3008 node /home/anwar/apps/pixel-perfect-dash/services/shopalize-service/index.js &
+node ./services/shopalize-service/index.js &
 echo "  [3/5] Shopalize service → port 3008"
 
-PORT=3009 node /home/anwar/apps/pixel-perfect-dash/services/watchtower-service/index.js &
+node ./services/watchtower-service/index.js &
 echo "  [4/5] Watchtower service→ port 3009"
 
-PORT=3010 node /home/anwar/apps/pixel-perfect-dash/services/admin-service/index.js &
+node ./services/admin-service/index.js &
 echo "  [5/5] Admin service     → port 3010"
 
 echo ""

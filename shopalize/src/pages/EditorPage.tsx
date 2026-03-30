@@ -2,13 +2,22 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStore } from '@/store';
 import StorePreview from '@/components/StorePreview';
-import { ShoppingCart, ArrowLeft, Eye, Download, GripVertical, Trash2, Palette, FileText, ChevronDown, Plus, Monitor, Tablet, Smartphone, Loader2, Save, Undo, Redo, LayoutTemplate, MoreHorizontal, Settings, ChevronRight, CheckCircle2 } from 'lucide-react';
-import type { StoreSection, StoreBlock, Product, Project } from '@/types';
+import { ShoppingCart, ArrowLeft, Eye, Download, GripVertical, Trash2, Palette, FileText, ChevronDown, Plus, Monitor, Tablet, Smartphone, Loader2, Save, Undo, Redo, LayoutTemplate, MoreHorizontal, Settings, ChevronRight, CheckCircle2, ExternalLink, GripVertical as GripIcon, Link2, Image, Type, Box, Maximize2, X } from 'lucide-react';
+import type { StoreSection, StoreBlock, Product, Project, AnimationStyle, SectionStyleConfig, SectionStyle } from '@/types';
+import OnboardingOverlay from '@/components/OnboardingOverlay';
 
 type EditorView = 
   | { type: 'main', tab: 'sections' | 'theme' }
   | { type: 'section', id: string }
   | { type: 'block', sectionId: string, blockId: string };
+
+interface OnboardingTask {
+  id: string;
+  title: string;
+  description: string;
+  completed: boolean;
+  action?: () => void;
+}
 
 export default function EditorPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -18,6 +27,11 @@ export default function EditorPage() {
   const [view, setView] = useState<EditorView>({ type: 'main', tab: 'sections' });
   const [previewMode, setPreviewMode] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
   const [saving, setSaving] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [activePageId, setActivePageId] = useState<string | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingComplete, setOnboardingComplete] = useState(false);
+  const [draggedSection, setDraggedSection] = useState<string | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (projectId) loadProject(projectId);
@@ -25,9 +39,106 @@ export default function EditorPage() {
 
   useEffect(() => {
     if (!currentProject && projectId) navigate('/');
-  }, [currentProject, projectId, navigate]);
+    if (currentProject && !activePageId) {
+      setActivePageId(currentProject.pages[0]?.id || null);
+    }
+    if (currentProject) {
+      const hasCompletedOnboarding = localStorage.getItem(`onboarding_${projectId}_complete`);
+      setOnboardingComplete(hasCompletedOnboarding === 'true');
+      if (!hasCompletedOnboarding) {
+        setShowOnboarding(true);
+      }
+    }
+  }, [currentProject, projectId, navigate, activePageId, loadProject]);
 
-  const currentPage = currentProject?.pages[0];
+  const currentPage = currentProject?.pages.find(p => p.id === activePageId) || currentProject?.pages[0];
+
+  const handleOnboardingComplete = useCallback(() => {
+    if (projectId) {
+      localStorage.setItem(`onboarding_${projectId}_complete`, 'true');
+      setOnboardingComplete(true);
+    }
+    setShowOnboarding(false);
+  }, [projectId]);
+
+  const checkOnboardingTask = useCallback((taskId: string): boolean => {
+    if (!currentProject || !currentPage) return false;
+    switch (taskId) {
+      case 'add_product':
+        return (currentProject.products?.length || 0) > 0;
+      case 'customize_theme':
+        const theme = currentProject.theme;
+        return theme.primaryColor !== '#000000' || theme.backgroundColor !== '#ffffff' || !!theme.logoUrl;
+      case 'add_hero':
+        return currentPage.sections.some(s => s.type === 'hero');
+      case 'customize_header':
+        const headerSection = currentPage.sections.find(s => s.type === 'header' || s.type === 'navbar');
+        return headerSection ? !!(headerSection.props.storeName !== 'My Store' || (headerSection.props.navLinks as string[])?.length > 0) : false;
+      case 'add_cta':
+        return currentPage.sections.some(s => s.type === 'cta');
+      case 'publish_store':
+        return currentProject.theme.isPublished === true;
+      default:
+        return false;
+    }
+  }, [currentProject, currentPage]);
+
+  const getOnboardingTasks = (): OnboardingTask[] => {
+    if (!currentProject || !currentPage) return [];
+    return [
+      {
+        id: 'add_product',
+        title: 'Add your first product',
+        description: 'Add products to sell in your store',
+        completed: checkOnboardingTask('add_product'),
+        action: () => navigate(`/products`, { state: { from: `/editor/${projectId}` } }),
+      },
+      {
+        id: 'customize_theme',
+        title: 'Customize your theme',
+        description: 'Set your brand colors and logo',
+        completed: checkOnboardingTask('customize_theme'),
+        action: () => setView({ type: 'main', tab: 'theme' }),
+      },
+      {
+        id: 'add_hero',
+        title: 'Edit your hero section',
+        description: 'Customize your store headline',
+        completed: checkOnboardingTask('add_hero'),
+        action: () => {
+          const heroSection = currentPage.sections.find(s => s.type === 'hero');
+          if (heroSection) setView({ type: 'section', id: heroSection.id });
+        },
+      },
+      {
+        id: 'customize_header',
+        title: 'Customize navigation',
+        description: 'Add your store name and menu links',
+        completed: checkOnboardingTask('customize_header'),
+        action: () => {
+          const headerSection = currentPage.sections.find(s => s.type === 'header' || s.type === 'navbar');
+          if (headerSection) setView({ type: 'section', id: headerSection.id });
+        },
+      },
+      {
+        id: 'add_cta',
+        title: 'Add a call to action',
+        description: 'Encourage visitors to take action',
+        completed: checkOnboardingTask('add_cta'),
+        action: () => {
+          const ctaSection = currentPage.sections.find(s => s.type === 'cta');
+          if (ctaSection) setView({ type: 'section', id: ctaSection.id });
+        },
+      },
+      {
+        id: 'publish_store',
+        title: 'Publish your store',
+        description: 'Make your store live',
+        completed: checkOnboardingTask('publish_store'),
+        action: () => navigate('/online-store'),
+      },
+    ];
+  };
 
   // SECTION MANAGEMENT
   const handleAddSection = useCallback((type: StoreSection['type']) => {
@@ -52,13 +163,64 @@ export default function EditorPage() {
     updateProjectPages([{ ...currentPage, sections }]);
   }, [currentPage, updateProjectPages]);
 
+  const handleDragStart = useCallback((e: React.DragEvent, sectionId: string) => {
+    setDraggedSection(sectionId);
+    e.dataTransfer.effectAllowed = 'move';
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    setDragOverIndex(index);
+  }, []);
+
+  const handleDragEnd = useCallback(() => {
+    setDraggedSection(null);
+    setDragOverIndex(null);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault();
+    if (!draggedSection || !currentProject || !currentPage) return;
+    
+    const sections = [...currentPage.sections];
+    const draggedIndex = sections.findIndex(s => s.id === draggedSection);
+    if (draggedIndex === -1) return;
+    
+    const [draggedSectionData] = sections.splice(draggedIndex, 1);
+    sections.splice(targetIndex, 0, draggedSectionData);
+    
+    const updatedPages = currentProject.pages.map(p => 
+      p.id === currentPage.id ? { ...p, sections } : p
+    );
+    updateProjectPages(updatedPages);
+    setDraggedSection(null);
+    setDragOverIndex(null);
+  }, [draggedSection, currentProject, currentPage, updateProjectPages]);
+
   const handleUpdateSectionProps = useCallback((sectionId: string, props: Record<string, unknown>) => {
-    if (!currentPage) return;
-    updateProjectPages([{
-      ...currentPage,
-      sections: currentPage.sections.map(s => s.id === sectionId ? { ...s, props: { ...s.props, ...props } } : s),
-    }]);
-  }, [currentPage, updateProjectPages]);
+    if (!currentProject || !currentPage) return;
+    const updatedPages = currentProject.pages.map(p => 
+      p.id === currentPage.id ? {
+        ...p,
+        sections: p.sections.map(s => s.id === sectionId ? { ...s, props: { ...s.props, ...props } } : s)
+      } : p
+    );
+    updateProjectPages(updatedPages);
+  }, [currentProject, currentPage, updateProjectPages]);
+
+  const handleUpdateSectionStyle = useCallback((sectionId: string, styleConfig: Partial<SectionStyleConfig>) => {
+    if (!currentProject || !currentPage) return;
+    const updatedPages = currentProject.pages.map(p => 
+      p.id === currentPage.id ? {
+        ...p,
+        sections: p.sections.map(s => s.id === sectionId ? { 
+          ...s, 
+          styleConfig: { ...s.styleConfig, ...styleConfig } 
+        } : s)
+      } : p
+    );
+    updateProjectPages(updatedPages);
+  }, [currentProject, currentPage, updateProjectPages]);
 
   // BLOCK MANAGEMENT
   const handleAddBlock = useCallback((sectionId: string, type: string) => {
@@ -130,21 +292,61 @@ export default function EditorPage() {
   return (
     <div className="h-screen flex flex-col bg-[#F8F9FA] overflow-hidden selection:bg-[#D4F655] selection:text-black font-sans text-[#0A0A0A]">
       
+      {/* Onboarding Overlay */}
+      {showOnboarding && (
+        <OnboardingOverlay 
+          tasks={getOnboardingTasks()}
+          onComplete={handleOnboardingComplete}
+          onClose={() => setShowOnboarding(false)}
+        />
+      )}
+
       {/* TOP NAVBAR - Context & Document Actions */}
       <nav className="fixed top-0 inset-x-0 h-14 bg-white text-[#0A0A0A] flex items-center justify-between px-4 z-50 border-b border-gray-200">
         <div className="flex items-center gap-4">
           <button onClick={() => navigate('/online-store')} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors">
-            <ShoppingCart className="w-5 h-5 text-gray-700 hover:text-black" />
+            <ArrowLeft className="w-5 h-5 text-gray-700" />
           </button>
+          {currentProject?.slug && (
+            <a href={`/s/${currentProject.slug}`} target="_blank" rel="noopener noreferrer" className="p-1.5 text-gray-400 hover:text-black hover:bg-gray-100 rounded-lg transition-all" title="View Live Store">
+              <ExternalLink className="w-4 h-4" />
+            </a>
+          )}
           
           <div className="h-5 w-px bg-gray-200" />
           
-          {/* Shopify-like Context Dropdown */}
-          <button className="flex items-center gap-2 hover:bg-gray-100 px-3 py-1.5 rounded-lg transition-colors">
-             <LayoutTemplate className="w-4 h-4 text-gray-500" />
-             <span className="text-[13px] font-bold">Home page</span>
-             <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
-          </button>
+          {/* Page Selector */}
+          <div className="relative group/dropdown">
+            <button className="flex items-center gap-2 hover:bg-gray-100 px-3 py-1.5 rounded-lg transition-colors">
+               <LayoutTemplate className="w-4 h-4 text-gray-500" />
+               <span className="text-[13px] font-bold">{currentPage?.name || 'Home page'}</span>
+               <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+            </button>
+            <div className="absolute top-full left-0 mt-1 w-[200px] bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden opacity-0 invisible group-hover/dropdown:opacity-100 group-hover/dropdown:visible transition-all z-[100]">
+               <div className="p-2 border-b border-gray-100 bg-gray-50/50">
+                   <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider px-2">Pages</span>
+               </div>
+               <div className="max-h-[300px] overflow-y-auto pt-1 pb-1">
+                   {currentProject?.pages.map(page => (
+                     <button key={page.id} onClick={() => setActivePageId(page.id)} className={`w-full text-left px-4 py-2 text-[13px] transition-colors flex items-center justify-between ${activePageId === page.id ? 'bg-[#D4F655]/10 text-black font-bold' : 'text-gray-600 hover:bg-gray-50'}`}>
+                       {page.name}
+                       {activePageId === page.id && <CheckCircle2 className="w-3.5 h-3.5" />}
+                     </button>
+                   ))}
+               </div>
+            </div>
+          </div>
+
+          {/* Onboarding Indicator */}
+          {!onboardingComplete && (
+            <button 
+              onClick={() => setShowOnboarding(true)}
+              className="flex items-center gap-1.5 px-2 py-1 bg-[#D4F655]/20 text-[#0A0A0A] rounded-full text-xs font-bold hover:bg-[#D4F655]/30 transition-colors"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              Setup Guide
+            </button>
+          )}
         </div>
 
         {/* Viewport controls centered absolutely like shopify */}
@@ -199,19 +401,28 @@ export default function EditorPage() {
                          </div>
                        </div>
                        
-                       {/* Template Group (Draggable) */}
-                       <div>
-                         <div className="flex items-center gap-2 px-2 py-1.5 text-[12px] font-bold text-gray-500 items-center justify-between mb-1">
-                            <div className="flex items-center gap-2"><LayoutTemplate className="w-4 h-4" /> Template</div>
-                         </div>
-                         <div className="space-y-0.5">
-                           {currentPage?.sections.map((section, idx) => (
-                              <div key={section.id} className="flex items-center justify-between px-2 py-2.5 rounded-lg hover:bg-gray-100 cursor-pointer group transition-colors" onClick={() => setView({ type: 'section', id: section.id })}>
-                                 <div className="flex items-center gap-3">
-                                   <div className="text-gray-300 cursor-grab opacity-0 group-hover:opacity-100"><GripVertical className="w-4 h-4" /></div>
-                                   <div className="w-5 h-5 bg-gray-200 rounded flex items-center justify-center"><Palette className="w-3 h-3 text-gray-500" /></div>
-                                   <span className="text-[13px] font-medium text-black capitalize">{section.type}</span>
-                                 </div>
+                        {/* Template Group (Draggable) */}
+                        <div>
+                          <div className="flex items-center gap-2 px-2 py-1.5 text-[12px] font-bold text-gray-500 items-center justify-between mb-1">
+                             <div className="flex items-center gap-2"><LayoutTemplate className="w-4 h-4" /> Template Sections</div>
+                          </div>
+                          <div className="space-y-1">
+                            {currentPage?.sections.map((section, idx) => (
+                              <div 
+                                key={section.id}
+                                draggable
+                                onDragStart={(e) => handleDragStart(e, section.id)}
+                                onDragOver={(e) => handleDragOver(e, idx)}
+                                onDragEnd={handleDragEnd}
+                                onDrop={(e) => handleDrop(e, idx)}
+                                className={`flex items-center justify-between px-2 py-2.5 rounded-lg hover:bg-gray-100 cursor-pointer group transition-all ${draggedSection === section.id ? 'opacity-50' : ''} ${dragOverIndex === idx ? 'border-t-2 border-t-[#D4F655]' : ''}`}
+                                onClick={() => setView({ type: 'section', id: section.id })}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <GripIcon className="w-4 h-4 text-gray-300 cursor-grab hover:text-gray-500" />
+                                  <div className="w-5 h-5 bg-gray-200 rounded flex items-center justify-center"><Palette className="w-3 h-3 text-gray-500" /></div>
+                                  <span className="text-[13px] font-medium text-black capitalize">{section.type}</span>
+                                </div>
                                  <div className="flex items-center">
                                     <span className="text-[11px] text-gray-400 bg-white px-1.5 rounded border border-gray-200 shadow-sm mr-2 opacity-0 group-hover:opacity-100">{section.blocks?.length || 0} blocks</span>
                                     <ChevronRight className="w-4 h-4 text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -367,18 +578,35 @@ export default function EditorPage() {
 // Data Factories for newly created objects
 function getDefaultProps(type: StoreSection['type']): Record<string, unknown> {
   const defaults: Record<string, Record<string, unknown>> = {
-    header: { storeName: 'My Store' },
-    hero: { title: 'Welcome', subtitle: 'Discover amazing products', cta: 'Shop Now' },
-    products: { title: 'Our Products', columns: 3 },
+    header: { storeName: 'My Store', navLinks: ['Collections', 'New Arrivals', 'About', 'Contact'], showCart: true, sticky: false, style: 'default', hidden: false },
+    navbar: { storeName: 'My Store', style: 'minimal', font: 'editorial', navLinks: ['Collections', 'New Arrivals', 'About', 'Contact'], showCart: true, sticky: true, hidden: false },
+    hero: { title: 'Welcome', subtitle: 'Discover amazing products', cta: 'Shop Now', ctaLink: '', style: 'default', images: [] },
+    image_with_text: { title: 'Craftsmanship', text: 'Timeless elegance in every detail.', layout: 'split', image: '' },
+    products: { title: 'Our Products', columns: 3, style: 'default' },
+    featured_collection: { title: 'Featured Collection', columns: 2, spacing: 'loose', style: 'default' },
     features: { title: 'Why Choose Us' },
     testimonials: { title: 'What Our Customers Say' },
-    gallery: { title: 'Gallery' },
-    cta: { title: 'Get Started Today', text: 'Join thousands of happy customers', cta: 'Sign Up' },
+    gallery: { title: 'Gallery', columns: 3, images: [] },
+    cta: { title: 'Get Started Today', text: 'Join thousands of happy customers', cta: 'Sign Up', ctaLink: '', style: 'default' },
     newsletter: { title: 'Stay Updated', subtitle: 'Subscribe to our newsletter' },
+    instagram_feed: { title: '@store', limit: 4, images: [] },
     faq: { title: 'Frequently Asked Questions' },
-    footer: { text: '© 2026 My Store' },
+    checkout: { title: 'Checkout', style: 'default' },
+    footer: { storeName: 'My Store', text: '© 2026 My Store', links: ['Privacy', 'Terms', 'Shipping'], style: 'default' },
   };
   return defaults[type] || {};
+}
+
+function getDefaultSectionStyle(type: StoreSection['type']): SectionStyleConfig {
+  return {
+    sectionStyle: 'default',
+    sectionPadding: 'md',
+    sectionBgColor: undefined,
+    sectionTextColor: undefined,
+    sectionAccentColor: undefined,
+    sectionAnimation: 'none',
+    sectionBorderRadius: 0,
+  };
 }
 
 function getDefaultBlockProps(type: string): Record<string, string> {

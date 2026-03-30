@@ -4,7 +4,7 @@ import { fetchWithAuth } from '@/lib/api';
 import {
   ShoppingBag, Package, Users, DollarSign, TrendingUp, TrendingDown,
   ArrowUpRight, Plus, ExternalLink, Loader2, Eye, RefreshCw, Percent,
-  ShoppingCart, Globe, BarChart3, ArrowRight, Repeat, Target
+  ShoppingCart, Globe, BarChart3, ArrowRight, Repeat, Target, FileText
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -14,11 +14,22 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState('7d');
 
+  const [activities, setActivities] = useState<any[]>([]);
+
   useEffect(() => {
     setLoading(true);
-    fetchWithAuth('/shopalize/products/dashboard')
-      .then(setStats)
-      .catch(() => setStats({ totalOrders: 0, totalProducts: 0, totalCustomers: 0, totalRevenue: 0, pendingOrders: 0, recentOrders: [], topProducts: [] }))
+    Promise.all([
+      fetchWithAuth('/shopalize/products/dashboard'),
+      fetchWithAuth('/shopalize/activities')
+    ])
+      .then(([statsData, activitiesData]) => {
+        setStats(statsData);
+        setActivities(activitiesData || []);
+      })
+      .catch(() => {
+        setStats({ totalOrders: 0, totalProducts: 0, totalCustomers: 0, totalRevenue: 0, pendingOrders: 0, recentOrders: [], topProducts: [] });
+        setActivities([]);
+      })
       .finally(() => setLoading(false));
   }, [period]);
 
@@ -200,30 +211,38 @@ export default function DashboardPage() {
             ))}
           </div>
 
-          {/* Top products */}
+          {/* Recent Activity */}
           <div className="bg-white rounded-[2rem] border border-gray-200/60 shadow-sm overflow-hidden flex flex-col h-[calc(100%-250px)]">
             <div className="flex items-center justify-between p-6 border-b border-gray-100">
-              <h2 className="text-lg font-bold text-black">Top products</h2>
-              <button onClick={() => navigate('/products')} className="text-xs text-gray-500 hover:text-black font-semibold tracking-wider uppercase">View all</button>
+              <h2 className="text-lg font-bold text-black">Live Activity</h2>
+              <RefreshCw className="w-4 h-4 text-gray-400 animate-spin-slow" />
             </div>
             <div className="flex-1 overflow-auto">
-              {(stats?.topProducts || []).length === 0 ? (
+              {activities.length === 0 ? (
                 <div className="p-10 text-center flex flex-col items-center justify-center h-full">
-                   <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mb-3"><Package className="w-5 h-5 text-gray-300" /></div>
-                   <p className="text-[13px] text-gray-500 font-medium">No products sold yet</p>
+                   <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mb-3"><Repeat className="w-5 h-5 text-gray-300" /></div>
+                   <p className="text-[13px] text-gray-500 font-medium">No activity recorded yet</p>
                 </div>
               ) : (
                 <div className="divide-y divide-gray-100">
-                  {(stats?.topProducts || []).slice(0, 5).map((p: any) => (
-                    <div key={p.id} className="flex items-center justify-between px-6 py-4 hover:bg-gray-50 transition-colors group">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center group-hover:border-black/10 transition-colors"><Package className="w-5 h-5 text-gray-400" /></div>
+                  {activities.map((act: any) => (
+                    <div key={act.id} className="px-6 py-4 hover:bg-gray-50 transition-colors">
+                      <div className="flex gap-4">
+                        <div className={cn("w-10 h-10 rounded-full flex items-center justify-center shrink-0", 
+                          act.action.includes('created') ? 'bg-green-50 text-green-600' :
+                          act.action.includes('published') ? 'bg-[#D4F655]/10 text-black' :
+                          act.action.includes('deleted') ? 'bg-red-50 text-red-600' :
+                          'bg-blue-50 text-blue-600'
+                        )}>
+                          {act.action.includes('project') ? <Globe className="w-4 h-4" /> :
+                           act.action.includes('product') ? <Package className="w-4 h-4" /> :
+                           <FileText className="w-4 h-4" />}
+                        </div>
                         <div>
-                           <span className="text-[14px] font-bold text-black block mb-0.5 truncate max-w-[120px] lg:max-w-[180px]">{p.name}</span>
-                           <span className="text-[11px] font-semibold text-gray-400">12 Sold</span>
+                          <p className="text-[14px] font-bold text-black leading-tight">{act.description}</p>
+                          <p className="text-[11px] text-gray-400 mt-1">{new Date(act.createdAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</p>
                         </div>
                       </div>
-                      <span className="text-[14px] font-bold text-black">KES {Number(p.price).toLocaleString()}</span>
                     </div>
                   ))}
                 </div>

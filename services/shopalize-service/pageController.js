@@ -1,5 +1,6 @@
 import slugify from 'slugify';
 import { createConnection } from '../shared/db.js';
+import { recordActivity } from './activityController.js';
 
 const db = () => createConnection('shopalize_db');
 
@@ -22,7 +23,7 @@ export const createPage = async (req, res) => {
       slug = `${slug}-${shortId}`;
     }
 
-    const [page] = await db()('project_pages')
+    const [pageId] = await db()('project_pages')
       .insert({
         projectId: project.id,
         name,
@@ -31,8 +32,17 @@ export const createPage = async (req, res) => {
         sectionsJson: sectionsJson || JSON.stringify([]),
         seoTitle: seoTitle || name,
         seoDescription: seoDescription || '',
-      })
-      .returning('*');
+      });
+    
+    const page = await db()('project_pages').where({ id: pageId }).first();
+
+    await recordActivity({
+      userId: req.user.id,
+      action: 'page_created',
+      projectId: project.id,
+      description: `Created new page: ${name}`,
+      metadata: { pageId: page.id, slug: page.slug }
+    });
 
     res.status(201).json(page);
   } catch (error) {
@@ -101,10 +111,21 @@ export const updatePage = async (req, res) => {
     if (seoTitle !== undefined) updates.seoTitle = seoTitle;
     if (seoDescription !== undefined) updates.seoDescription = seoDescription;
 
-    const [updated] = await db()('project_pages')
+    await db()('project_pages')
       .where({ id: parseInt(req.params.id) })
-      .update(updates)
-      .returning('*');
+      .update(updates);
+
+    const updated = await db()('project_pages')
+      .where({ id: parseInt(req.params.id) })
+      .first();
+
+    await recordActivity({
+      userId: req.user.id,
+      action: 'page_updated',
+      projectId: project.id,
+      description: `Updated page: ${updated.name}`,
+      metadata: { pageId: updated.id, slug: updated.slug }
+    });
 
     res.json(updated);
   } catch (error) {
@@ -129,6 +150,14 @@ export const deletePage = async (req, res) => {
     }
 
     await db()('project_pages').where({ id: page.id }).delete();
+    await recordActivity({
+      userId: req.user.id,
+      action: 'page_deleted',
+      projectId: project.id,
+      description: `Deleted page: ${page.name}`,
+      metadata: { pageId: page.id }
+    });
+
     res.json({ message: 'Page deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });

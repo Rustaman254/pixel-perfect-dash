@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import {
   LayoutDashboard, ShoppingBag, Package, Users, BarChart3, Settings, Globe,
   ChevronDown, Search, LogOut, Menu, Bell, ExternalLink, ShoppingCart, HelpCircle,
-  Tag, Megaphone, Percent, FileText, Inbox
+  Tag, Megaphone, Percent, FileText, Inbox, Server
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -20,6 +20,7 @@ const manageItems = [
   { icon: Megaphone, label: 'Marketing', path: '/marketing' },
   { icon: Percent, label: 'Discounts', path: '/discounts' },
   { icon: Globe, label: 'Online Store', path: '/online-store' },
+  { icon: Server, label: 'DNS & Domains', path: '/dns' },
 ];
 
 const bottomItems = [

@@ -33,24 +33,13 @@ export async function migrate() {
 
   await createIfNotExists('insight_events', (t) => {
     t.increments('id').primary();
-    t.text('sessionId').notNullable();
+    t.text('sessionId').notNullable().index();
     t.text('type').notNullable();
     t.text('target');
     t.text('url');
     t.text('data');
     t.timestamp('timestamp').defaultTo(db.fn.now());
   });
-
-  // Index on insight_events(sessionId)
-  const hasIndex = await db.raw(
-    `SELECT 1 FROM pg_indexes WHERE indexname = 'insight_events_sessionid_index'`
-  );
-  if (hasIndex.rows.length === 0) {
-    await db.schema.alterTable('insight_events', (t) => {
-      t.index('sessionId', 'insight_events_sessionid_index');
-    });
-    console.log('  Created index: insight_events_sessionid_index');
-  }
 
   await createIfNotExists('insight_entity_mappings', (t) => {
     t.increments('id').primary();

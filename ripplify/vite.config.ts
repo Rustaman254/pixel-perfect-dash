@@ -14,19 +14,19 @@ export default defineConfig(({ mode }) => ({
     },
     proxy: {
       "/api/auth": {
-        target: "http://localhost:3001",
+        target: "http://localhost:3006",
         changeOrigin: true,
       },
       "/api/oauth": {
-        target: "http://localhost:3001",
+        target: "http://localhost:3006",
         changeOrigin: true,
       },
       "/sso.html": {
-        target: "http://localhost:3001",
+        target: "http://localhost:3006",
         changeOrigin: true,
       },
       "/api": {
-        target: "http://localhost:3001",
+        target: "http://localhost:3007",
         changeOrigin: true,
       },
     },

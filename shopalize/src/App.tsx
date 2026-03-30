@@ -5,6 +5,7 @@ import HomePage from '@/pages/HomePage'
 import GalleryPage from '@/pages/GalleryPage'
 import EditorPage from '@/pages/EditorPage'
 import PreviewPage from '@/pages/PreviewPage'
+import StoreViewPage from '@/pages/StoreViewPage'
 import TemplatePreviewPage from '@/pages/TemplatePreviewPage'
 import DashboardPage from '@/pages/DashboardPage'
 import ProductsPage from '@/pages/ProductsPage'
@@ -19,8 +20,10 @@ import DiscountsPage from '@/pages/DiscountsPage'
 import LoginPage from '@/pages/LoginPage'
 import SignupPage from '@/pages/SignupPage'
 
-import IntegrationsPage from '@/pages/IntegrationsPage'
+import PricingPage from '@/pages/PricingPage'
 import ResetPasswordPage from '@/pages/ResetPasswordPage'
+import OnboardingPage from '@/pages/OnboardingPage'
+import DNSPage from '@/pages/DNSPage'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading } = useAuth()
@@ -38,9 +41,11 @@ function AppRoutes() {
       <Route path="/signup" element={<SignupPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/gallery" element={<GalleryPage />} />
-      <Route path="/integrations" element={<IntegrationsPage />} />
+      <Route path="/pricing" element={<PricingPage />} />
+      <Route path="/onboarding" element={<OnboardingPage />} />
       <Route path="/editor/:projectId" element={<EditorPage />} />
       <Route path="/preview/:projectId" element={<PreviewPage />} />
+      <Route path="/s/:slug" element={<StoreViewPage />} />
       <Route path="/preview-template/:templateId" element={<TemplatePreviewPage />} />
 
       {/* Admin (protected with sidebar layout) */}
@@ -54,6 +59,7 @@ function AppRoutes() {
         <Route path="marketing" element={<MarketingPage />} />
         <Route path="discounts" element={<DiscountsPage />} />
         <Route path="online-store" element={<OnlineStorePage />} />
+        <Route path="dns" element={<DNSPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
     </Routes>

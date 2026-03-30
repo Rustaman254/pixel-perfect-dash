@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-key-change-in-production';
-const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || 'internal-sokostack-2026-secret';
+const getJwtSecret = () => process.env.JWT_SECRET || 'super_secret_ripplify_key_2025';
+const getInternalApiKey = () => process.env.INTERNAL_API_KEY || 'local-internal-api-key';
 
 // JWT authentication middleware - used by ALL services
 export const protect = (getDb) => async (req, res, next) => {
@@ -25,7 +25,7 @@ export const protect = (getDb) => async (req, res, next) => {
         req.user = sanitizeUser(user);
       } else {
         // Standard JWT auth
-        const decoded = jwt.verify(token, JWT_SECRET);
+        const decoded = jwt.verify(token, getJwtSecret());
         const db = getDb();
         const user = await db('users').where({ id: decoded.id }).first();
         if (!user) {
@@ -60,7 +60,7 @@ export const protectJwt = async (req, res, next) => {
   if (req.headers.authorization?.startsWith('Bearer')) {
     try {
       token = req.headers.authorization.split(' ')[1];
-      const decoded = jwt.verify(token, JWT_SECRET);
+      const decoded = jwt.verify(token, getJwtSecret());
       req.user = { id: decoded.id, email: decoded.email, role: decoded.role };
       return next();
     } catch (error) {
@@ -86,7 +86,7 @@ export const admin = async (req, res, next) => {
 // Internal service-to-service auth middleware
 export const internalAuth = (req, res, next) => {
   const key = req.headers['x-internal-api-key'];
-  if (!key || key !== INTERNAL_API_KEY) {
+  if (!key || key !== getInternalApiKey()) {
     return res.status(403).json({ message: 'Forbidden: invalid internal API key' });
   }
   next();
@@ -94,12 +94,12 @@ export const internalAuth = (req, res, next) => {
 
 // Generate JWT token
 export const generateToken = (id, email, role) => {
-  return jwt.sign({ id, email, role }, JWT_SECRET, { expiresIn: '1d' });
+  return jwt.sign({ id, email, role }, getJwtSecret(), { expiresIn: '1d' });
 };
 
 // Verify JWT token (for internal use)
 export const verifyToken = (token) => {
-  return jwt.verify(token, JWT_SECRET);
+  return jwt.verify(token, getJwtSecret());
 };
 
 // Strip sensitive fields from user object

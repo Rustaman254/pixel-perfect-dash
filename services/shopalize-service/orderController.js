@@ -1,42 +1,59 @@
 import { createConnection } from '../shared/db.js';
+import { recordActivity } from './activityController.js';
 
 const db = () => createConnection('shopalize_db');
 
 export const createOrder = async (req, res) => {
   try {
-    const { projectId, productId, buyerName, buyerEmail, buyerPhone, amount, currency, ripplifyTransactionId } = req.body;
+    const { projectId, items, buyerName, buyerEmail, buyerPhone, totalAmount, amount, currency, ripplifyTransactionId } = req.body;
 
-    if (!projectId || !amount) {
+    const orderAmount = totalAmount || amount;
+
+    if (!projectId || !orderAmount) {
       return res.status(400).json({ message: 'projectId and amount are required' });
     }
 
     const project = await db()('projects').where({ id: parseInt(projectId) }).first();
     if (!project) return res.status(404).json({ message: 'Project not found' });
 
-    let product = null;
-    if (productId) {
-      product = await db()('store_products').where({ id: parseInt(productId), projectId: project.id }).first();
-      if (product && product.inventory > 0) {
-        await db()('store_products')
-          .where({ id: product.id })
-          .decrement('inventory', 1)
-          .update({ updatedAt: db().fn.now() });
+    const parsedItems = typeof items === 'string' ? JSON.parse(items) : (items || []);
+
+    // Decrement inventory for each item
+    for (const item of parsedItems) {
+      if (item.productId) {
+        const product = await db()('store_products').where({ id: parseInt(item.productId), projectId: project.id }).first();
+        if (product && product.inventory > 0) {
+          await db()('store_products')
+            .where({ id: product.id })
+            .decrement('inventory', item.quantity || 1)
+            .update({ updatedAt: db().fn.now() });
+        }
       }
     }
 
-    const [order] = await db()('store_orders')
+    const [orderId] = await db()('store_orders')
       .insert({
         projectId: project.id,
-        productId: productId ? parseInt(productId) : null,
         buyerName: buyerName || '',
         buyerEmail: buyerEmail || '',
         buyerPhone: buyerPhone || '',
-        amount: parseFloat(amount),
+        amount: parseFloat(orderAmount),
         currency: currency || project.currency || 'USD',
-        status: 'pending',
+        status: 'paid',
+        itemsJson: JSON.stringify(parsedItems),
         ripplifyTransactionId: ripplifyTransactionId || null,
-      })
-      .returning('*');
+      });
+    
+    const order = await db()('store_orders').where({ id: orderId }).first();
+    
+    // Record activity
+    await recordActivity({
+      userId: req.user.id,
+      action: 'order_created',
+      projectId: project.id,
+      description: `New order #${order.id} received for ${amount} ${currency || project.currency || 'USD'}`,
+      metadata: { orderId: order.id, amount, buyerEmail }
+    });
 
     res.status(201).json(order);
   } catch (error) {
@@ -143,7 +160,8 @@ export const updateOrder = async (req, res) => {
     if (paymentStatus !== undefined) updates.paymentStatus = paymentStatus;
     if (notes !== undefined) updates.notes = notes;
 
-    const [updated] = await db()('store_orders').where({ id: parseInt(id) }).update(updates).returning('*');
+    await db()('store_orders').where({ id: parseInt(id) }).update(updates);
+    const updated = await db()('store_orders').where({ id: parseInt(id) }).first();
     res.json(updated);
   } catch (error) {
     res.status(500).json({ message: error.message });

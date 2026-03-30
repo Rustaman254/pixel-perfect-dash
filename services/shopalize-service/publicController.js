@@ -5,10 +5,33 @@ const db = () => createConnection('shopalize_db');
 export const getStoreBySlug = async (req, res) => {
   try {
     const { slug } = req.params;
-
-    const project = await db()('projects')
-      .where({ slug, status: 'published' })
-      .first();
+    const host = req.headers.host;
+    
+    // Check if request is from a custom domain
+    let project = null;
+    
+    // First try to find by subdomain (e.g., mystore.sokostack.xyz)
+    if (host && host.includes('sokostack.xyz')) {
+      const subdomain = host.replace('.sokostack.xyz', '');
+      project = await db()('projects')
+        .where({ subdomain, status: 'published' })
+        .first();
+    }
+    
+    // If not found by subdomain, try custom domain
+    if (!project) {
+      project = await db()('projects')
+        .where({ domain: host, status: 'published' })
+        .first();
+    }
+    
+    // Fall back to slug parameter
+    if (!project) {
+      project = await db()('projects')
+        .where({ slug, status: 'published' })
+        .first();
+    }
+    
     if (!project) return res.status(404).json({ message: 'Store not found' });
 
     const pages = await db()('project_pages')
@@ -19,40 +42,65 @@ export const getStoreBySlug = async (req, res) => {
       .where({ projectId: project.id, isActive: true })
       .orderBy('createdAt', 'desc');
 
-    let theme = {};
+    let rawTheme = {};
     try {
-      theme = project.themeJson ? JSON.parse(project.themeJson) : {};
+      rawTheme = project.themeJson ? JSON.parse(project.themeJson) : {};
     } catch {
-      theme = {};
+      rawTheme = {};
     }
 
+    const theme = {
+      primaryColor: rawTheme.colors?.primary || '#000000',
+      secondaryColor: rawTheme.colors?.secondary || '#ffffff',
+      accentColor: rawTheme.colors?.accent || '#3b82f6',
+      backgroundColor: rawTheme.colors?.background || '#ffffff',
+      textColor: rawTheme.colors?.text || '#111827',
+      fontFamily: rawTheme.fonts?.body || 'Inter',
+      isPublished: true,
+    };
+
     res.json({
-      id: project.id,
+      id: String(project.id),
       name: project.name,
       slug: project.slug,
+      templateId: project.templateId || '',
       description: project.description,
       domain: project.domain,
+      subdomain: project.subdomain,
+      customDomain: project.domain || null,
+      storeUrl: project.domain 
+        ? `https://${project.domain}` 
+        : `https://${project.subdomain}.sokostack.xyz`,
       theme,
-      pages: pages.map(p => ({
-        id: p.id,
-        name: p.name,
-        slug: p.slug,
-        type: p.type,
-        sections: (() => { try { return JSON.parse(p.sectionsJson || '[]'); } catch { return []; } })(),
-        seoTitle: p.seoTitle,
-        seoDescription: p.seoDescription,
-      })),
-      products: products.map(p => ({
-        id: p.id,
-        name: p.name,
-        description: p.description,
-        price: parseFloat(p.price),
-        currency: p.currency,
-        images: (() => { try { return JSON.parse(p.images || '[]'); } catch { return []; } })(),
-        category: p.category,
-        inventory: p.inventory,
-        ripplifySlug: p.ripplifySlug,
-      })),
+      pages: pages.map(p => {
+        const rawSections = (() => { try { return JSON.parse(p.sectionsJson || '[]'); } catch { return []; } })();
+        return {
+          id: String(p.id),
+          name: p.name,
+          slug: p.slug,
+          sections: rawSections.map((s, i) => ({
+            id: `section-${i}`,
+            type: s.type || 'hero',
+            props: s.settings || s.props || {},
+            blocks: s.blocks || [],
+          })),
+        };
+      }),
+      products: products.map(p => {
+        const images = (() => { try { return JSON.parse(p.images || '[]'); } catch { return []; } })();
+        return {
+          id: String(p.id),
+          name: p.name,
+          description: p.description,
+          price: parseFloat(p.price),
+          image: images[0] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&q=80',
+          category: p.category,
+        };
+      }),
+      createdAt: new Date(project.createdAt).getTime(),
+      updatedAt: new Date(project.updatedAt).getTime(),
+      isPremium: project.isPremium === true || project.isPremium === 1,
+      premiumStatus: project.premiumStatus || 'basic',
     });
   } catch (error) {
     res.status(500).json({ message: error.message });

@@ -13,12 +13,12 @@ export default defineConfig({
   server: {
     port: 8083,
     proxy: {
-      '/api/auth': { target: 'http://localhost:3001', changeOrigin: true },
-      '/sso.html': { target: 'http://localhost:3001', changeOrigin: true },
-      '/api/admin/ripplify': { target: 'http://localhost:3005', changeOrigin: true },
-      '/api/admin/watchtower': { target: 'http://localhost:3005', changeOrigin: true },
-      '/api/admin/shopalize': { target: 'http://localhost:3005', changeOrigin: true },
-      '/api': { target: 'http://localhost:3001', changeOrigin: true },
+      '/api/auth': { target: 'http://localhost:3006', changeOrigin: true },
+      '/sso.html': { target: 'http://localhost:3006', changeOrigin: true },
+      '/api/admin/ripplify': { target: 'http://localhost:3010', changeOrigin: true },
+      '/api/admin/watchtower': { target: 'http://localhost:3010', changeOrigin: true },
+      '/api/admin/shopalize': { target: 'http://localhost:3010', changeOrigin: true },
+      '/api': { target: 'http://localhost:3006', changeOrigin: true },
     },
   },
   build: {

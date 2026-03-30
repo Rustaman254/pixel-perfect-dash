@@ -8,7 +8,18 @@ const getBaseUrl = () => {
     return "/api";
 };
 
+const getDnsUrl = () => {
+    if (typeof window !== "undefined") {
+        const hostname = window.location.hostname;
+        if (hostname === "localhost" || hostname === "127.0.0.1") {
+            return "/api/dns";
+        }
+    }
+    return "/api/dns";
+};
+
 export const BASE_URL = getBaseUrl();
+export const DNS_URL = getDnsUrl();
 
 // SSO hub URL - points to auth service
 export const SSO_HUB_URL = (() => {
@@ -67,6 +78,34 @@ export const publicFetch = async (endpoint: string, options: RequestInit = {}) =
     });
 
     if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `API request failed with status ${response.status}`);
+    }
+
+    return response.json();
+};
+
+export const fetchWithDnsAuth = async (endpoint: string, options: RequestInit = {}) => {
+    const token = localStorage.getItem('auth_token');
+    const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...(options.headers as Record<string, string> || {}),
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    };
+
+    const response = await fetch(`${DNS_URL}${endpoint}`, {
+        ...options,
+        headers,
+    });
+
+    if (!response.ok) {
+        if (response.status === 401) {
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('sokostack_profile');
+            if (window.location.pathname !== '/login' && window.location.pathname !== '/') {
+                window.location.href = '/login';
+            }
+        }
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.message || `API request failed with status ${response.status}`);
     }

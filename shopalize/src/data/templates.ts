@@ -29,10 +29,15 @@ export const templates: Template[] = [
     products: sampleProducts,
     pages: [
       { id: 'home', name: 'Home', slug: 'index', sections: [
-        { id: 'h1', type: 'header', props: { storeName: 'Studio' } },
+        { id: 'h1', type: 'header', props: { storeName: 'Studio', navLinks: ['Collections', 'New Arrivals', 'About', 'Contact'], showCart: true, showSearch: false, sticky: false } },
         { id: 'hero1', type: 'hero', props: { title: 'Modern Essentials.', subtitle: 'Curated products for everyday living.', cta: 'Shop Collection' } },
         { id: 'prod1', type: 'products', props: { title: 'Featured', columns: 3 } },
-        { id: 'ft1', type: 'footer', props: { text: '© 2026 Studio' } },
+        { id: 'ft1', type: 'footer', props: { storeName: 'Studio', text: '© 2026 Studio', links: ['Privacy', 'Terms', 'Shipping'], showSocial: true } },
+      ]},
+      { id: 'checkout', name: 'Checkout', slug: 'checkout', sections: [
+        { id: 'h1', type: 'header', props: { storeName: 'Studio', navLinks: ['Collections', 'New Arrivals', 'About', 'Contact'], showCart: true, showSearch: false, sticky: false } },
+        { id: 'chk1', type: 'checkout', props: {} },
+        { id: 'ft1', type: 'footer', props: { storeName: 'Studio', text: '© 2026 Studio', links: ['Privacy', 'Terms', 'Shipping'], showSocial: true } },
       ]},
     ],
   },
@@ -47,11 +52,16 @@ export const templates: Template[] = [
     products: sampleProducts,
     pages: [
       { id: 'home', name: 'Home', slug: 'index', sections: [
-        { id: 'h1', type: 'header', props: { storeName: 'Origin' } },
+        { id: 'h1', type: 'header', props: { storeName: 'Origin', navLinks: ['Shop', 'About', 'Sustainability', 'Contact'], showCart: true, showSearch: false, sticky: false } },
         { id: 'hero1', type: 'hero', props: { title: 'Return to Nature.', subtitle: 'Sustainable goods crafted with care.', cta: 'Explore' } },
         { id: 'prod1', type: 'products', props: { title: 'New Arrivals', columns: 4 } },
         { id: 'test1', type: 'testimonials', props: {} },
-        { id: 'ft1', type: 'footer', props: { text: '© 2026 Origin Goods' } },
+        { id: 'ft1', type: 'footer', props: { storeName: 'Origin', text: '© 2026 Origin Goods', links: ['Privacy', 'Terms'], showSocial: true } },
+      ]},
+      { id: 'checkout', name: 'Checkout', slug: 'checkout', sections: [
+        { id: 'h1', type: 'header', props: { storeName: 'Origin', navLinks: ['Shop', 'About', 'Sustainability', 'Contact'], showCart: true, showSearch: false, sticky: false } },
+        { id: 'chk1', type: 'checkout', props: {} },
+        { id: 'ft1', type: 'footer', props: { storeName: 'Origin', text: '© 2026 Origin Goods', links: ['Privacy', 'Terms'], showSocial: true } },
       ]},
     ],
   },
@@ -66,10 +76,15 @@ export const templates: Template[] = [
     products: sampleProducts,
     pages: [
       { id: 'home', name: 'Home', slug: 'index', sections: [
-        { id: 'h1', type: 'header', props: { storeName: 'BOLD' } },
+        { id: 'h1', type: 'header', props: { storeName: 'BOLD', navLinks: ['Drop', 'Lookbook', 'About', 'Contact'], showCart: true, showSearch: false, sticky: true, style: 'solid' } },
         { id: 'hero1', type: 'hero', props: { title: 'NEW SEASON.', subtitle: 'Unapologetic style.', cta: 'Shop Drop' } },
         { id: 'prod1', type: 'products', props: { title: 'Trending', columns: 2 } },
-        { id: 'ft1', type: 'footer', props: { text: '© 2026 BOLD WORLDWIDE' } },
+        { id: 'ft1', type: 'footer', props: { storeName: 'BOLD', text: '© 2026 BOLD WORLDWIDE', links: ['Privacy', 'Terms', 'Returns'], showSocial: true } },
+      ]},
+      { id: 'checkout', name: 'Checkout', slug: 'checkout', sections: [
+        { id: 'h1', type: 'header', props: { storeName: 'BOLD', navLinks: ['Drop', 'Lookbook', 'About', 'Contact'], showCart: true, showSearch: false, sticky: true, style: 'solid' } },
+        { id: 'chk1', type: 'checkout', props: {} },
+        { id: 'ft1', type: 'footer', props: { storeName: 'BOLD', text: '© 2026 BOLD WORLDWIDE', links: ['Privacy', 'Terms', 'Returns'], showSocial: true } },
       ]},
     ],
   },
@@ -84,11 +99,16 @@ export const templates: Template[] = [
     products: sampleProducts,
     pages: [
       { id: 'home', name: 'Home', slug: 'index', sections: [
-        { id: 'h1', type: 'header', props: { storeName: 'Craft' } },
+        { id: 'h1', type: 'header', props: { storeName: 'Craft', navLinks: ['Catalog', 'Workshop', 'About', 'Contact'], showCart: true, showSearch: false, sticky: false } },
         { id: 'hero1', type: 'hero', props: { title: 'Precision & Form', subtitle: 'Tools for the modern maker', cta: 'View Catalog' } },
         { id: 'feat1', type: 'features', props: {} },
         { id: 'prod1', type: 'products', props: { title: 'Top Rated', columns: 3 } },
-        { id: 'ft1', type: 'footer', props: { text: '© 2026 Craft' } },
+        { id: 'ft1', type: 'footer', props: { storeName: 'Craft', text: '© 2026 Craft', links: ['Privacy', 'Terms'], showSocial: true } },
+      ]},
+      { id: 'checkout', name: 'Checkout', slug: 'checkout', sections: [
+        { id: 'h1', type: 'header', props: { storeName: 'Craft', navLinks: ['Catalog', 'Workshop', 'About', 'Contact'], showCart: true, showSearch: false, sticky: false } },
+        { id: 'chk1', type: 'checkout', props: {} },
+        { id: 'ft1', type: 'footer', props: { storeName: 'Craft', text: '© 2026 Craft', links: ['Privacy', 'Terms'], showSocial: true } },
       ]},
     ],
   },
@@ -105,13 +125,18 @@ export const templates: Template[] = [
     products: sampleProducts,
     pages: [
       { id: 'home', name: 'Home', slug: 'index', sections: [
-        { id: 'h1', type: 'header', props: { storeName: 'LUMIÈRE' } },
-        { id: 'hero1', type: 'hero', props: { title: 'Timeless Elegance', subtitle: 'Crafted with absolute precision.', cta: 'Discover' } },
+        { id: 'h1', type: 'header', props: { storeName: 'LUMIÈRE', navLinks: ['Collections', 'Maison', 'Heritage', 'Art of Living'], showCart: true, showSearch: false, sticky: false, style: 'editorial', font: 'editorial' } },
+        { id: 'hero1', type: 'hero', props: { title: 'Timeless Elegance', subtitle: 'Crafted with absolute precision.', cta: 'Discover', style: 'editorial' } },
         { id: 'prod1', type: 'products', props: { title: 'Signature Collection', columns: 2 } },
         { id: 'gal1', type: 'gallery', props: { title: 'The Atelier' } },
         { id: 'test1', type: 'testimonials', props: {} },
         { id: 'cta1', type: 'cta', props: { title: 'Join the Club', text: 'Exclusive access to new arrivals', cta: 'Sign Up' } },
-        { id: 'ft1', type: 'footer', props: { text: '© 2026 Lumière Paris' } },
+        { id: 'ft1', type: 'footer', props: { storeName: 'LUMIÈRE', text: '© 2026 Lumière Paris', links: ['Privacy', 'Terms', 'Shipping'], showSocial: true } },
+      ]},
+      { id: 'checkout', name: 'Checkout', slug: 'checkout', sections: [
+        { id: 'h1', type: 'header', props: { storeName: 'LUMIÈRE', navLinks: ['Collections', 'Maison', 'Heritage', 'Art of Living'], showCart: true, showSearch: false, sticky: false, style: 'editorial', font: 'editorial' } },
+        { id: 'chk1', type: 'checkout', props: {} },
+        { id: 'ft1', type: 'footer', props: { storeName: 'LUMIÈRE', text: '© 2026 Lumière Paris', links: ['Privacy', 'Terms', 'Shipping'], showSocial: true } },
       ]},
     ],
   },
@@ -126,11 +151,16 @@ export const templates: Template[] = [
     products: sampleProducts,
     pages: [
       { id: 'home', name: 'Home', slug: 'index', sections: [
-        { id: 'h1', type: 'header', props: { storeName: 'VELOCITY' } },
+        { id: 'h1', type: 'header', props: { storeName: 'VELOCITY', navLinks: ['Gear', 'Training', 'Athletes', 'Support'], showCart: true, showSearch: false, sticky: true, style: 'solid' } },
         { id: 'hero1', type: 'hero', props: { title: 'OUTPERFORM.', subtitle: 'Next-generation performance wear.', cta: 'Shop Gear' } },
         { id: 'prod1', type: 'products', props: { title: 'Latest Drops', columns: 4 } },
         { id: 'feat1', type: 'features', props: {} },
-        { id: 'ft1', type: 'footer', props: { text: '© 2026 Velocity Systems' } },
+        { id: 'ft1', type: 'footer', props: { storeName: 'VELOCITY', text: '© 2026 Velocity Systems', links: ['Privacy', 'Terms', 'Returns'], showSocial: true } },
+      ]},
+      { id: 'checkout', name: 'Checkout', slug: 'checkout', sections: [
+        { id: 'h1', type: 'header', props: { storeName: 'VELOCITY', navLinks: ['Gear', 'Training', 'Athletes', 'Support'], showCart: true, showSearch: false, sticky: true, style: 'solid' } },
+        { id: 'chk1', type: 'checkout', props: {} },
+        { id: 'ft1', type: 'footer', props: { storeName: 'VELOCITY', text: '© 2026 Velocity Systems', links: ['Privacy', 'Terms', 'Returns'], showSocial: true } },
       ]},
     ],
   },
@@ -145,11 +175,16 @@ export const templates: Template[] = [
     products: sampleProducts,
     pages: [
       { id: 'home', name: 'Home', slug: 'index', sections: [
-        { id: 'h1', type: 'header', props: { storeName: 'AESTHETICA' } },
+        { id: 'h1', type: 'header', props: { storeName: 'AESTHETICA', navLinks: ['Shop', 'Ingredients', 'Rituals', 'About'], showCart: true, showSearch: false, sticky: false } },
         { id: 'hero1', type: 'hero', props: { title: 'Pure Radiance', subtitle: 'Scientifically formulated skincare.', cta: 'Shop Serums' } },
         { id: 'prod1', type: 'products', props: { title: 'Bestsellers', columns: 3 } },
         { id: 'test1', type: 'testimonials', props: {} },
-        { id: 'ft1', type: 'footer', props: { text: '© 2026 Aesthetica Labs' } },
+        { id: 'ft1', type: 'footer', props: { storeName: 'AESTHETICA', text: '© 2026 Aesthetica Labs', links: ['Privacy', 'Terms', 'Ingredients'], showSocial: true } },
+      ]},
+      { id: 'checkout', name: 'Checkout', slug: 'checkout', sections: [
+        { id: 'h1', type: 'header', props: { storeName: 'AESTHETICA', navLinks: ['Shop', 'Ingredients', 'Rituals', 'About'], showCart: true, showSearch: false, sticky: false } },
+        { id: 'chk1', type: 'checkout', props: {} },
+        { id: 'ft1', type: 'footer', props: { storeName: 'AESTHETICA', text: '© 2026 Aesthetica Labs', links: ['Privacy', 'Terms', 'Ingredients'], showSocial: true } },
       ]},
     ],
   },
@@ -164,12 +199,17 @@ export const templates: Template[] = [
     products: sampleProducts,
     pages: [
       { id: 'home', name: 'Home', slug: 'index', sections: [
-        { id: 'h1', type: 'header', props: { storeName: 'Momentum Tech' } },
+        { id: 'h1', type: 'header', props: { storeName: 'Momentum Tech', navLinks: ['Products', 'Innovation', 'Support', 'Blog'], showCart: true, showSearch: false, sticky: true, style: 'solid' } },
         { id: 'hero1', type: 'hero', props: { title: 'Future, Now.', subtitle: 'Next-gen devices for early adopters.', cta: 'Pre-Order' } },
         { id: 'feat1', type: 'features', props: {} },
         { id: 'prod1', type: 'products', props: { title: 'Flagship Devices', columns: 3 } },
         { id: 'nl1', type: 'newsletter', props: {} },
-        { id: 'ft1', type: 'footer', props: { text: '© 2026 Momentum Inc.' } },
+        { id: 'ft1', type: 'footer', props: { storeName: 'Momentum', text: '© 2026 Momentum Inc.', links: ['Privacy', 'Terms', 'Warranty'], showSocial: true } },
+      ]},
+      { id: 'checkout', name: 'Checkout', slug: 'checkout', sections: [
+        { id: 'h1', type: 'header', props: { storeName: 'Momentum Tech', navLinks: ['Products', 'Innovation', 'Support', 'Blog'], showCart: true, showSearch: false, sticky: true, style: 'solid' } },
+        { id: 'chk1', type: 'checkout', props: {} },
+        { id: 'ft1', type: 'footer', props: { storeName: 'Momentum', text: '© 2026 Momentum Inc.', links: ['Privacy', 'Terms', 'Warranty'], showSocial: true } },
       ]},
     ],
   },
@@ -188,7 +228,7 @@ export const templates: Template[] = [
     ],
     pages: [
       { id: 'home', name: 'Home', slug: 'index', sections: [
-        { id: 'h1', type: 'header', props: { storeName: 'AURUM' } },
+        { id: 'h1', type: 'header', props: { storeName: 'AURUM', navLinks: ['Collection', 'Craftsmanship', 'Heritage', 'Boutiques'], showCart: true, showSearch: false, sticky: false, style: 'editorial' } },
         { id: 'hero1', type: 'hero', props: { title: 'The Art of Leather', subtitle: 'Exquisite bags for the modern journey.', cta: 'Explore Aurum' } },
         { id: 'feat1', type: 'features', props: {}, blocks: [
           { id: 'f_b1', type: 'feature', props: { icon: '✨', title: 'Premium Leather', text: 'Sourced from the finest tanneries in Italy.' } },
@@ -196,7 +236,12 @@ export const templates: Template[] = [
           { id: 'f_b3', type: 'feature', props: { icon: '🛡️', title: 'Lifetime Warranty', text: 'Built to last generations.' } },
         ]},
         { id: 'prod1', type: 'products', props: { title: 'The Collection', columns: 3 } },
-        { id: 'ft1', type: 'footer', props: { text: '© 2026 Aurum Leather Goods' } },
+        { id: 'ft1', type: 'footer', props: { storeName: 'AURUM', text: '© 2026 Aurum Leather Goods', links: ['Privacy', 'Terms', 'Care Guide'], showSocial: true } },
+      ]},
+      { id: 'checkout', name: 'Checkout', slug: 'checkout', sections: [
+        { id: 'h1', type: 'header', props: { storeName: 'AURUM', navLinks: ['Collection', 'Craftsmanship', 'Heritage', 'Boutiques'], showCart: true, showSearch: false, sticky: false, style: 'editorial' } },
+        { id: 'chk1', type: 'checkout', props: {} },
+        { id: 'ft1', type: 'footer', props: { storeName: 'AURUM', text: '© 2026 Aurum Leather Goods', links: ['Privacy', 'Terms', 'Care Guide'], showSocial: true } },
       ]},
     ],
   }

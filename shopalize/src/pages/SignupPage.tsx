@@ -18,7 +18,7 @@ export default function SignupPage() {
     setLoading(true);
     try {
       await register(form);
-      navigate('/dashboard');
+      navigate('/onboarding');
     } catch (err: any) {
       setError(err.message || 'Registration failed');
     }

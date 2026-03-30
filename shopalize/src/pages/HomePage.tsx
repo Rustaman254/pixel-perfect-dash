@@ -54,9 +54,7 @@ export default function HomePage() {
           
           <ul className={`hidden lg:flex items-center gap-8 text-[15px] font-medium transition-colors ${scrolled ? 'text-white/80' : 'text-gray-600'}`}>
             <li className={`cursor-pointer transition-colors ${scrolled ? 'hover:text-white' : 'hover:text-black'}`} onClick={() => navigate('/gallery')}>Themes</li>
-            <li className={`cursor-pointer transition-colors ${scrolled ? 'hover:text-white' : 'hover:text-black'}`}>Pricing</li>
-            <li className={`cursor-pointer transition-colors ${scrolled ? 'hover:text-white' : 'hover:text-black'}`}>Resources <span className="text-[10px] ml-1">▼</span></li>
-            <li className={`cursor-pointer transition-colors ${scrolled ? 'hover:text-white' : 'hover:text-black'}`}>Integrations</li>
+            <li className={`cursor-pointer transition-colors ${scrolled ? 'hover:text-white' : 'hover:text-black'}`} onClick={() => navigate('/pricing')}>Pricing</li>
           </ul>
 
           <div className="hidden md:flex items-center gap-4">
@@ -416,13 +414,11 @@ export default function HomePage() {
             </div>
 
             <div>
-              <h4 className="font-medium text-[17px] mb-6 border-b border-gray-100 pb-2">Resources</h4>
+              <h4 className="font-medium text-[17px] mb-6 border-b border-gray-100 pb-2">Support</h4>
               <ul className="space-y-4 text-sm text-gray-500">
                 <li className="hover:text-black cursor-pointer transition-colors">Help Center</li>
                 <li className="hover:text-black cursor-pointer transition-colors">Developer Docs</li>
                 <li className="hover:text-black cursor-pointer transition-colors">Community</li>
-                <li className="hover:text-black cursor-pointer transition-colors">Ecommerce Blog</li>
-                <li className="hover:text-black cursor-pointer transition-colors">Free Tools</li>
               </ul>
             </div>
 

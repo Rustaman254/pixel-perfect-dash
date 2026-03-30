@@ -26,7 +26,19 @@ export default function ProductEditPage() {
     try {
       const d = await fetchWithAuth(`/shopalize/products/${id}`);
       let images: string[] = []; try { images = JSON.parse(d.images || '[]'); } catch {}
-      setForm({ ...form, name: d.name || '', description: d.description || '', price: String(d.price || ''), currency: d.currency || 'KES', category: d.category || '', inventory: String(d.inventory ?? -1), isActive: d.isActive !== false, images });
+      let variants: any[] = []; try { variants = JSON.parse(d.variants || '[]'); } catch {}
+      setForm(prev => ({
+        ...prev,
+        name: d.name || '',
+        description: d.description || '',
+        price: String(d.price || ''),
+        currency: d.currency || 'KES',
+        category: d.category || '',
+        inventory: String(d.inventory ?? -1),
+        isActive: d.isActive !== false,
+        images,
+        variants: variants.map(v => ({ name: v.name, values: v.options || v.values || [] })),
+      }));
     } catch { navigate('/products'); }
     setLoading(false);
   };
@@ -35,7 +47,24 @@ export default function ProductEditPage() {
     if (!form.name || !form.price) return;
     setSaving(true);
     try {
-      const body = { name: form.name, description: form.description, price: parseFloat(form.price), currency: form.currency, category: form.category, inventory: parseInt(form.inventory), isActive: form.isActive, images: JSON.stringify(form.images) };
+      const body: any = {
+        name: form.name,
+        description: form.description,
+        price: parseFloat(form.price),
+        currency: form.currency,
+        category: form.category,
+        inventory: parseInt(form.inventory),
+        isActive: form.isActive,
+        images: JSON.stringify(form.images),
+      };
+      // Include variants if any exist - map to proper format with id and options
+      if (form.variants.length > 0) {
+        body.variants = JSON.stringify(form.variants.map((v: any, i: number) => ({
+          id: `variant-${i}`,
+          name: v.name,
+          options: Array.isArray(v.values) ? v.values : v.values.split(',').map((s: string) => s.trim()).filter(Boolean),
+        })));
+      }
       if (isNew) await fetchWithAuth('/shopalize/products', { method: 'POST', body: JSON.stringify(body) });
       else await fetchWithAuth(`/shopalize/products/${id}`, { method: 'PUT', body: JSON.stringify(body) });
       navigate('/products');
@@ -158,6 +187,53 @@ export default function ProductEditPage() {
                  <input type="checkbox" id="tax" className="w-4 h-4 rounded border-gray-300 text-black focus:ring-black" defaultChecked />
                  <label htmlFor="tax" className="text-[14px] font-medium text-black">Charge tax on this product</label>
                </div>
+            </div>
+          </div>
+
+          {/* Variants */}
+          <div className="bg-white rounded-[2rem] border border-gray-200/60 p-8 shadow-sm">
+            <h3 className="text-[13px] font-bold text-black tracking-wide uppercase mb-2">Variants</h3>
+            <p className="text-[13px] text-gray-500 mb-6">Add options like size, color, or material that customers can choose from.</p>
+
+            {form.variants.length > 0 && (
+              <div className="space-y-4 mb-6">
+                {form.variants.map((variant: any, i: number) => (
+                  <div key={i} className="p-4 bg-gray-50 rounded-xl border border-gray-200">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-[14px] font-bold text-black">{variant.name}</span>
+                      <button onClick={() => setForm({ ...form, variants: form.variants.filter((_: any, idx: number) => idx !== i) })} className="text-red-400 hover:text-red-600 transition-colors">
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {(Array.isArray(variant.values) ? variant.values : String(variant.values).split(',')).map((v: string, j: number) => (
+                        <span key={j} className="px-3 py-1.5 bg-white rounded-lg border border-gray-200 text-[13px] font-medium">{v.trim()}</span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <input
+                type="text"
+                value={newVariant.name}
+                onChange={e => setNewVariant({ ...newVariant, name: e.target.value })}
+                placeholder="Option name (e.g. Size)"
+                className="flex-1 px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl text-[14px] outline-none focus:bg-white focus:border-black transition-all"
+              />
+              <input
+                type="text"
+                value={newVariant.values}
+                onChange={e => setNewVariant({ ...newVariant, values: e.target.value })}
+                placeholder="Values (S, M, L)"
+                className="flex-1 px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl text-[14px] outline-none focus:bg-white focus:border-black transition-all"
+              />
+              <button onClick={addVariant} disabled={!newVariant.name || !newVariant.values}
+                className="px-5 py-3.5 bg-[#0A0A0A] text-white rounded-xl text-[14px] font-bold disabled:opacity-50 flex items-center gap-2">
+                <Plus className="w-4 h-4" /> Add
+              </button>
             </div>
           </div>
 

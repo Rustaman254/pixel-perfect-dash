@@ -30,10 +30,15 @@ export default function GalleryPage() {
     const template = templates.find(t => t.id === templateId);
     if (!template) return;
     setCreating(templateId);
-    const project = await createProject(template);
-    setCreating(null);
-    if (project) {
-      navigate(`/online-store`);
+    try {
+      const project = await createProject(template);
+      setCreating(null);
+      if (project) {
+        navigate(`/editor/${project.id}`);
+      }
+    } catch (err) {
+      setCreating(null);
+      console.error('Failed to create project:', err);
     }
   };
 

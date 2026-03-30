@@ -10,6 +10,18 @@ async function createIfNotExists(tableName, callback) {
   }
 }
 
+async function addColumnIfNotExists(tableName, columnName, columnCallback) {
+  const hasTable = await db.schema.hasTable(tableName);
+  if (!hasTable) return;
+  const hasColumn = await db.schema.hasColumn(tableName, columnName);
+  if (!hasColumn) {
+    await db.schema.alterTable(tableName, (t) => {
+      columnCallback(t);
+    });
+    console.log(`  Added column ${columnName} to ${tableName}`);
+  }
+}
+
 export async function migrate() {
   console.log('Running shopalize_db migrations...');
 
@@ -25,7 +37,16 @@ export async function migrate() {
     t.text('themeJson');
     t.timestamp('createdAt').defaultTo(db.fn.now());
     t.timestamp('updatedAt').defaultTo(db.fn.now());
+    t.boolean('isPremium').defaultTo(false);
+    t.string('premiumStatus').defaultTo('basic'); // basic, premium, enterprise
   });
+
+  // Add missing columns to existing projects table
+  await addColumnIfNotExists('projects', 'isPremium', (t) => t.boolean('isPremium').defaultTo(false));
+  await addColumnIfNotExists('projects', 'premiumStatus', (t) => t.string('premiumStatus').defaultTo('basic'));
+  await addColumnIfNotExists('projects', 'subdomain', (t) => t.string('subdomain').unique());
+  await addColumnIfNotExists('projects', 'domain', (t) => t.text('domain'));
+  await addColumnIfNotExists('store_products', 'variants', (t) => t.text('variants'));
 
   await createIfNotExists('project_pages', (t) => {
     t.increments('id').primary();
@@ -62,6 +83,7 @@ export async function migrate() {
     t.decimal('price', 12, 2).notNullable();
     t.string('currency').defaultTo('USD');
     t.text('images');
+    t.text('variants'); // JSON array of variant objects
     t.string('category');
     t.integer('inventory').defaultTo(-1);
     t.boolean('isActive').defaultTo(true);
@@ -85,8 +107,12 @@ export async function migrate() {
     t.string('paymentStatus').defaultTo('pending');
     t.text('notes');
     t.text('ripplifyTransactionId');
+    t.text('itemsJson'); // Store multiple items as JSON
     t.timestamp('createdAt').defaultTo(db.fn.now());
   });
+
+  // Add missing columns to existing tables
+  await addColumnIfNotExists('store_orders', 'itemsJson', (t) => t.text('itemsJson'));
 
   // Discounts table
   await createIfNotExists('discounts', (t) => {
@@ -193,16 +219,25 @@ export async function migrate() {
     t.timestamp('updatedAt').defaultTo(db.fn.now());
   });
 
+  // Activity logs table (Everything the user does is recorded)
+  await createIfNotExists('activity_logs', (t) => {
+    t.increments('id').primary();
+    t.integer('projectId');
+    t.integer('userId').notNullable();
+    t.string('action').notNullable(); // theme_saved, theme_published, product_created, etc.
+    t.text('description');
+    t.text('metadata'); // JSON
+    t.timestamp('createdAt').defaultTo(db.fn.now());
+  });
+
   // Shopalize feature flags table
   await createIfNotExists('shopalize_features', (t) => {
     t.increments('id').primary();
     t.string('key').unique().notNullable();
     t.string('name').notNullable();
-    t.text('description').defaultTo('');
+    t.text('description');
     t.string('category').defaultTo('general');
     t.boolean('isEnabled').defaultTo(true);
-    t.timestamp('createdAt').defaultTo(db.fn.now());
-    t.timestamp('updatedAt').defaultTo(db.fn.now());
   });
 
   // Seed default feature flags if empty
@@ -248,63 +283,263 @@ export async function migrate() {
   // Seed default templates if empty
   const templateCount = await db('templates').count('id as count').first();
   if (parseInt(templateCount.count) === 0) {
-    const minimalSections = JSON.stringify([
-      { type: 'hero', settings: { headline: 'Welcome', subheadline: 'Your store awaits', ctaText: 'Shop Now' } },
-      { type: 'products', settings: { title: 'Featured Products', layout: 'grid', columns: 3 } },
-      { type: 'footer', settings: { copyright: '© 2026 My Store' } },
+    const studioSections = JSON.stringify([
+      { type: 'header', settings: { storeName: 'Studio' } },
+      { type: 'hero', settings: { title: 'Modern Essentials.', subtitle: 'Curated products for everyday living.', cta: 'Shop Collection' } },
+      { type: 'products', settings: { title: 'Featured', columns: 3 } },
+      { type: 'footer', settings: { text: '© 2026 Studio' } },
     ]);
 
-    const modernSections = JSON.stringify([
-      { type: 'navbar', settings: { style: 'transparent', sticky: true } },
-      { type: 'hero', settings: { headline: 'Modern Store', subheadline: 'Curated for you', ctaText: 'Explore', style: 'fullbleed' } },
-      { type: 'announcement', settings: { text: 'Free shipping on orders over $50', style: 'banner' } },
-      { type: 'products', settings: { title: 'New Arrivals', layout: 'grid', columns: 4, showFilters: true } },
-      { type: 'newsletter', settings: { heading: 'Stay in the loop', placeholder: 'Enter your email' } },
-      { type: 'footer', settings: { style: 'modern', copyright: '© 2026 My Store' } },
+    const originSections = JSON.stringify([
+      { type: 'header', settings: { storeName: 'Origin' } },
+      { type: 'hero', settings: { title: 'Return to Nature.', subtitle: 'Sustainable goods crafted with care.', cta: 'Explore' } },
+      { type: 'products', settings: { title: 'New Arrivals', columns: 4 } },
+      { type: 'testimonials', settings: {} },
+      { type: 'footer', settings: { text: '© 2026 Origin Goods' } },
     ]);
 
-    const classicSections = JSON.stringify([
-      { type: 'navbar', settings: { style: 'solid', sticky: false } },
-      { type: 'hero', settings: { headline: 'Classic Collection', subheadline: 'Timeless style', ctaText: 'Browse Collection', style: 'centered' } },
-      { type: 'categories', settings: { title: 'Shop by Category', layout: 'carousel' } },
-      { type: 'products', settings: { title: 'Best Sellers', layout: 'grid', columns: 3 } },
-      { type: 'testimonials', settings: { title: 'What customers say', count: 3 } },
-      { type: 'footer', settings: { style: 'classic', copyright: '© 2026 My Store' } },
+    const boldSections = JSON.stringify([
+      { type: 'header', settings: { storeName: 'BOLD' } },
+      { type: 'hero', settings: { title: 'NEW SEASON.', subtitle: 'Unapologetic style.', cta: 'Shop Drop' } },
+      { type: 'products', settings: { title: 'Trending', columns: 2 } },
+      { type: 'footer', settings: { text: '© 2026 BOLD WORLDWIDE' } },
+    ]);
+
+    const craftSections = JSON.stringify([
+      { type: 'header', settings: { storeName: 'Craft' } },
+      { type: 'hero', settings: { title: 'Precision & Form', subtitle: 'Tools for the modern maker', cta: 'View Catalog' } },
+      { type: 'features', settings: {} },
+      { type: 'products', settings: { title: 'Top Rated', columns: 3 } },
+      { type: 'footer', settings: { text: '© 2026 Craft' } },
+    ]);
+
+    const lumiereSections = JSON.stringify([
+      { type: 'header', settings: { storeName: 'LUMIÈRE' } },
+      { type: 'hero', settings: { title: 'Timeless Elegance', subtitle: 'Crafted with absolute precision.', cta: 'Discover' } },
+      { type: 'products', settings: { title: 'Signature Collection', columns: 2 } },
+      { type: 'gallery', settings: { title: 'The Atelier' } },
+      { type: 'testimonials', settings: {} },
+      { type: 'cta', settings: { title: 'Join the Club', text: 'Exclusive access to new arrivals', cta: 'Sign Up' } },
+      { type: 'footer', settings: { text: '© 2026 Lumière Paris' } },
+    ]);
+
+    const velocitySections = JSON.stringify([
+      { type: 'header', settings: { storeName: 'VELOCITY' } },
+      { type: 'hero', settings: { title: 'OUTPERFORM.', subtitle: 'Next-generation performance wear.', cta: 'Shop Gear' } },
+      { type: 'products', settings: { title: 'Latest Drops', columns: 4 } },
+      { type: 'features', settings: {} },
+      { type: 'footer', settings: { text: '© 2026 Velocity Systems' } },
+    ]);
+
+    const aestheticsSections = JSON.stringify([
+      { type: 'header', settings: { storeName: 'AESTHETICA' } },
+      { type: 'hero', settings: { title: 'Pure Radiance', subtitle: 'Scientifically formulated skincare.', cta: 'Shop Serums' } },
+      { type: 'products', settings: { title: 'Bestsellers', columns: 3 } },
+      { type: 'testimonials', settings: {} },
+      { type: 'footer', settings: { text: '© 2026 Aesthetica Labs' } },
+    ]);
+
+    const momentumSections = JSON.stringify([
+      { type: 'header', settings: { storeName: 'Momentum Tech' } },
+      { type: 'hero', settings: { title: 'Future, Now.', subtitle: 'Next-gen devices for early adopters.', cta: 'Pre-Order' } },
+      { type: 'features', settings: {} },
+      { type: 'products', settings: { title: 'Flagship Devices', columns: 3 } },
+      { type: 'newsletter', settings: {} },
+      { type: 'footer', settings: { text: '© 2026 Momentum Inc.' } },
+    ]);
+
+    const aurumSections = JSON.stringify([
+      { type: 'header', settings: { storeName: 'AURUM' } },
+      { type: 'hero', settings: { title: 'The Art of Leather', subtitle: 'Exquisite bags for the modern journey.', cta: 'Explore Aurum' } },
+      { type: 'features', settings: {} },
+      { type: 'products', settings: { title: 'The Collection', columns: 3 } },
+      { type: 'footer', settings: { text: '© 2026 Aurum Leather Goods' } },
     ]);
 
     await db('templates').insert([
       {
-        name: 'Minimal',
-        slug: 'minimal',
-        category: 'general',
-        description: 'A clean, minimal template perfect for any store. Focus on your products with a distraction-free design.',
-        thumbnailUrl: '/templates/minimal-thumb.png',
-        previewUrl: '/templates/minimal-preview.png',
-        sectionsJson: minimalSections,
+        name: 'Studio',
+        slug: 'studio-base',
+        category: 'Minimal',
+        description: 'A clean, high-contrast foundational template designed for independent creators.',
+        thumbnailUrl: '/templates/studio-thumb.png',
+        previewUrl: '/templates/studio-preview.png',
+        sectionsJson: studioSections,
         isActive: true,
       },
       {
-        name: 'Modern',
-        slug: 'modern',
-        category: 'general',
-        description: 'A bold, modern template with announcement bars, newsletter signup, and filterable product grids.',
-        thumbnailUrl: '/templates/modern-thumb.png',
-        previewUrl: '/templates/modern-preview.png',
-        sectionsJson: modernSections,
+        name: 'Origin',
+        slug: 'origin-free',
+        category: 'Lifestyle',
+        description: 'An earthy, organic layout perfect for natural products and handmade goods.',
+        thumbnailUrl: '/templates/origin-thumb.png',
+        previewUrl: '/templates/origin-preview.png',
+        sectionsJson: originSections,
         isActive: true,
       },
       {
-        name: 'Classic',
-        slug: 'classic',
-        category: 'general',
-        description: 'A traditional e-commerce layout with category browsing, testimonials, and a classic navigation bar.',
-        thumbnailUrl: '/templates/classic-thumb.png',
-        previewUrl: '/templates/classic-preview.png',
-        sectionsJson: classicSections,
+        name: 'Bold',
+        slug: 'bold-framework',
+        category: 'Fashion',
+        description: 'Heavy typography and striking contrast for streetwear and statement brands.',
+        thumbnailUrl: '/templates/bold-thumb.png',
+        previewUrl: '/templates/bold-preview.png',
+        sectionsJson: boldSections,
+        isActive: true,
+      },
+      {
+        name: 'Craft',
+        slug: 'craft-standard',
+        category: 'Design',
+        description: 'A structural, grid-based layout for artisans and specialized catalog displays.',
+        thumbnailUrl: '/templates/craft-thumb.png',
+        previewUrl: '/templates/craft-preview.png',
+        sectionsJson: craftSections,
+        isActive: true,
+      },
+      {
+        name: 'Lumière',
+        slug: 'lumiere-pro',
+        category: 'Luxury',
+        description: 'A highly sophisticated, editorial-style layout for high-end luxury, jewelry, or couture fashion.',
+        thumbnailUrl: '/templates/lumiere-thumb.png',
+        previewUrl: '/templates/lumiere-preview.png',
+        sectionsJson: lumiereSections,
+        isActive: true,
+      },
+      {
+        name: 'Velocity',
+        slug: 'velocity-pro',
+        category: 'Sports',
+        description: 'An aggressive, high-conversion layout designed specifically for athletic apparel and technical gear.',
+        thumbnailUrl: '/templates/velocity-thumb.png',
+        previewUrl: '/templates/velocity-preview.png',
+        sectionsJson: velocitySections,
+        isActive: true,
+      },
+      {
+        name: 'Aesthetics',
+        slug: 'aesthetics-pro',
+        category: 'Beauty',
+        description: 'A soft, immersive, and sensorial layout built for premium cosmetics and wellness brands.',
+        thumbnailUrl: '/templates/aesthetics-thumb.png',
+        previewUrl: '/templates/aesthetics-preview.png',
+        sectionsJson: aestheticsSections,
+        isActive: true,
+      },
+      {
+        name: 'Momentum',
+        slug: 'momentum-pro',
+        category: 'Technology',
+        description: 'A tech-forward, futuristic layout designed for consumer electronics and digital goods.',
+        thumbnailUrl: '/templates/momentum-thumb.png',
+        previewUrl: '/templates/momentum-preview.png',
+        sectionsJson: momentumSections,
+        isActive: true,
+      },
+      {
+        name: 'Aurum',
+        slug: 'aurum-bags',
+        category: 'Luxury',
+        description: 'A luxurious, tactile layout designed specifically for premium leather goods and designer bags.',
+        thumbnailUrl: '/templates/aurum-thumb.png',
+        previewUrl: '/templates/aurum-preview.png',
+        sectionsJson: aurumSections,
         isActive: true,
       },
     ]);
     console.log('  Default templates seeded.');
+  }
+
+  // Migration: update templates if they don't match frontend IDs
+  const hasStudioTemplate = await db('templates').where({ slug: 'studio-base' }).first();
+  if (!hasStudioTemplate) {
+    const oldTemplateCount = await db('templates').count('id as count').first();
+    if (parseInt(oldTemplateCount.count) > 0) {
+      // Clear old templates and re-seed with new ones
+      await db('templates').delete();
+      console.log('  Cleared old templates for re-seed.');
+    }
+    // Re-run the seed logic
+    const templateCount2 = await db('templates').count('id as count').first();
+    if (parseInt(templateCount2.count) === 0) {
+      const studioSections = JSON.stringify([
+        { type: 'header', settings: { storeName: 'Studio' } },
+        { type: 'hero', settings: { title: 'Modern Essentials.', subtitle: 'Curated products for everyday living.', cta: 'Shop Collection' } },
+        { type: 'products', settings: { title: 'Featured', columns: 3 } },
+        { type: 'footer', settings: { text: '© 2026 Studio' } },
+      ]);
+      const originSections = JSON.stringify([
+        { type: 'header', settings: { storeName: 'Origin' } },
+        { type: 'hero', settings: { title: 'Return to Nature.', subtitle: 'Sustainable goods crafted with care.', cta: 'Explore' } },
+        { type: 'products', settings: { title: 'New Arrivals', columns: 4 } },
+        { type: 'testimonials', settings: {} },
+        { type: 'footer', settings: { text: '© 2026 Origin Goods' } },
+      ]);
+      const boldSections = JSON.stringify([
+        { type: 'header', settings: { storeName: 'BOLD' } },
+        { type: 'hero', settings: { title: 'NEW SEASON.', subtitle: 'Unapologetic style.', cta: 'Shop Drop' } },
+        { type: 'products', settings: { title: 'Trending', columns: 2 } },
+        { type: 'footer', settings: { text: '© 2026 BOLD WORLDWIDE' } },
+      ]);
+      const craftSections = JSON.stringify([
+        { type: 'header', settings: { storeName: 'Craft' } },
+        { type: 'hero', settings: { title: 'Precision & Form', subtitle: 'Tools for the modern maker', cta: 'View Catalog' } },
+        { type: 'features', settings: {} },
+        { type: 'products', settings: { title: 'Top Rated', columns: 3 } },
+        { type: 'footer', settings: { text: '© 2026 Craft' } },
+      ]);
+      const lumiereSections = JSON.stringify([
+        { type: 'header', settings: { storeName: 'LUMIÈRE' } },
+        { type: 'hero', settings: { title: 'Timeless Elegance', subtitle: 'Crafted with absolute precision.', cta: 'Discover' } },
+        { type: 'products', settings: { title: 'Signature Collection', columns: 2 } },
+        { type: 'gallery', settings: { title: 'The Atelier' } },
+        { type: 'testimonials', settings: {} },
+        { type: 'cta', settings: { title: 'Join the Club', text: 'Exclusive access to new arrivals', cta: 'Sign Up' } },
+        { type: 'footer', settings: { text: '© 2026 Lumière Paris' } },
+      ]);
+      const velocitySections = JSON.stringify([
+        { type: 'header', settings: { storeName: 'VELOCITY' } },
+        { type: 'hero', settings: { title: 'OUTPERFORM.', subtitle: 'Next-generation performance wear.', cta: 'Shop Gear' } },
+        { type: 'products', settings: { title: 'Latest Drops', columns: 4 } },
+        { type: 'features', settings: {} },
+        { type: 'footer', settings: { text: '© 2026 Velocity Systems' } },
+      ]);
+      const aestheticsSections = JSON.stringify([
+        { type: 'header', settings: { storeName: 'AESTHETICA' } },
+        { type: 'hero', settings: { title: 'Pure Radiance', subtitle: 'Scientifically formulated skincare.', cta: 'Shop Serums' } },
+        { type: 'products', settings: { title: 'Bestsellers', columns: 3 } },
+        { type: 'testimonials', settings: {} },
+        { type: 'footer', settings: { text: '© 2026 Aesthetica Labs' } },
+      ]);
+      const momentumSections = JSON.stringify([
+        { type: 'header', settings: { storeName: 'Momentum Tech' } },
+        { type: 'hero', settings: { title: 'Future, Now.', subtitle: 'Next-gen devices for early adopters.', cta: 'Pre-Order' } },
+        { type: 'features', settings: {} },
+        { type: 'products', settings: { title: 'Flagship Devices', columns: 3 } },
+        { type: 'newsletter', settings: {} },
+        { type: 'footer', settings: { text: '© 2026 Momentum Inc.' } },
+      ]);
+      const aurumSections = JSON.stringify([
+        { type: 'header', settings: { storeName: 'AURUM' } },
+        { type: 'hero', settings: { title: 'The Art of Leather', subtitle: 'Exquisite bags for the modern journey.', cta: 'Explore Aurum' } },
+        { type: 'features', settings: {} },
+        { type: 'products', settings: { title: 'The Collection', columns: 3 } },
+        { type: 'footer', settings: { text: '© 2026 Aurum Leather Goods' } },
+      ]);
+      await db('templates').insert([
+        { name: 'Studio', slug: 'studio-base', category: 'Minimal', description: 'A clean, high-contrast foundational template designed for independent creators.', thumbnailUrl: '/templates/studio-thumb.png', previewUrl: '/templates/studio-preview.png', sectionsJson: studioSections, isActive: true },
+        { name: 'Origin', slug: 'origin-free', category: 'Lifestyle', description: 'An earthy, organic layout perfect for natural products and handmade goods.', thumbnailUrl: '/templates/origin-thumb.png', previewUrl: '/templates/origin-preview.png', sectionsJson: originSections, isActive: true },
+        { name: 'Bold', slug: 'bold-framework', category: 'Fashion', description: 'Heavy typography and striking contrast for streetwear and statement brands.', thumbnailUrl: '/templates/bold-thumb.png', previewUrl: '/templates/bold-preview.png', sectionsJson: boldSections, isActive: true },
+        { name: 'Craft', slug: 'craft-standard', category: 'Design', description: 'A structural, grid-based layout for artisans and specialized catalog displays.', thumbnailUrl: '/templates/craft-thumb.png', previewUrl: '/templates/craft-preview.png', sectionsJson: craftSections, isActive: true },
+        { name: 'Lumière', slug: 'lumiere-pro', category: 'Luxury', description: 'A highly sophisticated, editorial-style layout for high-end luxury, jewelry, or couture fashion.', thumbnailUrl: '/templates/lumiere-thumb.png', previewUrl: '/templates/lumiere-preview.png', sectionsJson: lumiereSections, isActive: true },
+        { name: 'Velocity', slug: 'velocity-pro', category: 'Sports', description: 'An aggressive, high-conversion layout designed specifically for athletic apparel and technical gear.', thumbnailUrl: '/templates/velocity-thumb.png', previewUrl: '/templates/velocity-preview.png', sectionsJson: velocitySections, isActive: true },
+        { name: 'Aesthetics', slug: 'aesthetics-pro', category: 'Beauty', description: 'A soft, immersive, and sensorial layout built for premium cosmetics and wellness brands.', thumbnailUrl: '/templates/aesthetics-thumb.png', previewUrl: '/templates/aesthetics-preview.png', sectionsJson: aestheticsSections, isActive: true },
+        { name: 'Momentum', slug: 'momentum-pro', category: 'Technology', description: 'A tech-forward, futuristic layout designed for consumer electronics and digital goods.', thumbnailUrl: '/templates/momentum-thumb.png', previewUrl: '/templates/momentum-preview.png', sectionsJson: momentumSections, isActive: true },
+        { name: 'Aurum', slug: 'aurum-bags', category: 'Luxury', description: 'A luxurious, tactile layout designed specifically for premium leather goods and designer bags.', thumbnailUrl: '/templates/aurum-thumb.png', previewUrl: '/templates/aurum-preview.png', sectionsJson: aurumSections, isActive: true },
+      ]);
+      console.log('  Templates re-seeded with frontend-compatible IDs.');
+    }
   }
 
   console.log('shopalize_db migrations complete.');

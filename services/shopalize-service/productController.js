@@ -1,5 +1,6 @@
 import { createConnection } from '../shared/db.js';
 import { callService } from '../shared/serviceClient.js';
+import { recordActivity } from './activityController.js';
 
 const db = () => createConnection('shopalize_db');
 
@@ -25,7 +26,7 @@ async function getOrCreateDefaultProject(userId) {
 
 export const createProduct = async (req, res) => {
   try {
-    const { projectId, name, description, price, currency, images, category, inventory, isActive } = req.body;
+    const { projectId, name, description, price, currency, images, variants, category, inventory, isActive } = req.body;
     if (!name || price === undefined) {
       return res.status(400).json({ message: 'name and price are required' });
     }
@@ -36,7 +37,7 @@ export const createProduct = async (req, res) => {
 
     if (!project) return res.status(404).json({ message: 'Project not found' });
 
-    const [product] = await db()('store_products')
+    const [productId] = await db()('store_products')
       .insert({
         projectId: project.id,
         name,
@@ -44,11 +45,21 @@ export const createProduct = async (req, res) => {
         price: parseFloat(price),
         currency: currency || 'KES',
         images: images ? (typeof images === 'string' ? images : JSON.stringify(images)) : '[]',
+        variants: variants ? (typeof variants === 'string' ? variants : JSON.stringify(variants)) : null,
         category: category || null,
         inventory: inventory !== undefined ? parseInt(inventory) : -1,
         isActive: isActive !== undefined ? isActive : true,
-      })
-      .returning('*');
+      });
+
+    const product = await db()('store_products').where({ id: productId }).first();
+
+    await recordActivity({
+      userId: req.user.id,
+      action: 'product_created',
+      projectId: project.id,
+      description: `Added new product: ${name}`,
+      metadata: { productId: product.id }
+    });
 
     res.status(201).json(product);
   } catch (error) {
@@ -98,7 +109,7 @@ export const getProduct = async (req, res) => {
 
 export const updateProduct = async (req, res) => {
   try {
-    const { name, description, price, currency, images, category, inventory, isActive } = req.body;
+    const { name, description, price, currency, images, variants, category, inventory, isActive } = req.body;
 
     const product = await db()('store_products').where({ id: parseInt(req.params.id) }).first();
     if (!product) return res.status(404).json({ message: 'Product not found' });
@@ -112,14 +123,26 @@ export const updateProduct = async (req, res) => {
     if (price !== undefined) updates.price = parseFloat(price);
     if (currency !== undefined) updates.currency = currency;
     if (images !== undefined) updates.images = typeof images === 'string' ? images : JSON.stringify(images);
+    if (variants !== undefined) updates.variants = typeof variants === 'string' ? variants : JSON.stringify(variants);
     if (category !== undefined) updates.category = category;
     if (inventory !== undefined) updates.inventory = parseInt(inventory);
     if (isActive !== undefined) updates.isActive = isActive;
 
-    const [updated] = await db()('store_products')
+    await db()('store_products')
       .where({ id: parseInt(req.params.id) })
-      .update(updates)
-      .returning('*');
+      .update(updates);
+
+    const updated = await db()('store_products')
+      .where({ id: parseInt(req.params.id) })
+      .first();
+
+    await recordActivity({
+      userId: req.user.id,
+      action: 'product_updated',
+      projectId: project.id,
+      description: `Updated product: ${updated.name}`,
+      metadata: { productId: updated.id }
+    });
 
     res.json(updated);
   } catch (error) {
@@ -136,6 +159,14 @@ export const deleteProduct = async (req, res) => {
     if (!project) return res.status(403).json({ message: 'Not authorized' });
 
     await db()('store_products').where({ id: product.id }).delete();
+    await recordActivity({
+      userId: req.user.id,
+      action: 'product_deleted',
+      projectId: project.id,
+      description: `Deleted product: ${product.name}`,
+      metadata: { productId: product.id }
+    });
+
     res.json({ message: 'Product deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });

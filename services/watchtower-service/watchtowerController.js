@@ -1,6 +1,8 @@
 import { createConnection } from '../shared/db.js';
-import geoip from 'geoip-lite';
 import { v4 as uuidv4 } from 'uuid';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const geoip = require('geoip-lite');
 
 const db = () => createConnection('watchtower_db');
 

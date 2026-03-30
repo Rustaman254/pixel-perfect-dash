@@ -21,7 +21,7 @@ export const getAllStores = async (req, res) => {
         db()('store_products').where({ projectId: project.id }).count('id as count').first(),
         db()('store_orders').where({ projectId: project.id }).count('id as count').first(),
         db()('store_orders').where({ projectId: project.id }).whereNot({ status: 'cancelled' }).sum('amount as total').first(),
-        db()('store_orders').where({ projectId: project.id }).whereNotNull('buyerEmail').where('buyerEmail', '!= '').countDistinct('buyerEmail as count').first(),
+        db()('store_orders').where({ projectId: project.id }).whereNotNull('buyerEmail').where('buyerEmail', '!=', '').countDistinct('buyerEmail as count').first(),
       ]);
 
       return {
@@ -52,7 +52,7 @@ export const getStoreDetail = async (req, res) => {
       db()('store_orders').where({ projectId: project.id }).count('id as count').first(),
       db()('store_orders').where({ projectId: project.id }).whereNot({ status: 'cancelled' }).sum('amount as total').first(),
       db()('store_orders').where({ projectId: project.id }).orderBy('createdAt', 'desc').limit(10),
-      db()('store_orders').where({ projectId: project.id }).whereNotNull('buyerEmail').where('buyerEmail', '!= '').countDistinct('buyerEmail as count').first(),
+      db()('store_orders').where({ projectId: project.id }).whereNotNull('buyerEmail').where('buyerEmail', '!=', '').countDistinct('buyerEmail as count').first(),
     ]);
 
     res.json({

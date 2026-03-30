@@ -9,15 +9,19 @@ export default defineConfig({
     port: 8081,
     proxy: {
       "/api/auth": {
-        target: "http://localhost:3001",
+        target: "http://localhost:3006",
         changeOrigin: true,
       },
       "/sso.html": {
-        target: "http://localhost:3001",
+        target: "http://localhost:3006",
         changeOrigin: true,
       },
-      "/api": {
-        target: "http://localhost:3003",
+      "/api/shopalize": {
+        target: "http://localhost:3008",
+        changeOrigin: true,
+      },
+      "/api/dns": {
+        target: "http://localhost:3004",
         changeOrigin: true,
       },
     },

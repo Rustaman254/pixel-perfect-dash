@@ -32,7 +32,7 @@ export const createDiscount = async (req, res) => {
     const existing = await db()('discounts').where({ userId: req.user.id, code: code.toUpperCase() }).first();
     if (existing) return res.status(409).json({ message: 'Discount code already exists' });
 
-    const [discount] = await db()('discounts')
+    const [discountId] = await db()('discounts')
       .insert({
         userId: req.user.id,
         code: code.toUpperCase(),
@@ -44,8 +44,9 @@ export const createDiscount = async (req, res) => {
         startsAt: startsAt || null,
         endsAt: endsAt || null,
         isActive: true,
-      })
-      .returning('*');
+      });
+
+    const discount = await db()('discounts').where({ id: discountId }).first();
 
     res.status(201).json(discount);
   } catch (error) {
@@ -71,7 +72,8 @@ export const updateDiscount = async (req, res) => {
     if (startsAt !== undefined) updates.startsAt = startsAt;
     if (endsAt !== undefined) updates.endsAt = endsAt;
 
-    const [updated] = await db()('discounts').where({ id: parseInt(req.params.id) }).update(updates).returning('*');
+    await db()('discounts').where({ id: parseInt(req.params.id) }).update(updates);
+    const updated = await db()('discounts').where({ id: parseInt(req.params.id) }).first();
     res.json(updated);
   } catch (error) {
     res.status(500).json({ message: error.message });
