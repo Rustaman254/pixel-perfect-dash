@@ -8,18 +8,26 @@ dotenv.config();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const connections = {};
 
+const pgConfig = {
+  client: 'pg',
+  connection: {
+    host: process.env.PG_HOST || 'localhost',
+    port: parseInt(process.env.PG_PORT || '5432'),
+    user: process.env.PG_USER || 'sokostack',
+    password: process.env.PG_PASSWORD || 'sokostack2026',
+  },
+  pool: { min: 2, max: 10 },
+};
+
 export const createConnection = (dbName) => {
   if (connections[dbName]) return connections[dbName];
 
-  const dbPath = path.resolve(__dirname, '..', '..', `${dbName}.sqlite`);
-  
   const db = knex({
-    client: 'better-sqlite3',
+    ...pgConfig,
     connection: {
-      filename: dbPath,
+      ...pgConfig.connection,
+      database: dbName,
     },
-    useNullAsDefault: true,
-    pool: { min: 1, max: 1 },
   });
 
   connections[dbName] = db;

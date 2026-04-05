@@ -41,6 +41,28 @@ const pgRipplify = knex({
   },
 });
 
+const pgShopalize = knex({
+  client: 'pg',
+  connection: {
+    host: process.env.PG_HOST || 'localhost',
+    port: parseInt(process.env.PG_PORT || '5432'),
+    database: 'shopalize_db',
+    user: process.env.PG_USER || 'sokostack',
+    password: process.env.PG_PASSWORD || 'sokostack2026',
+  },
+});
+
+const pgWatchtower = knex({
+  client: 'pg',
+  connection: {
+    host: process.env.PG_HOST || 'localhost',
+    port: parseInt(process.env.PG_PORT || '5432'),
+    database: 'watchtower_db',
+    user: process.env.PG_USER || 'sokostack',
+    password: process.env.PG_PASSWORD || 'sokostack2026',
+  },
+});
+
 async function migrate() {
   console.log('Starting migration from SQLite to PostgreSQL...');
 
@@ -65,6 +87,27 @@ async function migrate() {
     await migratePaymentLinks(sqlite, pgRipplify);
     await migrateTransactions(sqlite, pgRipplify);
     await migratePayouts(sqlite, pgRipplify);
+    await migrateWallets(sqlite, pgRipplify);
+    await migrateUserPaymentMethods(sqlite, pgRipplify);
+    await migrateUserPayoutMethods(sqlite, pgRipplify);
+    await migratePaymentIntents(sqlite, pgRipplify);
+    await migrateTransfers(sqlite, pgRipplify);
+    await migrateFeeTiers(sqlite, pgRipplify);
+    await migrateOtps(sqlite, pgAuth);
+    await migratePasswordResetTokens(sqlite, pgAuth);
+    await migrateOAuthClients(sqlite, pgAuth);
+    await migrateOAuthAuthCodes(sqlite, pgAuth);
+    await migrateOAuthAccessTokens(sqlite, pgAuth);
+
+    await migrateUserCurrencies(sqlite, pgAuth);
+    await migrateUserFeatureOverrides(sqlite, pgAuth);
+    await migrateReferralUsage(sqlite, pgAuth);
+    await migrateRolePermissions(sqlite, pgAuth);
+    await migrateAuditLogs(sqlite, pgAuth);
+    await migrateAdminAuditLogs(sqlite, pgAdmin);
+    await migrateInsightSessions(sqlite, pgWatchtower);
+    await migrateInsightEvents(sqlite, pgWatchtower);
+    await migrateInsightEntityMappings(sqlite, pgWatchtower);
 
     console.log('\nMigration completed successfully!');
   } catch (error) {
@@ -74,6 +117,8 @@ async function migrate() {
     await pgAuth.destroy();
     await pgAdmin.destroy();
     await pgRipplify.destroy();
+    await pgShopalize.destroy();
+    await pgWatchtower.destroy();
   }
 }
 
@@ -427,6 +472,321 @@ async function migratePayouts(sqlite, pg) {
     }
   }
   console.log(`  Migrated ${payouts.length} payouts`);
+}
+
+async function migrateWallets(sqlite, pg) {
+  console.log('Migrating wallets...');
+  const wallets = await sqlite.all('SELECT * FROM wallets');
+  for (const w of wallets) {
+    try {
+      await pg.raw(`
+        INSERT INTO wallets (id, "userId", balance, currency, "createdAt", "updatedAt")
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT (id) DO UPDATE SET balance = EXCLUDED.balance
+      `, [w.id, w.userId, w.balance || 0, w.currency || 'USD', w.createdAt || new Date(), w.updatedAt || new Date()]);
+    } catch (e) {}
+  }
+  console.log(`  Migrated ${wallets.length} wallets`);
+}
+
+async function migrateUserPaymentMethods(sqlite, pg) {
+  console.log('Migrating user_payment_methods...');
+  const methods = await sqlite.all('SELECT * FROM user_payment_methods');
+  for (const m of methods) {
+    try {
+      await pg.raw(`
+        INSERT INTO user_payment_methods (id, "userId", "methodId", enabled, fee)
+        VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT (id) DO UPDATE SET enabled = EXCLUDED.enabled
+      `, [m.id, m.userId, m.methodId, m.enabled ? true : false, m.fee || '']);
+    } catch (e) {}
+  }
+  console.log(`  Migrated ${methods.length} user_payment_methods`);
+}
+
+async function migrateUserPayoutMethods(sqlite, pg) {
+  console.log('Migrating user_payout_methods...');
+  const methods = await sqlite.all('SELECT * FROM user_payout_methods');
+  for (const m of methods) {
+    try {
+      await pg.raw(`
+        INSERT INTO user_payout_methods (id, "userId", method, details, is_default, "createdAt")
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT (id) DO UPDATE SET is_default = EXCLUDED.is_default
+      `, [m.id, m.userId, m.method, m.details, m.is_default ? true : false, m.createdAt || new Date()]);
+    } catch (e) {}
+  }
+  console.log(`  Migrated ${methods.length} user_payout_methods`);
+}
+
+async function migratePaymentIntents(sqlite, pg) {
+  console.log('Migrating payment_intents...');
+  const intents = await sqlite.all('SELECT * FROM payment_intents');
+  for (const i of intents) {
+    try {
+      await pg.raw(`
+        INSERT INTO payment_intents (id, "userId", amount, currency, status, "clientSecret", metadata, "createdAt")
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT (id) DO UPDATE SET status = EXCLUDED.status
+      `, [i.id, i.userId, i.amount, i.currency || 'USD', i.status || 'pending', i.clientSecret, i.metadata, i.createdAt || new Date()]);
+    } catch (e) {}
+  }
+  console.log(`  Migrated ${intents.length} payment_intents`);
+}
+
+async function migrateTransfers(sqlite, pg) {
+  console.log('Migrating transfers...');
+  const transfers = await sqlite.all('SELECT * FROM transfers');
+  for (const t of transfers) {
+    try {
+      await pg.raw(`
+        INSERT INTO transfers (id, "userId", amount, currency, status, "recipientId", "createdAt")
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT (id) DO UPDATE SET status = EXCLUDED.status
+      `, [t.id, t.userId, t.amount, t.currency || 'USD', t.status || 'pending', t.recipientId, t.createdAt || new Date()]);
+    } catch (e) {}
+  }
+  console.log(`  Migrated ${transfers.length} transfers`);
+}
+
+async function migrateFeeTiers(sqlite, pg) {
+  console.log('Migrating fee_tiers...');
+  const tiers = await sqlite.all('SELECT * FROM fee_tiers');
+  for (const t of tiers) {
+    try {
+      await pg.raw(`
+        INSERT INTO fee_tiers (id, name, min_amount, max_amount, fee_percent, currency, "createdAt")
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT (id) DO UPDATE SET fee_percent = EXCLUDED.fee_percent
+      `, [t.id, t.name, t.min_amount, t.max_amount, t.fee_percent, t.currency || 'USD', t.createdAt || new Date()]);
+    } catch (e) {}
+  }
+  console.log(`  Migrated ${tiers.length} fee_tiers`);
+}
+
+async function migrateOtps(sqlite, pg) {
+  console.log('Migrating otps...');
+  const otps = await sqlite.all('SELECT * FROM otps');
+  for (const o of otps) {
+    try {
+      await pg.raw(`
+        INSERT INTO otps (id, phone, otp, email, "createdAt")
+        VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT (id) DO UPDATE SET otp = EXCLUDED.otp
+      `, [o.id, o.phone, o.otp, o.email, o.createdAt || new Date()]);
+    } catch (e) {}
+  }
+  console.log(`  Migrated ${otps.length} otps`);
+}
+
+async function migratePasswordResetTokens(sqlite, pg) {
+  console.log('Migrating password_reset_tokens...');
+  const tokens = await sqlite.all('SELECT * FROM password_reset_tokens');
+  for (const t of tokens) {
+    try {
+      await pg.raw(`
+        INSERT INTO password_reset_tokens (id, email, token, expires_at, "createdAt")
+        VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT (id) DO UPDATE SET token = EXCLUDED.token
+      `, [t.id, t.email, t.token, t.expires_at, t.createdAt || new Date()]);
+    } catch (e) {}
+  }
+  console.log(`  Migrated ${tokens.length} password_reset_tokens`);
+}
+
+async function migrateOAuthClients(sqlite, pg) {
+  console.log('Migrating oauth_clients...');
+  const clients = await sqlite.all('SELECT * FROM oauth_clients');
+  for (const c of clients) {
+    try {
+      await pg.raw(`
+        INSERT INTO oauth_clients (id, "userId", "clientId", "clientSecret", name, "redirectUri", "createdAt")
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name
+      `, [c.id, c.userId, c.clientId, c.clientSecret, c.name, c.redirectUri, c.createdAt || new Date()]);
+    } catch (e) {}
+  }
+  console.log(`  Migrated ${clients.length} oauth_clients`);
+}
+
+async function migrateOAuthAuthCodes(sqlite, pg) {
+  console.log('Migrating oauth_auth_codes...');
+  const codes = await sqlite.all('SELECT * FROM oauth_auth_codes');
+  for (const c of codes) {
+    try {
+      await pg.raw(`
+        INSERT INTO oauth_auth_codes (id, code, "userId", "clientId", "redirectUri", "expiresAt", "createdAt")
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT (id) DO UPDATE SET code = EXCLUDED.code
+      `, [c.id, c.code, c.userId, c.clientId, c.redirectUri, c.expiresAt, c.createdAt || new Date()]);
+    } catch (e) {}
+  }
+  console.log(`  Migrated ${codes.length} oauth_auth_codes`);
+}
+
+async function migrateOAuthAccessTokens(sqlite, pg) {
+  console.log('Migrating oauth_access_tokens...');
+  const tokens = await sqlite.all('SELECT * FROM oauth_access_tokens');
+  for (const t of tokens) {
+    try {
+      await pg.raw(`
+        INSERT INTO oauth_access_tokens (id, token, "userId", "clientId", "expiresAt", "createdAt")
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT (id) DO UPDATE SET token = EXCLUDED.token
+      `, [t.id, t.token, t.userId, t.clientId, t.expiresAt, t.createdAt || new Date()]);
+    } catch (e) {}
+  }
+  console.log(`  Migrated ${tokens.length} oauth_access_tokens`);
+}
+
+async function migrateStores(sqlite, pg) {
+  console.log('Migrating stores...');
+  const stores = await sqlite.all('SELECT * FROM stores');
+  for (const s of stores) {
+    try {
+      await pg.raw(`
+        INSERT INTO stores (id, "userId", name, slug, description, logo, banner, theme, "customDomain", "kycStatus", "kybStatus", "isActive", "createdAt", "updatedAt")
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name
+      `, [s.id, s.userId, s.name, s.slug, s.description, s.logo, s.banner, s.theme, s.customDomain, s.kycStatus || 'none', s.kybStatus || 'none', s.isActive !== 0, s.createdAt || new Date(), s.updatedAt || new Date()]);
+    } catch (e) {}
+  }
+  console.log(`  Migrated ${stores.length} stores`);
+}
+
+async function migrateUserCurrencies(sqlite, pg) {
+  console.log('Migrating user_currencies...');
+  const currencies = await sqlite.all('SELECT * FROM user_currencies');
+  for (const c of currencies) {
+    try {
+      await pg.raw(`
+        INSERT INTO user_currencies (id, "userId", code, enabled)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT (id) DO UPDATE SET enabled = EXCLUDED.enabled
+      `, [c.id, c.userId, c.code, c.enabled ? true : false]);
+    } catch (e) {}
+  }
+  console.log(`  Migrated ${currencies.length} user_currencies`);
+}
+
+async function migrateUserFeatureOverrides(sqlite, pg) {
+  console.log('Migrating user_feature_overrides...');
+  const overrides = await sqlite.all('SELECT * FROM user_feature_overrides');
+  for (const o of overrides) {
+    try {
+      await pg.raw(`
+        INSERT INTO user_feature_overrides (id, "userId", feature_key, is_enabled, "createdAt")
+        VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT (id) DO UPDATE SET is_enabled = EXCLUDED.is_enabled
+      `, [o.id, o.userId, o.feature_key, o.is_enabled ? true : false, o.createdAt || new Date()]);
+    } catch (e) {}
+  }
+  console.log(`  Migrated ${overrides.length} user_feature_overrides`);
+}
+
+async function migrateReferralUsage(sqlite, pg) {
+  console.log('Migrating referral_usage...');
+  const usage = await sqlite.all('SELECT * FROM referral_usage');
+  for (const u of usage) {
+    try {
+      await pg.raw(`
+        INSERT INTO referral_usage (id, "referralCodeId", "referredUserId", "createdAt")
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT (id) DO UPDATE SET "referredUserId" = EXCLUDED."referredUserId"
+      `, [u.id, u.referralCodeId, u.referredUserId, u.createdAt || new Date()]);
+    } catch (e) {}
+  }
+  console.log(`  Migrated ${usage.length} referral_usage`);
+}
+
+async function migrateRolePermissions(sqlite, pg) {
+  console.log('Migrating role_permissions...');
+  const perms = await sqlite.all('SELECT * FROM role_permissions');
+  for (const p of perms) {
+    try {
+      await pg.raw(`
+        INSERT INTO role_permissions (role_id, permission_id, scope_type, scope_id, "createdAt")
+        VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT (role_id, permission_id, scope_id) DO UPDATE SET scope_type = EXCLUDED.scope_type
+      `, [p.role_id, p.permission_id, p.scope_type || 'platform', p.scope_id || 'global', p.createdAt || new Date()]);
+    } catch (e) {}
+  }
+  console.log(`  Migrated ${perms.length} role_permissions`);
+}
+
+async function migrateAuditLogs(sqlite, pg) {
+  console.log('Migrating audit_logs...');
+  const logs = await sqlite.all('SELECT * FROM audit_logs');
+  for (const l of logs) {
+    try {
+      await pg.raw(`
+        INSERT INTO audit_logs (id, "userId", action, resource, details, ip_address, "createdAt")
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT (id) DO UPDATE SET action = EXCLUDED.action
+      `, [l.id, l.userId, l.action, l.resource, l.details, l.ip_address, l.createdAt || new Date()]);
+    } catch (e) {}
+  }
+  console.log(`  Migrated ${logs.length} audit_logs`);
+}
+
+async function migrateAdminAuditLogs(sqlite, pg) {
+  console.log('Migrating admin_audit_logs...');
+  const logs = await sqlite.all('SELECT * FROM admin_audit_logs');
+  for (const l of logs) {
+    try {
+      await pg.raw(`
+        INSERT INTO admin_audit_logs (id, actor_id, action, target_type, target_id, changes, ip_address, user_agent, tenant_id, "createdAt")
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT (id) DO UPDATE SET action = EXCLUDED.action
+      `, [l.id, l.actor_id, l.action, l.target_type, l.target_id, l.changes, l.ip_address, l.user_agent, l.tenant_id, l.createdAt || new Date()]);
+    } catch (e) {}
+  }
+  console.log(`  Migrated ${logs.length} admin_audit_logs`);
+}
+
+async function migrateInsightSessions(sqlite, pg) {
+  console.log('Migrating insight_sessions...');
+  const sessions = await sqlite.all('SELECT * FROM insight_sessions');
+  for (const s of sessions) {
+    try {
+      await pg.raw(`
+        INSERT INTO insight_sessions (id, "userId", session_id, device, browser, os, country, city, duration, "pageViews", "isRageClick", "isDeadClick", "endUserId", metadata, "createdAt")
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT (id) DO UPDATE SET duration = EXCLUDED.duration
+      `, [s.id, s.userId, s.sessionId, s.device, s.browser, s.os, s.country, s.city, s.duration || 0, s.pageViews || 0, s.isRageClick ? true : false, s.isDeadClick ? true : false, s.endUserId, s.metadata, s.createdAt || new Date()]);
+    } catch (e) {}
+  }
+  console.log(`  Migrated ${sessions.length} insight_sessions`);
+}
+
+async function migrateInsightEvents(sqlite, pg) {
+  console.log('Migrating insight_events...');
+  const events = await sqlite.all('SELECT * FROM insight_events');
+  for (const e of events) {
+    try {
+      await pg.raw(`
+        INSERT INTO insight_events (id, session_id, type, target, url, data, "createdAt")
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT (id) DO UPDATE SET type = EXCLUDED.type
+      `, [e.id, e.sessionId, e.type, e.target, e.url, e.data, e.createdAt || new Date()]);
+    } catch (e) {}
+  }
+  console.log(`  Migrated ${events.length} insight_events`);
+}
+
+async function migrateInsightEntityMappings(sqlite, pg) {
+  console.log('Migrating insight_entity_mappings...');
+  const mappings = await sqlite.all('SELECT * FROM insight_entity_mappings');
+  for (const m of mappings) {
+    try {
+      await pg.raw(`
+        INSERT INTO insight_entity_mappings (id, session_id, entity_type, entity_id, "createdAt")
+        VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT (id) DO UPDATE SET entity_id = EXCLUDED.entity_id
+      `, [m.id, m.sessionId, m.entityType, m.entityId, m.createdAt || new Date()]);
+    } catch (e) {}
+  }
+  console.log(`  Migrated ${mappings.length} insight_entity_mappings`);
 }
 
 migrate();

@@ -463,7 +463,7 @@ function SectionRenderer({ section, project, theme, products, interactive, cartC
       const navLinks: string[] = Array.isArray(p.navLinks) ? p.navLinks : ['Collections', 'New Arrivals', 'About', 'Contact'];
       const showCart = p.showCart !== false;
       const sticky = p.sticky === true || p.sticky === 'true';
-      const logoUrl = p.logoUrl || theme.logoUrl;
+      const logoUrl = (p.logoUrl as string) || theme.logoUrl;
 
       return (
         <header
@@ -532,7 +532,7 @@ function SectionRenderer({ section, project, theme, products, interactive, cartC
       const cta = String(p.cta || '');
       const ctaLink = String(p.ctaLink || '');
       const images: string[] = Array.isArray(p.images) ? p.images : [];
-      const heroImage = p.image || (images.length > 0 ? images[0] : null);
+      const heroImage = (p.image as string) || (images.length > 0 ? images[0] : null);
 
       const handleCtaClick = () => {
         if (!ctaLink) return;

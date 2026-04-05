@@ -5,12 +5,11 @@ const db = () => createConnection('shopalize_db');
 export const getStoreBySlug = async (req, res) => {
   try {
     const { slug } = req.params;
-    const host = req.headers.host;
+    const host = req.headers.host?.split(':')[0];
     
-    // Check if request is from a custom domain
     let project = null;
     
-    // First try to find by subdomain (e.g., mystore.sokostack.xyz)
+    // Try to find by subdomain (e.g., mystore.sokostack.xyz)
     if (host && host.includes('sokostack.xyz')) {
       const subdomain = host.replace('.sokostack.xyz', '');
       project = await db()('projects')
@@ -18,8 +17,8 @@ export const getStoreBySlug = async (req, res) => {
         .first();
     }
     
-    // If not found by subdomain, try custom domain
-    if (!project) {
+    // Try custom domain in projects table
+    if (!project && host) {
       project = await db()('projects')
         .where({ domain: host, status: 'published' })
         .first();

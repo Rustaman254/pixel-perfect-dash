@@ -10,10 +10,23 @@ export const createProject = async (req, res) => {
     const { name, description, templateId, subdomain, themeJson } = req.body;
     if (!name) return res.status(400).json({ message: 'Project name is required' });
 
-    const slug = slugify(name, { lower: true, strict: true }) || 'store';
+    let baseSlug = slugify(name, { lower: true, strict: true }) || 'store';
+    let slug = baseSlug;
+    let slugCounter = 1;
+    
+    while (await db()('projects').where({ slug }).first()) {
+      slug = `${baseSlug}-${slugCounter}`;
+      slugCounter++;
+    }
 
-    // Generate subdomain: storename.sokostack.xyz (without random suffix)
-    const projectSubdomain = subdomain || slugify(name, { lower: true, strict: true }).substring(0, 20);
+    let baseSubdomain = (subdomain || baseSlug).replace(/[^a-z0-9]/g, '').substring(0, 20);
+    let projectSubdomain = baseSubdomain;
+    let subCounter = 1;
+    
+    while (await db()('projects').where({ subdomain: projectSubdomain }).first()) {
+      projectSubdomain = `${baseSubdomain}${subCounter}`;
+      subCounter++;
+    }
 
     // Load template sections if templateId provided
     let sectionsJson = null;
@@ -36,7 +49,7 @@ export const createProject = async (req, res) => {
       fonts: { heading: 'Inter', body: 'Inter' },
     });
 
-    const [projectId] = await db()('projects')
+    const [{ id: projectId }] = await db()('projects')
       .insert({
         userId: req.user.id,
         name,
@@ -48,7 +61,8 @@ export const createProject = async (req, res) => {
         themeJson: projectThemeJson,
         isPremium: false,
         premiumStatus: 'basic',
-      });
+      })
+      .returning('id');
 
     const project = await db()('projects').where({ id: projectId }).first();
 
@@ -86,7 +100,9 @@ export const createProject = async (req, res) => {
       description: `Created new store: ${name}`
     });
 
-    res.status(201).json(project);
+    const fullProject = await db()('projects').where({ id: projectId }).first();
+
+    res.status(201).json(fullProject);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

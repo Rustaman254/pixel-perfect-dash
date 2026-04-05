@@ -23,7 +23,7 @@ export const createPage = async (req, res) => {
       slug = `${slug}-${shortId}`;
     }
 
-    const [pageId] = await db()('project_pages')
+    const [{ id: pageId }] = await db()('project_pages')
       .insert({
         projectId: project.id,
         name,
@@ -32,7 +32,8 @@ export const createPage = async (req, res) => {
         sectionsJson: sectionsJson || JSON.stringify([]),
         seoTitle: seoTitle || name,
         seoDescription: seoDescription || '',
-      });
+      })
+      .returning('id');
     
     const page = await db()('project_pages').where({ id: pageId }).first();
 

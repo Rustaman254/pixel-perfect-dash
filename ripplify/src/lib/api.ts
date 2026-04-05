@@ -46,11 +46,7 @@ export const fetchWithAuth = async (endpoint: string, options: RequestInit = {})
     if (!response.ok) {
         if (response.status === 401) {
             localStorage.removeItem('auth_token');
-            localStorage.removeItem('sokostack_profile');
-            // Prevent redirect loop if already on login page
-            if (window.location.pathname !== '/login') {
-                window.location.href = '/login';
-            }
+            localStorage.removeItem('ripplify_profile');
         }
         const errorData = await response.json().catch(() => ({}));
         const err = new Error(errorData.message || `API request failed with status ${response.status}`) as Error & Record<string, any>;

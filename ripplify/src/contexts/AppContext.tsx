@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { fetchWithAuth } from '@/lib/api';
+import { fetchWithAuth, BASE_URL } from '@/lib/api';
 import { useSSOSync } from '@/hooks/useSSOSync';
 
 // Common Types
@@ -133,10 +133,52 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         const saved = localStorage.getItem('ripplify_profile');
         return saved ? JSON.parse(saved) : null;
     });
-    const [isAuthenticated, setIsAuthenticated] = useState(() => {
-        return !!localStorage.getItem('auth_token');
-    });
+    const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
     const [featureFlags, setFeatureFlags] = useState<Record<string, boolean>>({});
+
+    const validateToken = async (): Promise<{ valid: boolean; user?: Partial<UserProfile> }> => {
+        const token = localStorage.getItem('auth_token');
+        if (!token) return { valid: false };
+        
+        try {
+            const res = await fetch(`${BASE_URL}/auth/me`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            
+            if (!res.ok) {
+                if (res.status === 401) {
+                    localStorage.removeItem('auth_token');
+                    localStorage.removeItem('ripplify_profile');
+                }
+                return { valid: false };
+            }
+            
+            const data = await res.json();
+            return { valid: true, user: data.user || data };
+        } catch {
+            return { valid: false };
+        }
+    };
+
+    useEffect(() => {
+        const initAuth = async () => {
+            const token = localStorage.getItem('auth_token');
+            if (!token) {
+                setIsAuthenticated(false);
+                return;
+            }
+            
+            const validation = await validateToken();
+            if (validation.valid && validation.user) {
+                setUserProfile(validation.user as UserProfile);
+                setIsAuthenticated(true);
+            } else {
+                setIsAuthenticated(false);
+            }
+        };
+        
+        initAuth();
+    }, []);
 
     const loadFeatureFlags = async () => {
         if (!isAuthenticated) return;
@@ -204,6 +246,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     };
 
     useEffect(() => {
+        if (isAuthenticated === null) return;
+        
         if (isAuthenticated) {
             refreshData();
             loadFeatureFlags();

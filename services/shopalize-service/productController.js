@@ -9,7 +9,7 @@ async function getOrCreateDefaultProject(userId) {
   if (!project) {
     const crypto = await import('crypto');
     const shortId = crypto.randomBytes(3).toString('hex');
-    const [id] = await db()('projects').insert({
+    const [{ id }] = await db()('projects').insert({
       userId,
       name: 'My Store',
       slug: `my-store-${shortId}`,
@@ -18,7 +18,7 @@ async function getOrCreateDefaultProject(userId) {
         colors: { primary: '#0D5D6D', secondary: '#F2F4F7', accent: '#00D26A', background: '#ffffff', text: '#333333' },
         fonts: { heading: 'Inter', body: 'Inter' },
       }),
-    });
+    }).returning('id');
     project = await db()('projects').where({ id }).first();
   }
   return project;
@@ -37,7 +37,7 @@ export const createProduct = async (req, res) => {
 
     if (!project) return res.status(404).json({ message: 'Project not found' });
 
-    const [productId] = await db()('store_products')
+    const [{ id: productId }] = await db()('store_products')
       .insert({
         projectId: project.id,
         name,
@@ -49,7 +49,8 @@ export const createProduct = async (req, res) => {
         category: category || null,
         inventory: inventory !== undefined ? parseInt(inventory) : -1,
         isActive: isActive !== undefined ? isActive : true,
-      });
+      })
+      .returning('id');
 
     const product = await db()('store_products').where({ id: productId }).first();
 

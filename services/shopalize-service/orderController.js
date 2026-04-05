@@ -31,7 +31,7 @@ export const createOrder = async (req, res) => {
       }
     }
 
-    const [orderId] = await db()('store_orders')
+    const [{ id: orderId }] = await db()('store_orders')
       .insert({
         projectId: project.id,
         buyerName: buyerName || '',
@@ -42,7 +42,8 @@ export const createOrder = async (req, res) => {
         status: 'paid',
         itemsJson: JSON.stringify(parsedItems),
         ripplifyTransactionId: ripplifyTransactionId || null,
-      });
+      })
+      .returning('id');
     
     const order = await db()('store_orders').where({ id: orderId }).first();
     

@@ -16,8 +16,9 @@ const Login = () => {
   const { login, isAuthenticated, userProfile } = useAppContext();
   const [searchParams] = useSearchParams();
 
-  // If already logged in as seller, redirect to dashboard
   useEffect(() => {
+    if (isAuthenticated === null) return;
+    
     if (isAuthenticated && userProfile?.role === "seller") {
       navigate("/", { replace: true });
     }

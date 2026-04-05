@@ -7,7 +7,7 @@ import {
   AlertCircle, Wifi, WifiOff, Lock, LockOpen, DollarSign
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { fetchWithDnsAuth } from '@/lib/api';
+import { fetchWithAuth, fetchWithDnsAuth } from '@/lib/api';
 
 interface Subdomain {
   id: number;
@@ -63,14 +63,12 @@ export default function DNSPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [subsRes, domainsRes, statsRes] = await Promise.all([
-        fetchWithDnsAuth('/api/dns/subdomains'),
-        fetchWithDnsAuth('/api/domains'),
-        fetchWithDnsAuth('/api/dns/subdomains/stats/summary'),
+      const [subsRes, domainsRes] = await Promise.all([
+        fetchWithDnsAuth('/subdomains'),
+        fetchWithDnsAuth('/domains'),
       ]);
       setSubdomains(subsRes);
       setCustomDomains(domainsRes);
-      setStats(statsRes);
     } catch (err) {
       console.error('Failed to load DNS data:', err);
     } finally {
@@ -83,12 +81,11 @@ export default function DNSPage() {
     
     setCreating(true);
     try {
-      await fetchWithDnsAuth('/api/dns/subdomains', {
+      await fetchWithAuth('/shopalize/domains/subdomains', {
         method: 'POST',
         body: JSON.stringify({
-          subdomain: newSubdomain.subdomain,
-          domain: 'shopalize.com',
-          target: newSubdomain.target,
+          storeId: newSubdomain.subdomain,
+          storeName: newSubdomain.subdomain,
         }),
       });
       setNewSubdomain({ subdomain: '', target: '' });
@@ -103,7 +100,7 @@ export default function DNSPage() {
 
   const handleToggleSSL = async (subdomain: Subdomain) => {
     try {
-      await fetchWithDnsAuth(`/api/dns/subdomains/${subdomain.id}`, {
+      await fetchWithAuth(`/shopalize/domains/subdomains/${subdomain.id}`, {
         method: 'PUT',
         body: JSON.stringify({ ssl_enabled: !subdomain.ssl_enabled }),
       });
@@ -117,7 +114,7 @@ export default function DNSPage() {
     if (!confirm('Are you sure you want to delete this subdomain?')) return;
     
     try {
-      await fetchWithDnsAuth(`/api/dns/subdomains/${id}`, { method: 'DELETE' });
+      await fetchWithAuth(`/shopalize/domains/subdomains/${id}`, { method: 'DELETE' });
       loadData();
     } catch (err) {
       console.error('Failed to delete subdomain:', err);

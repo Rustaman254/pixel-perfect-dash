@@ -35,6 +35,14 @@ const queryClient = new QueryClient();
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, userProfile } = useAppContext();
 
+  if (isAuthenticated === null) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#025864]"></div>
+      </div>
+    );
+  }
+
   if (!isAuthenticated || !userProfile) return <Navigate to="/login" replace />;
 
   // Check if user account is disabled/suspended
