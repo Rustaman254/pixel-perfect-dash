@@ -5,6 +5,7 @@ import * as ctrl from './orderController.js';
 const router = Router();
 
 router.get('/', protectJwt, ctrl.getOrders);
+router.post('/', protectJwt, ctrl.createOrder);
 router.get('/stats', protectJwt, ctrl.getOrderStats);
 router.put('/:id', protectJwt, ctrl.updateOrder);
 

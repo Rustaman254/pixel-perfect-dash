@@ -63,6 +63,14 @@ export const ripplifyService = {
   getUserTransactions: (userId, query = '') => callService('ripplify', `/internal/transactions?userId=${userId}${query}`),
   getUserPayouts: (userId) => callService('ripplify', `/internal/payouts?userId=${userId}`),
   getPaymentLinks: (userId) => callService('ripplify', `/internal/links?userId=${userId}`),
+  createShopalizeCheckout: (checkoutData, authHeader) => callService('ripplify', '/api/ripplify/shopalize/checkout/shopalize', {
+    method: 'POST',
+    body: checkoutData,
+    userToken: authHeader?.replace('Bearer ', ''),
+  }),
+  getEnabledPaymentMethods: (userId, authHeader) => callService('ripplify', `/api/ripplify/payment-methods?userId=${userId}`, {
+    userToken: authHeader?.replace('Bearer ', ''),
+  }),
 };
 
 export const watchtowerService = {

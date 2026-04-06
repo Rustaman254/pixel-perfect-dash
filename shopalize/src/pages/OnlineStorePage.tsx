@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '@/store';
+import { useAuth } from '@/contexts/AuthContext';
 import { Palette, Eye, ExternalLink, Loader2, Plus, Pencil, Search, Smartphone, Monitor, Layout, Trash2, CheckCircle2, Crown, Zap, ShieldCheck, X, ShoppingCart, CreditCard, Banknote, Smartphone as PhoneIcon, Globe, Link2, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import StorePreview from '@/components/StorePreview';
@@ -9,6 +10,7 @@ import { fetchWithAuth } from '@/lib/api';
 export default function OnlineStorePage() {
   const navigate = useNavigate();
   const { projects, loadProjects, publishProject, deleteProject, upgradeProject, updateProjectTheme } = useStore();
+  const { userProfile } = useAuth();
   const [loading, setLoading] = useState(true);
   const [upgrading, setUpgrading] = useState<string | null>(null);
   const [upgradeModal, setUpgradeModal] = useState<{ open: boolean; projectId: string | null }>({ open: false, projectId: null });
@@ -72,8 +74,7 @@ export default function OnlineStorePage() {
   };
 
   const getStoreUrl = (project: any): string => {
-    if (project.domain) return `https://${project.domain}`;
-    return `https://${project.subdomain}.sokostack.xyz`;
+    return `https://shopalize.sokostack.xyz/s/${project.slug}`;
   };
 
   const publishedProject = projects.find(p => p.theme.isPublished);
@@ -162,25 +163,25 @@ export default function OnlineStorePage() {
                   </div>
                )}
 
-               {/* Store URL & Custom Domain */}
-               {publishedProject && (
-                 <div className="mt-6 pt-6 border-t border-gray-100">
-                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                     <div className="flex items-center gap-3">
-                       <Globe className="w-5 h-5 text-gray-400" />
-                       <div>
-                         <p className="text-[12px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Your Store</p>
-                         <a 
-                           href={getStoreUrl(publishedProject)}
-                           target="_blank"
-                           rel="noopener noreferrer"
-                           className="text-[14px] font-medium text-[#0A0A0A] hover:underline"
-                         >
-                           {publishedProject.domain || `https://${publishedProject.subdomain}.sokostack.xyz`}
-                         </a>
-                       </div>
-                     </div>
-                     <button 
+                {/* Store URL & Custom Domain */}
+                {publishedProject && (
+                  <div className="mt-6 pt-6 border-t border-gray-100">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <Globe className="w-5 h-5 text-gray-400" />
+                        <div>
+                          <p className="text-[12px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Your Store</p>
+                          <a 
+                            href={getStoreUrl(publishedProject)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[14px] font-medium text-[#0A0A0A] hover:underline"
+                           >
+                             {`shopalize.sokostack.xyz/s/${publishedProject.slug}`}
+                           </a>
+                        </div>
+                      </div>
+                      <button
                        onClick={() => handleOpenDomainModal(publishedProject.id, publishedProject.domain || '')}
                        className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 hover:border-black text-[13px] font-bold text-gray-700 rounded-xl transition-all"
                      >

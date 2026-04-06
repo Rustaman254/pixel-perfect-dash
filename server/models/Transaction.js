@@ -5,118 +5,98 @@ const Transaction = {
     create: async (transactionData) => {
         const db = getDb();
         const trackingToken = uuidv4();
-        const result = await db.run(`
-      INSERT INTO transactions (
-        userId, linkId, buyerName, buyerEmail, buyerPhone, amount, fee, currency, status, transactionId, trackingToken, type
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [
-            transactionData.userId,
-            transactionData.linkId,
-            transactionData.buyerName,
-            transactionData.buyerEmail,
-            transactionData.buyerPhone,
-            transactionData.amount,
-            transactionData.fee || 0,
-            transactionData.currency,
-            transactionData.status || 'Pending',
-            transactionData.transactionId,
+        const [result] = await db('transactions').insert({
+            userId: transactionData.userId,
+            linkId: transactionData.linkId,
+            buyerName: transactionData.buyerName,
+            buyerEmail: transactionData.buyerEmail,
+            buyerPhone: transactionData.buyerPhone,
+            amount: transactionData.amount,
+            fee: transactionData.fee || 0,
+            currency: transactionData.currency,
+            status: transactionData.status || 'Pending',
+            transactionId: transactionData.transactionId,
             trackingToken,
-            transactionData.type || 'Payment'
-        ]);
+            type: transactionData.type || 'Payment'
+        }).returning('*');
 
-        return await db.get(`SELECT * FROM transactions WHERE id = ?`, result.lastID);
+        return result;
     },
 
     findAllByUserId: async (userId) => {
         const db = getDb();
-        return await db.all(`
-            SELECT t.*, p.name as linkName, p.slug as linkSlug
-            FROM transactions t
-            LEFT JOIN payment_links p ON t.linkId = p.id
-            WHERE t.userId = ? 
-            ORDER BY t.createdAt DESC
-        `, userId);
+        return await db('transactions').leftJoin('payment_links', 'transactions.linkId', 'payment_links.id')
+            .select('transactions.*', 'payment_links.name as linkName', 'payment_links.slug as linkSlug')
+            .where('transactions.userId', userId)
+            .orderBy('transactions.createdAt', 'desc');
     },
 
     findById: async (id) => {
         const db = getDb();
-        return await db.get(`SELECT * FROM transactions WHERE id = ?`, id);
+        return await db('transactions').where({ id }).first();
     },
 
     findByTransactionId: async (transactionId) => {
         const db = getDb();
-        return await db.get(`SELECT * FROM transactions WHERE transactionId = ?`, transactionId);
+        return await db('transactions').where({ transactionId }).first();
     },
 
     findByTrackingToken: async (token) => {
         const db = getDb();
-        return await db.get(`
-            SELECT t.*, p.name as linkName, p.slug as linkSlug, p.status as linkStatus,
-                   p.currency, p.price, p.deliveryDays, p.updatedAt as linkUpdatedAt,
-                   u.businessName
-            FROM transactions t
-            LEFT JOIN payment_links p ON t.linkId = p.id
-            LEFT JOIN users u ON p.userId = u.id
-            WHERE t.trackingToken = ?
-        `, token);
+        return await db('transactions')
+            .leftJoin('payment_links', 'transactions.linkId', 'payment_links.id')
+            .leftJoin('users', 'payment_links.userId', 'users.id')
+            .select('transactions.*', 'payment_links.name as linkName', 'payment_links.slug as linkSlug', 
+                'payment_links.status as linkStatus', 'payment_links.currency', 'payment_links.price', 
+                'payment_links.deliveryDays', 'payment_links.updatedAt as linkUpdatedAt', 'users.businessName')
+            .where('transactions.trackingToken', token).first();
     },
 
     findStats: async (userId) => {
         const db = getDb();
-        return await db.all(`
-            SELECT 
-                strftime('%Y-%m-%d', createdAt) as date,
-                SUM(CASE WHEN status = 'Completed' OR status = 'Funds locked' OR status = 'Shipped' THEN amount ELSE 0 END) as revenue,
-                COUNT(*) as count,
-                SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) as successfulCount,
-                SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) as pendingCount
-            FROM transactions
-            WHERE userId = ?
-            GROUP BY date
-            ORDER BY date ASC
-            LIMIT 30
-        `, userId);
+        return await db('transactions')
+            .select(db.raw(`DATE(createdAt) as date`))
+            .select(db.raw(`SUM(CASE WHEN status IN ('Completed', 'Funds locked', 'Shipped') THEN amount ELSE 0 END) as revenue`))
+            .select(db.raw(`COUNT(*) as count`))
+            .select(db.raw(`SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) as successfulCount`))
+            .select(db.raw(`SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) as pendingCount`))
+            .where({ userId })
+            .groupByRaw(`DATE(createdAt)`)
+            .orderBy('date', 'asc')
+            .limit(30);
     },
 
     findPaymentMethodStats: async (userId) => {
         const db = getDb();
-        return await db.all(`
-            SELECT 
-                currency as name,
-                COUNT(*) as count,
-                SUM(amount) as totalAmount
-            FROM transactions
-            WHERE userId = ?
-            GROUP BY currency
-        `, userId);
+        return await db('transactions')
+            .select('currency as name')
+            .select(db.raw(`COUNT(*) as count`))
+            .select(db.raw(`SUM(amount) as totalAmount`))
+            .where({ userId })
+            .groupBy('currency');
     },
 
     findAdminStats: async () => {
         const db = getDb();
-        return await db.all(`
-            SELECT 
-                u.id,
-                u.businessName,
-                u.email,
-                COUNT(t.id) as txCount,
-                SUM(CASE WHEN t.status = 'Completed' THEN t.amount ELSE 0 END) as totalVolume,
-                SUM(t.fee) as totalFees
-            FROM users u
-            LEFT JOIN transactions t ON u.id = t.userId
-            WHERE u.role = 'seller'
-            GROUP BY u.id
-            ORDER BY totalVolume DESC
-        `);
+        return await db('users')
+            .leftJoin('transactions', 'users.id', 'transactions.userId')
+            .select('users.id', 'users.businessName', 'users.email')
+            .select(db.raw(`COUNT(transactions.id) as txCount`))
+            .select(db.raw(`SUM(CASE WHEN transactions.status = 'Completed' THEN transactions.amount ELSE 0 END) as totalVolume`))
+            .select(db.raw(`SUM(transactions.fee) as totalFees`))
+            .where('users.role', 'seller')
+            .groupBy('users.id')
+            .orderByRaw('totalVolume DESC');
     },
 
     updateStatus: async (id, status) => {
         const db = getDb();
-        return await db.run(`UPDATE transactions SET status = ? WHERE id = ?`, [status, id]);
+        return await db('transactions').where({ id }).update({ status });
     },
 
     updateTransactionId: async (id, transactionId) => {
         const db = getDb();
-        return await db.run(`UPDATE transactions SET transactionId = ? WHERE id = ?`, [transactionId, id]);
+        return await db('transactions').where({ id }).update({ transactionId });
     }
 };
 

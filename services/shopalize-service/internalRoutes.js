@@ -2,11 +2,15 @@ import { Router } from 'express';
 import { internalAuth } from '../shared/auth.js';
 import * as ctrl from './internalController.js';
 import * as adminCtrl from './adminController.js';
+import * as orderCtrl from './orderController.js';
 
 const router = Router();
 
 router.get('/internal/stores', internalAuth, ctrl.getStores);
 router.get('/internal/stats', internalAuth, ctrl.getStoreStats);
+
+// Webhook for ripplify payment events
+router.post('/internal/webhook/ripplify', orderCtrl.handleRipplifyWebhook);
 
 // Internal admin routes
 router.get('/internal/admin/stats', internalAuth, adminCtrl.getStats);

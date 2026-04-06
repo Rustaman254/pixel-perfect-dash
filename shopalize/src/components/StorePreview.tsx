@@ -50,6 +50,7 @@ export default function StorePreview({ project, interactive = false, activePageI
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [showCart, setShowCart] = useState(false);
   const [checkoutStep, setCheckoutStep] = useState<'cart' | 'shipping' | 'payment' | 'success'>('cart');
+  const [buyerInfo, setBuyerInfo] = useState({ fullName: '', email: '', phone: '', address: '' });
 
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
   const cartTotal = getCartTotal();
@@ -62,15 +63,29 @@ export default function StorePreview({ project, interactive = false, activePageI
 
   const handleCheckout = async () => {
     if (cart.length === 0) return;
+    if (!buyerInfo.fullName || !buyerInfo.email || !buyerInfo.phone) {
+      return;
+    }
     setCheckoutStep('payment');
     try {
-      await createOrder(project.id, cartTotal, cart);
-      setCheckoutStep('success');
-      setTimeout(() => {
-        clearCart();
-        setShowCart(false);
-        setCheckoutStep('cart');
-      }, 3000);
+      const returnUrl = `${window.location.origin}/s/${project.slug}?success=true`;
+      const result = await createOrder(project.id, cartTotal, cart, buyerInfo.email, buyerInfo.phone, buyerInfo.fullName, returnUrl);
+      if (result.checkoutSlug) {
+        localStorage.setItem(`buyer_info_${result.checkoutSlug}`, JSON.stringify({
+          fullName: buyerInfo.fullName,
+          email: buyerInfo.email,
+          phone: buyerInfo.phone
+        }));
+        window.location.href = result.checkoutUrl;
+      } else {
+        setCheckoutStep('success');
+        setTimeout(() => {
+          clearCart();
+          setShowCart(false);
+          setCheckoutStep('cart');
+          setBuyerInfo({ fullName: '', email: '', phone: '', address: '' });
+        }, 3000);
+      }
     } catch {
       setCheckoutStep('cart');
     }
@@ -104,6 +119,8 @@ export default function StorePreview({ project, interactive = false, activePageI
             onRemove={(item) => removeFromCart(item.product.id, item.selectedVariants)}
             onCheckout={handleCheckout}
             onSetStep={setCheckoutStep}
+            buyerInfo={buyerInfo}
+            setBuyerInfo={setBuyerInfo}
           />
         )}
       </div>
@@ -142,6 +159,8 @@ export default function StorePreview({ project, interactive = false, activePageI
           onRemove={(item) => removeFromCart(item.product.id, item.selectedVariants)}
           onCheckout={handleCheckout}
           onSetStep={setCheckoutStep}
+          buyerInfo={buyerInfo}
+          setBuyerInfo={setBuyerInfo}
         />
       )}
     </div>
@@ -154,7 +173,7 @@ function getSectionStyleClass(anim?: AnimationStyle, idx: number = 0): string {
   return `${base}`;
 }
 
-function CartSidebar({ theme, cart, cartTotal, checkoutStep, onClose, onUpdateQuantity, onRemove, onCheckout, onSetStep }: {
+function CartSidebar({ theme, cart, cartTotal, checkoutStep, onClose, onUpdateQuantity, onRemove, onCheckout, onSetStep, buyerInfo, setBuyerInfo }: {
   theme: Project['theme'];
   cart: CartItem[];
   cartTotal: number;
@@ -164,6 +183,8 @@ function CartSidebar({ theme, cart, cartTotal, checkoutStep, onClose, onUpdateQu
   onRemove: (item: CartItem) => void;
   onCheckout: () => void;
   onSetStep: (step: 'cart' | 'shipping' | 'payment' | 'success') => void;
+  buyerInfo: { fullName: string; email: string; phone: string; address: string };
+  setBuyerInfo: React.Dispatch<React.SetStateAction<{ fullName: string; email: string; phone: string; address: string }>>;
 }) {
   return (
     <div className="fixed inset-0 z-[100] flex justify-end" onClick={onClose}>
@@ -258,11 +279,27 @@ function CartSidebar({ theme, cart, cartTotal, checkoutStep, onClose, onUpdateQu
         {checkoutStep === 'shipping' && (
           <>
             <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
+                <p className="text-sm text-blue-800 font-medium">Required for payment</p>
+                <p className="text-xs text-blue-600 mt-1">Your name, email and phone are required to create a secure payment link via Ripplify.</p>
+              </div>
               <div className="space-y-4">
-                {['Full Name', 'Email', 'Phone', 'Address'].map(label => (
-                  <div key={label}>
-                    <label className="text-xs font-bold uppercase tracking-wider opacity-50 mb-1.5 block">{label}</label>
-                    <input placeholder={label === 'Full Name' ? 'John Doe' : label === 'Email' ? 'john@example.com' : label === 'Phone' ? '+254 700 000 000' : '123 Main Street'} className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:border-black outline-none transition-all text-sm" />
+                {[
+                  { key: 'fullName', label: 'Full Name *', placeholder: 'John Doe', type: 'text', required: true },
+                  { key: 'email', label: 'Email *', placeholder: 'john@example.com', type: 'email', required: true },
+                  { key: 'phone', label: 'Phone *', placeholder: '+254 700 000 000', type: 'tel', required: true },
+                  { key: 'address', label: 'Address', placeholder: '123 Main Street', type: 'text', required: false },
+                ].map(field => (
+                  <div key={field.key}>
+                    <label className="text-xs font-bold uppercase tracking-wider opacity-50 mb-1.5 block">{field.label}</label>
+                    <input 
+                      type={field.type}
+                      placeholder={field.placeholder}
+                      required={field.required}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:border-black outline-none transition-all text-sm"
+                      value={buyerInfo[field.key as keyof typeof buyerInfo]}
+                      onChange={(e) => setBuyerInfo(prev => ({ ...prev, [field.key]: e.target.value }))}
+                    />
                   </div>
                 ))}
               </div>
@@ -270,11 +307,12 @@ function CartSidebar({ theme, cart, cartTotal, checkoutStep, onClose, onUpdateQu
             <div className="p-4 sm:p-6 border-t space-y-3" style={{ borderColor: theme.textColor + '10' }}>
               <button
                 onClick={onCheckout}
-                className="w-full py-4 rounded-xl text-white font-bold text-sm uppercase tracking-wider transition-all hover:opacity-90 flex items-center justify-center gap-3"
+                disabled={!buyerInfo.fullName || !buyerInfo.email || !buyerInfo.phone}
+                className="w-full py-4 rounded-xl text-white font-bold text-sm uppercase tracking-wider transition-all hover:opacity-90 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ backgroundColor: theme.primaryColor }}
               >
                 <ShoppingCart className="w-4 h-4" />
-                Pay ${cartTotal.toLocaleString()} with Ripplify
+                Pay ${cartTotal.toLocaleString()} via Ripplify
               </button>
               <button onClick={() => onSetStep('cart')} className="w-full py-3 text-sm font-bold opacity-50 hover:opacity-100 transition-opacity">
                 Back to cart
@@ -286,8 +324,8 @@ function CartSidebar({ theme, cart, cartTotal, checkoutStep, onClose, onUpdateQu
         {checkoutStep === 'payment' && (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
             <div className="w-12 h-12 border-4 border-t-transparent rounded-full animate-spin mb-6" style={{ borderColor: theme.primaryColor, borderTopColor: 'transparent' }} />
-            <h3 className="text-lg font-bold mb-2">Processing Payment</h3>
-            <p className="text-sm opacity-60">Ripplify is securely processing your order...</p>
+            <h3 className="text-lg font-bold mb-2">Redirecting to Ripplify</h3>
+            <p className="text-sm opacity-60">Complete your payment securely via Ripplify...</p>
           </div>
         )}
       </div>

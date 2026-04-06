@@ -20,7 +20,6 @@ const manageItems = [
   { icon: Megaphone, label: 'Marketing', path: '/marketing' },
   { icon: Percent, label: 'Discounts', path: '/discounts' },
   { icon: Globe, label: 'Online Store', path: '/online-store' },
-  { icon: Server, label: 'DNS & Domains', path: '/dns' },
 ];
 
 const bottomItems = [

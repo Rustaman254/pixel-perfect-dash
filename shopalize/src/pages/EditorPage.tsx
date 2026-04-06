@@ -532,33 +532,9 @@ export default function EditorPage() {
                      </div>
                   </div>
                 ) : null}
-              </div>
-           </div>
-
-           {/* INSPECTOR PANEL: Block Level */}
-           <div className={`flex-1 flex flex-col w-full h-full absolute inset-0 bg-white transition-transform duration-300 z-10 ${view.type === 'block' ? 'translate-x-0' : 'translate-x-full'}`}>
-              <div className="flex items-center h-12 border-b border-gray-200 px-2 shrink-0 bg-gray-50/50">
-                 <button onClick={() => setView({ type: 'section', id: view.type === 'block' ? view.sectionId : '' })} className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-black rounded-md hover:bg-gray-200/50"><ArrowLeft className="w-4 h-4" /></button>
-                 <span className="text-[13px] font-bold ml-2 capitalize flex-1 truncate">Edit Block</span>
-                 {view.type === 'block' && (
-                   <button onClick={() => handleRemoveBlock(view.sectionId, view.blockId)} className="w-8 h-8 flex items-center justify-center text-red-400 hover:text-red-600 rounded-md hover:bg-red-50"><Trash2 className="w-4 h-4" /></button>
-                 )}
-              </div>
-              <div className="flex-1 overflow-y-auto p-5 no-scrollbar bg-gray-50/20">
-                 {activeBlock && (
-                   <div className="space-y-4">
-                      {Object.entries(activeBlock.props).map(([key, value]) => (
-                         <div key={key}>
-                            <label className="text-[12px] font-bold text-gray-700 capitalize block mb-1.5">{key.replace(/([A-Z])/g, ' $1').trim()}</label>
-                            {typeof value === 'string' && <input value={value} onChange={(e) => handleUpdateBlockProps((view as any).sectionId, activeBlock.id, { [key]: e.target.value })} className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-[13px] shadow-sm outline-none focus:border-black focus:ring-1 focus:ring-black" />}
-                            {typeof value === 'number' && <input type="number" value={value} onChange={(e) => handleUpdateBlockProps((view as any).sectionId, activeBlock.id, { [key]: Number(e.target.value) })} className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-[13px] shadow-sm outline-none focus:border-black focus:ring-1 focus:ring-black" />}
-                         </div>
-                      ))}
-                   </div>
-                 )}
-              </div>
-           </div>
-        </aside>
+               </div>
+            </div>
+         </aside>
 
         {/* MAIN CANVAS - Live Editor Wrapper */}
         <main className="flex-1 bg-gray-100 flex justify-center items-start overflow-y-auto shadow-inner h-[calc(100vh-56px)]">

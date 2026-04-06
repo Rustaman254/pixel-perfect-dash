@@ -1,11 +1,12 @@
 import { createConnection } from '../shared/db.js';
 import { recordActivity } from './activityController.js';
+import { ripplifyService } from '../shared/serviceClient.js';
 
 const db = () => createConnection('shopalize_db');
 
 export const createOrder = async (req, res) => {
   try {
-    const { projectId, items, buyerName, buyerEmail, buyerPhone, totalAmount, amount, currency, ripplifyTransactionId } = req.body;
+    const { projectId, items, buyerName, buyerEmail, buyerPhone, totalAmount, amount, currency, ripplifyTransactionId, returnUrl } = req.body;
 
     const orderAmount = totalAmount || amount;
 
@@ -18,19 +19,6 @@ export const createOrder = async (req, res) => {
 
     const parsedItems = typeof items === 'string' ? JSON.parse(items) : (items || []);
 
-    // Decrement inventory for each item
-    for (const item of parsedItems) {
-      if (item.productId) {
-        const product = await db()('store_products').where({ id: parseInt(item.productId), projectId: project.id }).first();
-        if (product && product.inventory > 0) {
-          await db()('store_products')
-            .where({ id: product.id })
-            .decrement('inventory', item.quantity || 1)
-            .update({ updatedAt: db().fn.now() });
-        }
-      }
-    }
-
     const [{ id: orderId }] = await db()('store_orders')
       .insert({
         projectId: project.id,
@@ -39,25 +27,54 @@ export const createOrder = async (req, res) => {
         buyerPhone: buyerPhone || '',
         amount: parseFloat(orderAmount),
         currency: currency || project.currency || 'USD',
-        status: 'paid',
+        status: 'pending',
         itemsJson: JSON.stringify(parsedItems),
         ripplifyTransactionId: ripplifyTransactionId || null,
       })
       .returning('id');
     
     const order = await db()('store_orders').where({ id: orderId }).first();
-    
-    // Record activity
-    await recordActivity({
-      userId: req.user.id,
-      action: 'order_created',
-      projectId: project.id,
-      description: `New order #${order.id} received for ${amount} ${currency || project.currency || 'USD'}`,
-      metadata: { orderId: order.id, amount, buyerEmail }
-    });
 
-    res.status(201).json(order);
+    const webhookUrl = `${process.env.SHOPALIZE_SERVICE_URL || 'http://localhost:3008'}/api/shopalize/internal/webhook/ripplify`;
+    
+    let checkoutUrl = null;
+    let checkoutSlug = null;
+    
+    if (!ripplifyTransactionId && buyerEmail) {
+      try {
+        const checkout = await ripplifyService.createShopalizeCheckout({
+          storeId: project.id,
+          storeName: project.name,
+          storeDomain: project.domain || `${project.subdomain}.sokostack.xyz`,
+          orderId: order.id,
+          items: parsedItems,
+          buyerName: buyerName || 'Customer',
+          buyerEmail,
+          buyerPhone: buyerPhone || '',
+          totalAmount: orderAmount,
+          currency: currency || project.currency || 'KES',
+          returnUrl: returnUrl || '',
+          webhookUrl,
+        }, req.headers.authorization);
+        
+        checkoutUrl = checkout.checkoutUrl;
+        checkoutSlug = checkout.checkoutSlug;
+        
+        await db()('store_orders')
+          .where({ id: orderId })
+          .update({ ripplifySlug: checkoutSlug });
+      } catch (ripplifyErr) {
+        console.error('Ripplify checkout creation failed:', ripplifyErr.message);
+      }
+    }
+    
+    res.status(201).json({
+      ...order,
+      checkoutUrl,
+      checkoutSlug,
+    });
   } catch (error) {
+    console.error('CreateOrder error:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -109,7 +126,7 @@ export const getOrderStats = async (req, res) => {
 
     const revenueResult = await db()('store_orders')
       .whereIn('projectId', projectIds)
-      .whereNot({ status: 'cancelled' })
+      .whereIn('status', ['completed', 'paid'])
       .sum('amount as total')
       .first();
 
@@ -121,7 +138,7 @@ export const getOrderStats = async (req, res) => {
 
     const completedResult = await db()('store_orders')
       .whereIn('projectId', projectIds)
-      .where({ status: 'completed' })
+      .whereIn('status', ['completed', 'paid'])
       .count('id as count')
       .first();
 
@@ -169,4 +186,51 @@ export const updateOrder = async (req, res) => {
   }
 };
 
-export default { createOrder, getOrders, getOrderStats, updateOrder };
+export const handleRipplifyWebhook = async (req, res) => {
+  try {
+    const { event, checkoutSlug, orderId, status, transactionId, amount, currency, buyerEmail, buyerPhone } = req.body;
+
+    if (event === 'payment_completed' && checkoutSlug) {
+      const order = await db()('store_orders').where({ ripplifySlug: checkoutSlug }).first();
+      
+      if (order) {
+        for (const item of JSON.parse(order.itemsJson || '[]')) {
+          if (item.productId) {
+            const product = await db()('store_products').where({ id: parseInt(item.productId), projectId: order.projectId }).first();
+            if (product && product.inventory > 0) {
+              await db()('store_products')
+                .where({ id: product.id })
+                .decrement('inventory', item.quantity || 1)
+                .update({ updatedAt: db().fn.now() });
+            }
+          }
+        }
+
+        await db()('store_orders')
+          .where({ id: order.id })
+          .update({ 
+            status: 'paid',
+            ripplifyTransactionId: transactionId,
+            updatedAt: db().fn.now()
+          });
+
+        const project = await db()('projects').where({ id: order.projectId }).first();
+        
+        await recordActivity({
+          userId: project?.userId,
+          action: 'order_paid',
+          projectId: order.projectId,
+          description: `Payment received for order #${order.id} - ${amount} ${currency}`,
+          metadata: { orderId: order.id, amount, buyerEmail, transactionId }
+        });
+      }
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Ripplify webhook error:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export default { createOrder, getOrders, getOrderStats, updateOrder, handleRipplifyWebhook };

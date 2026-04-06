@@ -36,6 +36,12 @@ export async function migrate() {
     t.string('buyerPhone');
     t.string('buyerEmail');
     t.decimal('minDonation', 12, 2).defaultTo(0);
+    t.string('source');
+    t.string('sourceStoreId');
+    t.string('sourceStoreDomain');
+    t.string('sourceOrderId');
+    t.string('returnUrl');
+    t.string('webhookUrl');
     t.timestamp('createdAt').defaultTo(db.fn.now());
     t.timestamp('updatedAt').defaultTo(db.fn.now());
   });

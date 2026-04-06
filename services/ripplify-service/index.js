@@ -15,6 +15,7 @@ import paymentMethodRoutes from './paymentMethodRoutes.js';
 import currencyRoutes from './currencyRoutes.js';
 import payoutMethodRoutes from './payoutMethodRoutes.js';
 import checkoutRoutes from './checkoutRoutes.js';
+import shopalizeRoutes from './shopalizeRoutes.js';
 
 import { internalAuth } from '../shared/auth.js';
 import * as transCtrl from './transactionController.js';
@@ -89,6 +90,15 @@ app.use('/api/ripplify/payment-methods', paymentMethodRoutes);
 app.use('/api/ripplify/currencies', currencyRoutes);
 app.use('/api/ripplify/payout-methods', payoutMethodRoutes);
 app.use('/api/ripplify/checkout', checkoutRoutes);
+app.use('/api/ripplify/shopalize', shopalizeRoutes);
+
+// Legacy/frontend compatible routes (no /ripplify prefix)
+app.use('/api/links', linkRoutes);
+app.use('/api/transactions', transactionRoutes);
+app.use('/api/wallets', walletRoutes);
+app.use('/api/payouts', payoutRoutes);
+app.use('/api/payment-methods', paymentMethodRoutes);
+app.use('/api/notifications', (req, res) => res.json([]));
 
 // Internal routes for admin service
 app.get('/internal/transactions', internalAuth, transCtrl.internalGetTransactions);

@@ -1,6 +1,5 @@
 import { getDb } from '../config/db.js';
 
-// Allowed columns for user table
 const ALLOWED_COLUMNS = [
     'id', 'email', 'password', 'role', 'fullName', 'phone', 'businessName',
     'idType', 'idNumber', 'location', 'payoutMethod', 'payoutDetails',
@@ -8,32 +7,28 @@ const ALLOWED_COLUMNS = [
     'kycStatus', 'kybStatus', 'transactionLimit', 'referralPoints', 'createdAt', 'updatedAt'
 ];
 
-// User Model Methods for SQLite
 const User = {
     create: async (userData) => {
         const db = getDb();
-        const result = await db.run(`
-      INSERT INTO users (email, password, role, fullName, phone, businessName, idType, idNumber, location, payoutMethod, payoutDetails, kycStatus, kybStatus, transactionLimit, isVerified)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [
-            userData.email,
-            userData.password,
-            userData.role,
-            userData.fullName,
-            userData.phone,
-            userData.businessName,
-            userData.idType,
-            userData.idNumber,
-            userData.location,
-            userData.payoutMethod,
-            userData.payoutDetails,
-            userData.kycStatus || 'none',
-            userData.kybStatus || 'none',
-            userData.transactionLimit || 5000,
-            userData.isVerified ? 1 : 0
-        ]);
+        const [result] = await db('users').insert({
+            email: userData.email,
+            password: userData.password,
+            role: userData.role,
+            fullName: userData.fullName,
+            phone: userData.phone,
+            businessName: userData.businessName,
+            idType: userData.idType,
+            idNumber: userData.idNumber,
+            location: userData.location,
+            payoutMethod: userData.payoutMethod,
+            payoutDetails: userData.payoutDetails,
+            kycStatus: userData.kycStatus || 'none',
+            kybStatus: userData.kybStatus || 'none',
+            transactionLimit: userData.transactionLimit || 5000,
+            isVerified: userData.isVerified || false
+        }).returning('*');
 
-        return await db.get(`SELECT * FROM users WHERE id = ?`, result.lastID);
+        return result;
     },
 
     findOne: async (query) => {
@@ -43,22 +38,24 @@ const User = {
 
         if (keys.length === 0) return null;
 
-        // Validate keys against allowed columns
         const invalidKeys = keys.filter(k => !ALLOWED_COLUMNS.includes(k));
         if (invalidKeys.length > 0) {
             throw new Error(`Invalid column(s) in query: ${invalidKeys.join(', ')}`);
         }
 
-        const conditions = keys.map(k => `${k} = ?`).join(' AND ');
-        return await db.get(`SELECT * FROM users WHERE ${conditions}`, values);
+        let queryBuilder = db('users');
+        keys.forEach((key, idx) => {
+            queryBuilder = queryBuilder.where(key, values[idx]);
+        });
+
+        return await queryBuilder.first();
     },
 
     findById: async (id) => {
         const db = getDb();
-        const user = await db.get(`SELECT * FROM users WHERE id = ?`, id);
+        const user = await db('users').where({ id }).first();
         if (!user) return null;
 
-        // Simulate mongoose select('-password') feature manually
         const { password, ...userWithoutPassword } = user;
         return userWithoutPassword;
     },
@@ -66,19 +63,15 @@ const User = {
     update: async (id, userData) => {
         const db = getDb();
         const keys = Object.keys(userData);
-        const values = Object.values(userData);
 
         if (keys.length === 0) return null;
 
-        // Validate keys against allowed columns (excluding id)
         const invalidKeys = keys.filter(k => !ALLOWED_COLUMNS.includes(k));
         if (invalidKeys.length > 0) {
             throw new Error(`Invalid column(s) in update: ${invalidKeys.join(', ')}`);
         }
 
-        const setClause = keys.map(k => `${k} = ?`).join(', ');
-        await db.run(`UPDATE users SET ${setClause} WHERE id = ?`, [...values, id]);
-
+        await db('users').where({ id }).update(userData);
         return await User.findById(id);
     }
 };

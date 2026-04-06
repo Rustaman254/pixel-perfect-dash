@@ -3,95 +3,79 @@ import { getDb } from '../config/db.js';
 const PaymentLink = {
     create: async (linkData) => {
         const db = getDb();
-        const result = await db.run(`
-      INSERT INTO payment_links (
-        userId, name, slug, description, price, currency, linkType, status, 
-        hasPhotos, deliveryDays, expiryDate, expiryLabel, buyerName, buyerPhone, buyerEmail, minDonation,
-        category, shippingFee
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [
-            linkData.userId,
-            linkData.name,
-            linkData.slug,
-            linkData.description,
-            linkData.price,
-            linkData.currency,
-            linkData.linkType || 'one-time',
-            linkData.status || 'Active',
-            linkData.hasPhotos ? 1 : 0,
-            linkData.deliveryDays,
-            linkData.expiryDate,
-            linkData.expiryLabel,
-            linkData.buyerName,
-            linkData.buyerPhone,
-            linkData.buyerEmail,
-            linkData.minDonation || 0,
-            linkData.category || 'product',
-            linkData.shippingFee || 0
-        ]);
+        const [result] = await db('payment_links').insert({
+            userId: linkData.userId,
+            name: linkData.name,
+            slug: linkData.slug,
+            description: linkData.description,
+            price: linkData.price,
+            currency: linkData.currency,
+            linkType: linkData.linkType || 'one-time',
+            status: linkData.status || 'Active',
+            hasPhotos: linkData.hasPhotos || false,
+            deliveryDays: linkData.deliveryDays,
+            expiryDate: linkData.expiryDate,
+            expiryLabel: linkData.expiryLabel,
+            buyerName: linkData.buyerName,
+            buyerPhone: linkData.buyerPhone,
+            buyerEmail: linkData.buyerEmail,
+            minDonation: linkData.minDonation || 0,
+            category: linkData.category || 'product',
+            shippingFee: linkData.shippingFee || 0
+        }).returning('*');
 
-        return await db.get(`SELECT * FROM payment_links WHERE id = ?`, result.lastID);
+        return result;
     },
 
     findAllByUserId: async (userId) => {
         const db = getDb();
-        return await db.all(`SELECT * FROM payment_links WHERE userId = ? ORDER BY createdAt DESC`, userId);
+        return await db('payment_links').where({ userId }).orderBy('createdAt', 'desc');
     },
 
     findBySlug: async (slug) => {
         const db = getDb();
-        return await db.get(`
-            SELECT pl.*, u.businessName, u.fullName, u.email as sellerEmail, u.businessLogo 
-            FROM payment_links pl
-            JOIN users u ON pl.userId = u.id
-            WHERE pl.slug = ?
-        `, slug);
+        return await db('payment_links').join('users', 'payment_links.userId', 'users.id')
+            .select('payment_links.*', 'users.businessName', 'users.fullName', 'users.email as sellerEmail', 'users.businessLogo')
+            .where('payment_links.slug', slug).first();
     },
 
     findById: async (id) => {
         const db = getDb();
-        return await db.get(`SELECT * FROM payment_links WHERE id = ?`, id);
+        return await db('payment_links').where({ id }).first();
     },
 
     updateStatus: async (id, status) => {
         const db = getDb();
-        try {
-            // Try to update with updatedAt (available after migration)
-            await db.run(`UPDATE payment_links SET status = ?, updatedAt = CURRENT_TIMESTAMP WHERE id = ?`, [status, id]);
-        } catch (e) {
-            // Fallback: updatedAt column may not exist yet on old DBs
-            await db.run(`UPDATE payment_links SET status = ? WHERE id = ?`, [status, id]);
-        }
-        return await db.get(`SELECT * FROM payment_links WHERE id = ?`, id);
+        await db('payment_links').where({ id }).update({ 
+            status,
+            updatedAt: db.fn.now()
+        });
+        return await db('payment_links').where({ id }).first();
     },
 
     incrementClicks: async (id) => {
         const db = getDb();
-        await db.run(`UPDATE payment_links SET clicks = clicks + 1 WHERE id = ?`, id);
+        await db('payment_links').where({ id }).increment('clicks', 1);
     },
 
     updatePaymentStats: async (id, amount) => {
         const db = getDb();
-        await db.run(`
-            UPDATE payment_links 
-            SET paymentCount = paymentCount + 1, 
-                totalEarnedValue = totalEarnedValue + ? 
-            WHERE id = ?
-        `, [amount, id]);
+        await db('payment_links').where({ id }).increment('paymentCount', 1);
+        await db('payment_links').where({ id }).increment('totalEarnedValue', amount);
     },
 
     updateBuyerDetails: async (id, details) => {
         const db = getDb();
-        await db.run(`
-            UPDATE payment_links 
-            SET buyerName = ?, buyerEmail = ?, buyerPhone = ? 
-            WHERE id = ?
-        `, [details.buyerName, details.buyerEmail, details.buyerPhone, id]);
+        await db('payment_links').where({ id }).update({
+            buyerName: details.buyerName,
+            buyerEmail: details.buyerEmail,
+            buyerPhone: details.buyerPhone
+        });
     },
 
     delete: async (id, userId) => {
         const db = getDb();
-        return await db.run(`DELETE FROM payment_links WHERE id = ? AND userId = ?`, [id, userId]);
+        return await db('payment_links').where({ id, userId }).del();
     }
 };
 
