@@ -7,6 +7,7 @@ import { fileURLToPath } from 'url';
 import { migrate } from './migrate.js';
 
 import linkRoutes from './linkRoutes.js';
+import paymentLinkRoutes from './paymentLinkRoutes.js';
 import transactionRoutes from './transactionRoutes.js';
 import walletRoutes from './walletRoutes.js';
 import payoutRoutes from './payoutRoutes.js';
@@ -15,6 +16,7 @@ import paymentMethodRoutes from './paymentMethodRoutes.js';
 import currencyRoutes from './currencyRoutes.js';
 import payoutMethodRoutes from './payoutMethodRoutes.js';
 import checkoutRoutes from './checkoutRoutes.js';
+import shopalizeRoutes from './shopalizeRoutes.js';
 
 import { internalAuth } from '../shared/auth.js';
 import * as transCtrl from './transactionController.js';
@@ -81,6 +83,8 @@ app.use(express.json());
 
 // Routes
 app.use('/api/ripplify/links', linkRoutes);
+app.use('/api/payment-links', paymentLinkRoutes);
+app.use('/api/ripplify/payment-links', paymentLinkRoutes);
 app.use('/api/ripplify/transactions', transactionRoutes);
 app.use('/api/ripplify/wallets', walletRoutes);
 app.use('/api/ripplify/payouts', payoutRoutes);
@@ -89,6 +93,15 @@ app.use('/api/ripplify/payment-methods', paymentMethodRoutes);
 app.use('/api/ripplify/currencies', currencyRoutes);
 app.use('/api/ripplify/payout-methods', payoutMethodRoutes);
 app.use('/api/ripplify/checkout', checkoutRoutes);
+app.use('/api/ripplify/shopalize', shopalizeRoutes);
+
+// Legacy/frontend compatible routes (no /ripplify prefix)
+app.use('/api/links', linkRoutes);
+app.use('/api/transactions', transactionRoutes);
+app.use('/api/wallets', walletRoutes);
+app.use('/api/payouts', payoutRoutes);
+app.use('/api/payment-methods', paymentMethodRoutes);
+app.use('/api/notifications', (req, res) => res.json([]));
 
 // Internal routes for admin service
 app.get('/internal/transactions', internalAuth, transCtrl.internalGetTransactions);

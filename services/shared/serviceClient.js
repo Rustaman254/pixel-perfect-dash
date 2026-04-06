@@ -4,11 +4,11 @@ dotenv.config();
 const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || 'internal-sokostack-2026-secret';
 
 const SERVICE_URLS = {
-  auth: process.env.AUTH_SERVICE_URL || 'http://localhost:3006',
-  ripplify: process.env.RIPPLIFY_SERVICE_URL || 'http://localhost:3007',
-  shopalize: process.env.SHOPALIZE_SERVICE_URL || 'http://localhost:3008',
-  watchtower: process.env.WATCHTOWER_SERVICE_URL || 'http://localhost:3009',
-  admin: process.env.ADMIN_SERVICE_URL || 'http://localhost:3010',
+  auth: process.env.AUTH_SERVICE_URL || 'http://localhost:3001',
+  ripplify: process.env.RIPPLIFY_SERVICE_URL || 'http://localhost:3002',
+  shopalize: process.env.SHOPALIZE_SERVICE_URL || 'http://localhost:3003',
+  watchtower: process.env.WATCHTOWER_SERVICE_URL || 'http://localhost:3004',
+  admin: process.env.ADMIN_SERVICE_URL || 'http://localhost:3005',
 };
 
 // Internal service-to-service HTTP client
@@ -63,6 +63,21 @@ export const ripplifyService = {
   getUserTransactions: (userId, query = '') => callService('ripplify', `/internal/transactions?userId=${userId}${query}`),
   getUserPayouts: (userId) => callService('ripplify', `/internal/payouts?userId=${userId}`),
   getPaymentLinks: (userId) => callService('ripplify', `/internal/links?userId=${userId}`),
+  createPaymentLink: (linkData, authHeader) => callService('ripplify', '/api/payment-links/create', {
+    method: 'POST',
+    body: linkData,
+    userToken: authHeader?.replace('Bearer ', ''),
+  }),
+  getPaymentLink: (linkId) => callService('ripplify', `/api/payment-links/${linkId}`),
+  getPaymentLinkStatus: (linkId) => callService('ripplify', `/api/payment-links/${linkId}/status`),
+  createShopalizeCheckout: (checkoutData, authHeader) => callService('ripplify', '/api/ripplify/shopalize/checkout/shopalize', {
+    method: 'POST',
+    body: checkoutData,
+    userToken: authHeader?.replace('Bearer ', ''),
+  }),
+  getEnabledPaymentMethods: (userId, authHeader) => callService('ripplify', `/api/ripplify/payment-methods?userId=${userId}`, {
+    userToken: authHeader?.replace('Bearer ', ''),
+  }),
 };
 
 export const watchtowerService = {

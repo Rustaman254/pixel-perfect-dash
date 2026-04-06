@@ -5,7 +5,7 @@ const getBaseUrl = () => {
             return "/api";
         }
     }
-    return import.meta.env.VITE_API_URL || "https://ripplify.sokostack.xyz/api";
+    return import.meta.env.VITE_API_URL || "https://sokostack.ddns.net/api/ripplify";
 };
 
 export const BASE_URL = getBaseUrl();

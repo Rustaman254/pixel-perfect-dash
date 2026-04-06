@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { fetchWithAuth } from '@/lib/api';
-import { ArrowLeft, Save, Trash2, Plus, X, Image as ImageIcon, Loader2, ChevronDown, Globe, Search } from 'lucide-react';
+import { ArrowLeft, Save, Trash2, Plus, X, Image as ImageIcon, Loader2, ChevronDown, Globe, Search, Link2, ExternalLink, Copy, Check, Wallet } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function ProductEditPage() {
@@ -11,6 +11,12 @@ export default function ProductEditPage() {
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
   const [showSEO, setShowSEO] = useState(false);
+  
+  // ADDED FOR SHOPALIZE INTEGRATION - Ripplify payment link state
+  const [showPaymentLinkModal, setShowPaymentLinkModal] = useState(false);
+  const [generatingPaymentLink, setGeneratingPaymentLink] = useState(false);
+  const [paymentLink, setPaymentLink] = useState<{ url: string; slug: string } | null>(null);
+  
   const [form, setForm] = useState({
     name: '', description: '', price: '', compareAtPrice: '', costPerItem: '',
     currency: 'KES', category: '', tags: '', vendor: '', weight: '',
@@ -41,6 +47,44 @@ export default function ProductEditPage() {
       }));
     } catch { navigate('/products'); }
     setLoading(false);
+  };
+
+  // ADDED FOR SHOPALIZE INTEGRATION - Generate Ripplify payment link
+  const generatePaymentLink = async () => {
+    if (!form.name || !form.price) return;
+    setGeneratingPaymentLink(true);
+    try {
+      const linkData = {
+        name: form.name,
+        description: form.description || `Payment for ${form.name}`,
+        price: parseFloat(form.price),
+        currency: form.currency || 'KES',
+        category: 'product',
+        linkType: 'one-time',
+        source: 'shopalize',
+        metadata: {
+          productId: id,
+          productName: form.name,
+          productImages: JSON.stringify(form.images),
+        },
+      };
+      const response = await fetchWithAuth('/shopalize/ripplify/create-link', {
+        method: 'POST',
+        body: JSON.stringify(linkData),
+      });
+      if (response.url) {
+        setPaymentLink({ url: response.url, slug: response.slug });
+      }
+    } catch (err) {
+      console.error('Failed to generate payment link:', err);
+    }
+    setGeneratingPaymentLink(false);
+  };
+
+  const copyPaymentLink = () => {
+    if (paymentLink?.url) {
+      navigator.clipboard.writeText(paymentLink.url);
+    }
   };
 
   const handleSave = async () => {
@@ -329,6 +373,70 @@ export default function ProductEditPage() {
               className="w-full py-4 border border-red-200 text-red-600 bg-white rounded-2xl text-[14px] font-bold hover:bg-red-50 hover:border-red-300 transition-colors flex items-center justify-center gap-2 shadow-sm">
               <Trash2 className="w-4 h-4" /> Delete product
             </button>
+          )}
+
+          {/* ADDED FOR SHOPALIZE INTEGRATION - Ripplify Payment Link Section */}
+          {!isNew && (
+            <div className="bg-white rounded-[2rem] border border-gray-200/60 p-8 shadow-sm">
+              <h3 className="text-[13px] font-bold text-black tracking-wide uppercase mb-4 flex items-center gap-2">
+                <Wallet className="w-4 h-4" /> Ripplify Payments
+              </h3>
+              <p className="text-[13px] text-gray-500 mb-6">Generate a payment link for this product using Ripplify's secure payment infrastructure.</p>
+              
+              {!paymentLink ? (
+                <button 
+                  onClick={generatePaymentLink}
+                  disabled={generatingPaymentLink || !form.name || !form.price}
+                  className="w-full py-3 bg-[#0A0A0A] hover:bg-black disabled:opacity-50 text-white rounded-xl text-[14px] font-bold flex items-center justify-center gap-2 shadow-lg shadow-black/10 transition-all"
+                >
+                  {generatingPaymentLink ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Link2 className="w-4 h-4" />
+                  )}
+                  Generate Payment Link
+                </button>
+              ) : (
+                <div className="space-y-4">
+                  <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[12px] font-bold text-gray-500 uppercase">Payment Link</span>
+                      <span className="text-[11px] font-bold text-green-600 bg-green-50 px-2 py-1 rounded">Active</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input 
+                        type="text" 
+                        value={paymentLink.url} 
+                        readOnly
+                        className="flex-1 px-3 py-2 bg-white border border-gray-200 rounded-lg text-[13px] text-gray-700 font-mono"
+                      />
+                      <button 
+                        onClick={copyPaymentLink}
+                        className="p-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                        title="Copy link"
+                      >
+                        <Copy className="w-4 h-4 text-gray-500" />
+                      </button>
+                      <a 
+                        href={paymentLink.url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="p-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                        title="Open link"
+                      >
+                        <ExternalLink className="w-4 h-4 text-gray-500" />
+                      </a>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setPaymentLink(null)}
+                    className="w-full py-2 text-[13px] font-bold text-gray-500 hover:text-black transition-colors"
+                  >
+                    Generate New Link
+                  </button>
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>

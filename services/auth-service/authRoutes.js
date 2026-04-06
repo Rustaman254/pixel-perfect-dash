@@ -1,19 +1,19 @@
 import { Router } from 'express';
-import rateLimit from 'express-rate-limit';
+// import rateLimit from 'express-rate-limit';
 import { protectJwt, internalAuth } from '../shared/auth.js';
 import * as auth from './authController.js';
 
 const router = Router();
 
-const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10,
-  message: { message: 'Too many login attempts, try again later' },
-});
+// const loginLimiter = rateLimit({
+//   windowMs: 15 * 60 * 1000,
+//   max: 10,
+//   message: { message: 'Too many login attempts, try again later' },
+// });
 
 // Public routes
 router.post('/register', auth.register);
-router.post('/login', loginLimiter, auth.login);
+router.post('/login', auth.login);
 router.post('/send-otp', auth.sendOTP);
 router.post('/verify-otp', auth.verifyOTP);
 router.post('/forgot-password', auth.forgotPassword);

@@ -17,7 +17,7 @@ interface AppState {
   updateProjectName: (name: string) => Promise<void>;
   publishProject: (id: string) => Promise<void>;
   upgradeProject: (id: string, plan: string) => Promise<void>;
-  createOrder: (projectId: string, amount: number, items: CartItem[]) => Promise<any>;
+  createOrder: (projectId: string, amount: number, items: CartItem[], buyerEmail?: string, buyerPhone?: string, buyerName?: string, returnUrl?: string, address?: string) => Promise<any>;
   addToCart: (product: Product, quantity: number, selectedVariants?: Record<string, string>) => void;
   removeFromCart: (productId: string, selectedVariants?: Record<string, string>) => void;
   updateCartQuantity: (productId: string, quantity: number, selectedVariants?: Record<string, string>) => void;
@@ -368,7 +368,7 @@ export const useStore = create<AppState>((set, get) => ({
     }
   },
 
-  createOrder: async (projectId: string, amount: number, items: CartItem[]) => {
+  createOrder: async (projectId: string, amount: number, items: CartItem[], buyerEmail?: string, buyerPhone?: string, buyerName?: string, returnUrl?: string, address?: string) => {
     try {
       const data = await fetchWithAuth('/shopalize/orders', {
         method: 'POST',
@@ -383,11 +383,14 @@ export const useStore = create<AppState>((set, get) => ({
             variants: item.selectedVariants,
             image: item.product.image,
           }))),
-          customerName: 'Customer',
-          customerEmail: 'customer@example.com',
-          status: 'paid',
+          buyerName: buyerName || 'Customer',
+          buyerEmail: buyerEmail || 'customer@example.com',
+          buyerPhone: buyerPhone || '',
+          buyerAddress: address || '',
+          returnUrl: returnUrl || '',
         }),
       });
+
       return data;
     } catch (err) {
       console.error('Order creation failed:', err);

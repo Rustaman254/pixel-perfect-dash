@@ -3,36 +3,20 @@ import { getDb } from '../config/db.js';
 const UserCurrency = {
     findAllByUserId: async (userId) => {
         const db = getDb();
-        return await db.all(`
-            SELECT * FROM user_currencies
-            WHERE userId = ?
-        `, userId);
+        return await db('user_currencies').where({ userId });
     },
 
     upsert: async (userId, code, enabled) => {
         const db = getDb();
-        
-        // Check if exists
-        const existing = await db.get(`
-            SELECT id FROM user_currencies WHERE userId = ? AND code = ?
-        `, [userId, code]);
+        const existing = await db('user_currencies').where({ userId, code }).first();
 
         if (existing) {
-            await db.run(`
-                UPDATE user_currencies 
-                SET enabled = ?
-                WHERE id = ?
-            `, [enabled ? 1 : 0, existing.id]);
+            await db('user_currencies').where({ id: existing.id }).update({ enabled });
         } else {
-            await db.run(`
-                INSERT INTO user_currencies (userId, code, enabled)
-                VALUES (?, ?, ?)
-            `, [userId, code, enabled ? 1 : 0]);
+            await db('user_currencies').insert({ userId, code, enabled });
         }
         
-        return await db.get(`
-            SELECT * FROM user_currencies WHERE userId = ? AND code = ?
-        `, [userId, code]);
+        return await db('user_currencies').where({ userId, code }).first();
     }
 };
 

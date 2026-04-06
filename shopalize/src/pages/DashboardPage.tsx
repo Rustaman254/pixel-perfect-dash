@@ -90,20 +90,6 @@ export default function DashboardPage() {
               <span className="text-gray-500 text-[13px] font-medium">vs previous {period === 'today' ? 'day' : 'period'}</span>
             </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 md:gap-10 pt-2 w-full md:w-auto border-t border-white/10 md:border-none">
-            <div className="text-left md:text-right">
-              <p className="text-gray-500 text-xs font-semibold uppercase tracking-widest mb-1.5">Online store</p>
-              <p className="text-xl font-bold">KES {Math.round(revenue * 0.7).toLocaleString()}</p>
-            </div>
-            <div className="text-left md:text-right">
-              <p className="text-gray-500 text-xs font-semibold uppercase tracking-widest mb-1.5">POS System</p>
-              <p className="text-xl font-bold text-gray-300">KES {Math.round(revenue * 0.2).toLocaleString()}</p>
-            </div>
-            <div className="text-left md:text-right">
-              <p className="text-gray-500 text-xs font-semibold uppercase tracking-widest mb-1.5">Buy Button</p>
-              <p className="text-xl font-bold text-gray-400">KES {Math.round(revenue * 0.1).toLocaleString()}</p>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -193,9 +179,7 @@ export default function DashboardPage() {
           <div className="bg-white rounded-[2rem] border border-gray-200/60 shadow-sm p-6 lg:p-8">
             <h2 className="text-lg font-bold text-black mb-6">Sales by channel</h2>
             {[
-              { name: 'Online Store', pct: 72, color: '#0A0A0A' },
-              { name: 'Buy Button', pct: 18, color: '#D4F655' },
-              { name: 'POS', pct: 10, color: '#E5E7EB' },
+              { name: 'Online Store', pct: 100, color: '#0A0A0A' },
             ].map((ch, idx) => (
               <div key={ch.name} className="mb-4 last:mb-0">
                 <div className="flex items-center justify-between mb-2">

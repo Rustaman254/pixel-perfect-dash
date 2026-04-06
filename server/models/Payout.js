@@ -3,42 +3,35 @@ import { getDb } from '../config/db.js';
 const Payout = {
     create: async (payoutData) => {
         const db = getDb();
-        const result = await db.run(`
-      INSERT INTO payouts (
-        userId, amount, fee, currency, method, details, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)
-    `, [
-            payoutData.userId,
-            payoutData.amount,
-            payoutData.fee || 0,
-            payoutData.currency,
-            payoutData.method,
-            payoutData.details,
-            payoutData.status || 'Processing'
-        ]);
-
-        return await db.get(`SELECT * FROM payouts WHERE id = ?`, result.lastID);
+        const [result] = await db('payouts').insert({
+            userId: payoutData.userId,
+            amount: payoutData.amount,
+            fee: payoutData.fee || 0,
+            currency: payoutData.currency,
+            method: payoutData.method,
+            details: payoutData.details,
+            status: payoutData.status || 'Processing'
+        }).returning('*');
+        return result;
     },
 
     findAll: async () => {
         const db = getDb();
-        return await db.all(`
-            SELECT p.*, u.fullName, u.email, u.businessName 
-            FROM payouts p
-            LEFT JOIN users u ON p.userId = u.id
-            ORDER BY p.createdAt DESC
-        `);
+        return await db('payouts')
+            .leftJoin('users', 'payouts.userId', 'users.id')
+            .select('payouts.*', 'users.fullName', 'users.email', 'users.businessName')
+            .orderBy('payouts.createdAt', 'desc');
     },
 
     findAllByUserId: async (userId) => {
         const db = getDb();
-        return await db.all(`SELECT * FROM payouts WHERE userId = ? ORDER BY createdAt DESC`, userId);
+        return await db('payouts').where({ userId }).orderBy('createdAt', 'desc');
     },
 
     updateStatus: async (id, status) => {
         const db = getDb();
-        await db.run(`UPDATE payouts SET status = ? WHERE id = ?`, [status, id]);
-        return await db.get(`SELECT * FROM payouts WHERE id = ?`, id);
+        await db('payouts').where({ id }).update({ status });
+        return await db('payouts').where({ id }).first();
     }
 };
 

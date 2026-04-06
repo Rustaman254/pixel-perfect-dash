@@ -67,9 +67,8 @@ export const getStoreBySlug = async (req, res) => {
       domain: project.domain,
       subdomain: project.subdomain,
       customDomain: project.domain || null,
-      storeUrl: project.domain 
-        ? `https://${project.domain}` 
-        : `https://${project.subdomain}.sokostack.xyz`,
+      storeUrl: `https://shopalize.sokostack.xyz/s/${project.slug}`,
+      publishedProjectSlug: project.slug,
       theme,
       pages: pages.map(p => {
         const rawSections = (() => { try { return JSON.parse(p.sectionsJson || '[]'); } catch { return []; } })();

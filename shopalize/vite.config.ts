@@ -31,4 +31,7 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  preview: {
+    allowedHosts: ['shopalize.sokostack.xyz', 'sokostack.xyz', 'sokostack.ddns.net'],
+  },
 })

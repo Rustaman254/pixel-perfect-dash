@@ -48,6 +48,11 @@ app.get('/health', (req, res) => {
 // Auth routes
 app.use('/api/auth', authRoutes);
 
+// SSO hub - explicit route
+app.get('/sso.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'sso.html'));
+});
+
 // Static files (SSO hub - LAST)
 app.use(express.static(path.join(__dirname, 'public')));
 

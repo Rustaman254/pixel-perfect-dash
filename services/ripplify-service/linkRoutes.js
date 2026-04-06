@@ -12,6 +12,7 @@ router.delete('/:id', protectJwt, ctrl.deleteLink);
 
 // Public routes
 router.get('/slug/:slug', ctrl.getLinkBySlug);
+router.get('/public/:slug', ctrl.getLinkBySlug);
 router.post('/:slug/click', ctrl.incrementClicks);
 router.post('/:slug/confirm', ctrl.confirmPayment);
 router.post('/:slug/dispute', ctrl.disputePayment);

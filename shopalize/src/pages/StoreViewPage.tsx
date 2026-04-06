@@ -68,8 +68,9 @@ export default function StoreViewPage() {
         setError(null);
         const res = await fetch(`/api/shopalize/store/${slug}`);
         if (!res.ok) {
-          if (res.status === 404) throw new Error('Store not found');
-          throw new Error('Failed to load store');
+          const errData = await res.json().catch(() => ({}));
+          if (res.status === 404) throw new Error(errData.message || 'Store not found');
+          throw new Error(errData.message || 'Failed to load store');
         }
         const data = await res.json();
         const project = transformApiResponse(data);

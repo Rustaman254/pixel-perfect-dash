@@ -1,3 +1,16 @@
 {
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "version": 2,
+  "builds": [
+    { "src": "package.json", "use": "@vercel/static-build", "config": "package.json" }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "https://sokostack.ddns.net/api/ripplify/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ]
 }
