@@ -7,6 +7,7 @@ import { fileURLToPath } from 'url';
 import { migrate } from './migrate.js';
 
 import linkRoutes from './linkRoutes.js';
+import paymentLinkRoutes from './paymentLinkRoutes.js';
 import transactionRoutes from './transactionRoutes.js';
 import walletRoutes from './walletRoutes.js';
 import payoutRoutes from './payoutRoutes.js';
@@ -82,6 +83,8 @@ app.use(express.json());
 
 // Routes
 app.use('/api/ripplify/links', linkRoutes);
+app.use('/api/payment-links', paymentLinkRoutes);
+app.use('/api/ripplify/payment-links', paymentLinkRoutes);
 app.use('/api/ripplify/transactions', transactionRoutes);
 app.use('/api/ripplify/wallets', walletRoutes);
 app.use('/api/ripplify/payouts', payoutRoutes);

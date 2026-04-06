@@ -18,6 +18,7 @@ import analyticsRoutes from './analyticsRoutes.js';
 import campaignRoutes from './campaignRoutes.js';
 import internalAdminRoutes from './internalAdminRoutes.js';
 import activityRoutes from './activityRoutes.js';
+import ripplifyRoutes from './ripplifyRoutes.js';
 
 dotenv.config({ path: path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '.env') });
 
@@ -81,6 +82,7 @@ app.use('/api/shopalize/discounts', discountRoutes);
 app.use('/api/shopalize/analytics', analyticsRoutes);
 app.use('/api/shopalize/campaigns', campaignRoutes);
 app.use('/api/shopalize/activities', activityRoutes);
+app.use('/api/shopalize', ripplifyRoutes);
 app.use('/api/shopalize', publicRoutes);
 app.use('/api/shopalize', internalRoutes);
 app.use('/api/shopalize', internalAdminRoutes);

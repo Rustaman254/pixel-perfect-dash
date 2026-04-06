@@ -63,6 +63,13 @@ export const ripplifyService = {
   getUserTransactions: (userId, query = '') => callService('ripplify', `/internal/transactions?userId=${userId}${query}`),
   getUserPayouts: (userId) => callService('ripplify', `/internal/payouts?userId=${userId}`),
   getPaymentLinks: (userId) => callService('ripplify', `/internal/links?userId=${userId}`),
+  createPaymentLink: (linkData, authHeader) => callService('ripplify', '/api/payment-links/create', {
+    method: 'POST',
+    body: linkData,
+    userToken: authHeader?.replace('Bearer ', ''),
+  }),
+  getPaymentLink: (linkId) => callService('ripplify', `/api/payment-links/${linkId}`),
+  getPaymentLinkStatus: (linkId) => callService('ripplify', `/api/payment-links/${linkId}/status`),
   createShopalizeCheckout: (checkoutData, authHeader) => callService('ripplify', '/api/ripplify/shopalize/checkout/shopalize', {
     method: 'POST',
     body: checkoutData,
