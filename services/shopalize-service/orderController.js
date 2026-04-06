@@ -6,7 +6,7 @@ const db = () => createConnection('shopalize_db');
 
 export const createOrder = async (req, res) => {
   try {
-    const { projectId, items, buyerName, buyerEmail, buyerPhone, totalAmount, amount, currency, ripplifyTransactionId, returnUrl } = req.body;
+    const { projectId, items, buyerName, buyerEmail, buyerPhone, buyerAddress, totalAmount, amount, currency, ripplifyTransactionId, returnUrl } = req.body;
 
     const orderAmount = totalAmount || amount;
 
@@ -18,6 +18,12 @@ export const createOrder = async (req, res) => {
     if (!project) return res.status(404).json({ message: 'Project not found' });
 
     const parsedItems = typeof items === 'string' ? JSON.parse(items) : (items || []);
+    
+    // Enrich items with buyer address
+    const enrichedItems = parsedItems.map(item => ({
+      ...item,
+      buyerAddress: buyerAddress || ''
+    }));
 
     const [{ id: orderId }] = await db()('store_orders')
       .insert({
@@ -42,15 +48,20 @@ export const createOrder = async (req, res) => {
     
     if (!ripplifyTransactionId && buyerEmail) {
       try {
+        // Get product name from first item for the payment link title
+        const firstItemName = parsedItems[0]?.name || null;
+        
         const checkout = await ripplifyService.createShopalizeCheckout({
           storeId: project.id,
           storeName: project.name,
           storeDomain: project.domain || `${project.subdomain}.sokostack.xyz`,
           orderId: order.id,
-          items: parsedItems,
+          items: enrichedItems,
+          productName: firstItemName,
           buyerName: buyerName || 'Customer',
           buyerEmail,
           buyerPhone: buyerPhone || '',
+          buyerAddress: buyerAddress || '',
           totalAmount: orderAmount,
           currency: currency || project.currency || 'KES',
           returnUrl: returnUrl || '',

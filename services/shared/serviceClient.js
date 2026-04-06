@@ -4,11 +4,11 @@ dotenv.config();
 const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || 'internal-sokostack-2026-secret';
 
 const SERVICE_URLS = {
-  auth: process.env.AUTH_SERVICE_URL || 'http://localhost:3006',
-  ripplify: process.env.RIPPLIFY_SERVICE_URL || 'http://localhost:3007',
-  shopalize: process.env.SHOPALIZE_SERVICE_URL || 'http://localhost:3008',
-  watchtower: process.env.WATCHTOWER_SERVICE_URL || 'http://localhost:3009',
-  admin: process.env.ADMIN_SERVICE_URL || 'http://localhost:3010',
+  auth: process.env.AUTH_SERVICE_URL || 'http://localhost:3001',
+  ripplify: process.env.RIPPLIFY_SERVICE_URL || 'http://localhost:3002',
+  shopalize: process.env.SHOPALIZE_SERVICE_URL || 'http://localhost:3003',
+  watchtower: process.env.WATCHTOWER_SERVICE_URL || 'http://localhost:3004',
+  admin: process.env.ADMIN_SERVICE_URL || 'http://localhost:3005',
 };
 
 // Internal service-to-service HTTP client

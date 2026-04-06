@@ -14,9 +14,11 @@ export const createShopalizeCheckout = async (req, res) => {
       storeDomain,
       orderId,
       items,
+      productName,
       buyerName,
       buyerEmail,
       buyerPhone,
+      buyerAddress,
       totalAmount,
       currency,
       returnUrl,
@@ -30,15 +32,21 @@ export const createShopalizeCheckout = async (req, res) => {
     const shortId = generateShortId();
     const slug = `shop-${storeId}-${shortId}`;
 
+    // Enrich items with buyer address
+    const enrichedItems = (items || []).map(item => ({
+      ...item,
+      buyerAddress: buyerAddress || ''
+    }));
+
     const [newLink] = await db()('payment_links')
       .insert({
         userId: req.user.id,
-        name: `Order for ${storeName || 'Store'}`,
+        name: productName || storeName || 'Store Order',
         slug,
-        description: `Shopalize order #${orderId} - ${items?.length || 0} items`,
+        description: `Order #${orderId} - ${items?.length || 0} items`,
         price: parseFloat(totalAmount),
         currency: currency || 'KES',
-        linkType: 'reusable',
+        linkType: 'one-time',
         status: 'Active',
         deliveryDays: 7,
         expiryLabel: '7 days',

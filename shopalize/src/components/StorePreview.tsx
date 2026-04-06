@@ -69,7 +69,7 @@ export default function StorePreview({ project, interactive = false, activePageI
     setCheckoutStep('payment');
     try {
       const returnUrl = `${window.location.origin}/s/${project.slug}?success=true`;
-      const result = await createOrder(project.id, cartTotal, cart, buyerInfo.email, buyerInfo.phone, buyerInfo.fullName, returnUrl);
+      const result = await createOrder(project.id, cartTotal, cart, buyerInfo.email, buyerInfo.phone, buyerInfo.fullName, returnUrl, buyerInfo.address);
       if (result.checkoutSlug) {
         localStorage.setItem(`buyer_info_${result.checkoutSlug}`, JSON.stringify({
           fullName: buyerInfo.fullName,
