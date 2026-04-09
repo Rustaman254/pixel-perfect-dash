@@ -184,9 +184,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         if (!isAuthenticated) return;
         try {
             const flags = await fetchWithAuth('/auth/features');
-            const flagMap: Record<string, boolean> = {};
-            flags.forEach((f: any) => { flagMap[f.key] = !!f.isEnabled; });
-            setFeatureFlags(flagMap);
+            // auth-service returns an object { flagKey: isEnabled }
+            setFeatureFlags(flags || {});
         } catch (e) {
             console.error("Failed to load feature flags:", e);
         }
@@ -216,7 +215,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
             const [linksData, transactionsData, payoutsData, walletsData, profileData] = await Promise.all([
                 fetchWithAuth('/links/my'),
                 fetchWithAuth('/transactions/my'),
-                fetchWithAuth('/payouts'),
+                fetchWithAuth('/payouts/my'),
                 fetchWithAuth('/wallets').catch(() => []),
                 fetchWithAuth('/auth/me').catch(() => null)
             ]);

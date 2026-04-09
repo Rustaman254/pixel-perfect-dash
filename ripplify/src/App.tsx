@@ -52,12 +52,6 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     return <Navigate to="/login?error=disabled" replace />;
   }
 
-  // Redirect admin users to the admin panel
-  if (userProfile.role === "admin") {
-    window.location.href = "http://localhost:8083";
-    return null;
-  }
-
   return <>{children}</>;
 };
 

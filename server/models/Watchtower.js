@@ -1,8 +1,8 @@
-import { getDb } from '../config/db.js';
+import { getWatchtowerDb, getRipplifyDb, getAuthDb } from '../config/db.js';
 
 const Watchtower = {
     getOverview: async (userId) => {
-        const db = getDb();
+        const db = getWatchtowerDb();
         
         // Behavioral Stats
         const behavioralStats = await db.get(`
@@ -71,7 +71,7 @@ const Watchtower = {
     },
 
     getEntityAnalytics: async (entityId, entityType) => {
-        const db = getDb();
+        const db = getWatchtowerDb();
         // For simplicity, we correlate via clarifying if we had actual mappings.
         // Here we'll return mockable/calculatable stats for the entity.
         const mapping = await db.get(`
@@ -97,7 +97,7 @@ const Watchtower = {
     },
 
     getSessions: async (userId, limit = 20, offset = 0, startDate = null, endDate = null) => {
-        const db = getDb();
+        const db = getWatchtowerDb();
         let query = `SELECT * FROM insight_sessions WHERE userId = ?`;
         const params = [userId];
         
@@ -117,7 +117,7 @@ const Watchtower = {
     },
 
     getSessionCount: async (userId, startDate = null, endDate = null) => {
-        const db = getDb();
+        const db = getWatchtowerDb();
         let query = `SELECT COUNT(*) as count FROM insight_sessions WHERE userId = ?`;
         const params = [userId];
         
@@ -135,7 +135,7 @@ const Watchtower = {
     },
 
     getSessionDetail: async (sessionId) => {
-        const db = getDb();
+        const db = getWatchtowerDb();
         const session = await db.get(`SELECT * FROM insight_sessions WHERE sessionId = ?`, sessionId);
         if (!session) return null;
 
@@ -149,7 +149,7 @@ const Watchtower = {
     },
 
     createSession: async (sessionData) => {
-        const db = getDb();
+        const db = getWatchtowerDb();
         await db.run(`
             INSERT INTO insight_sessions (
                 userId, sessionId, device, browser, os, country, city, duration, pageViews, isRageClick, isDeadClick, endUserId, metadata
@@ -164,7 +164,7 @@ const Watchtower = {
     },
 
     logEvent: async (eventData) => {
-        const db = getDb();
+        const db = getWatchtowerDb();
         await db.run(`
             INSERT INTO insight_events (sessionId, type, target, url, data)
             VALUES (?, ?, ?, ?, ?)
@@ -183,7 +183,7 @@ const Watchtower = {
     },
 
     getFeatureInsights: async (userId) => {
-        const db = getDb();
+        const db = getWatchtowerDb();
         // Aggregating clicks and rage clicks per target
         const analysis = await db.all(`
             SELECT 
@@ -222,30 +222,31 @@ const Watchtower = {
     },
 
     getProductInsights: async (userId) => {
-        const db = getDb();
+        const watchtowerDb = getWatchtowerDb();
+        const ripplifyDb = getRipplifyDb();
         
         // 1. Get all products (Payment Links)
-        const products = await db.all(`SELECT id, name, slug, price, currency FROM payment_links WHERE userId = ?`, userId);
+        const products = await ripplifyDb.all(`SELECT id, name, slug, price, currency FROM payment_links WHERE userId = ?`, userId);
         
         const insights = [];
         
         for (const product of products) {
             // Visits to the payment page
-            const visits = await db.get(`
+            const visits = await watchtowerDb.get(`
                 SELECT COUNT(DISTINCT sessionId) as count 
                 FROM insight_events 
                 WHERE url LIKE '%' || ? || '%' AND type = 'pageview'
             `, product.slug);
             
             // Clicks on the payment page (intent)
-            const clicks = await db.get(`
+            const clicks = await watchtowerDb.get(`
                 SELECT COUNT(*) as count 
                 FROM insight_events 
                 WHERE url LIKE '%' || ? || '%' AND type = 'click'
             `, product.slug);
 
             // Actual Successful Sales
-            const sales = await db.get(`
+            const sales = await ripplifyDb.get(`
                 SELECT COUNT(*) as count, SUM(amount) as revenue
                 FROM transactions
                 WHERE linkId = ? AND status IN ('Completed', 'Funds locked', 'Shipped')
@@ -272,10 +273,12 @@ const Watchtower = {
     },
 
     getPlatformOverview: async () => {
-        const db = getDb();
+        const watchtowerDb = getWatchtowerDb();
+        const ripplifyDb = getRipplifyDb();
+        const authDb = getAuthDb();
         
         // Platform-wide Behavioral Stats
-        const behavioralStats = await db.get(`
+        const behavioralStats = await watchtowerDb.get(`
             SELECT 
                 COUNT(*) as totalSessions,
                 SUM(pageViews) as totalPageViews,
@@ -285,7 +288,7 @@ const Watchtower = {
         `);
 
         // Platform-wide Business Stats
-        const businessStats = await db.get(`
+        const businessStats = await ripplifyDb.get(`
             SELECT 
                 SUM(CASE WHEN status IN ('Completed', 'Funds locked', 'Shipped') THEN amount ELSE 0 END) as totalRevenue,
                 COUNT(*) as totalTransactions,
@@ -294,7 +297,7 @@ const Watchtower = {
         `);
 
         // App Status Aggregation
-        const apps = await db.all(`SELECT name, slug, isActive FROM apps`);
+        const apps = await authDb.all(`SELECT name, slug, isActive FROM apps`);
 
         return {
             platformStats: {

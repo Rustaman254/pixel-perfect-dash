@@ -1,8 +1,8 @@
-import { getDb } from "../config/db.js";
+import { getAdminDb } from "../config/db.js";
 
 const Notification = {
     create: async ({ userId, title, message, type = 'info', actionUrl = null, actionLabel = null, targetRole = null, appName = 'ripplify' }) => {
-        const db = getDb();
+        const db = getAdminDb();
         const [result] = await db('notifications').insert({
             userId, title, message, type, actionUrl, actionLabel, targetRole, appName
         }).returning('*');
@@ -10,7 +10,7 @@ const Notification = {
     },
 
     findByUserId: async (userId, role = null, userCreatedAt = null, appName = 'ripplify') => {
-        const db = getDb();
+        const db = getAdminDb();
         let query = db('notifications').where('appName', appName);
         
         if (role === 'admin') {
@@ -27,25 +27,25 @@ const Notification = {
     },
 
     markAsRead: async (id, userId) => {
-        const db = getDb();
+        const db = getAdminDb();
         await db('notifications').where({ id }).andWhere(q => q.where({ userId }).orWhereNull('userId')).update({ isRead: true });
         return true;
     },
 
     markAllAsRead: async (userId, appName = 'ripplify') => {
-        const db = getDb();
+        const db = getAdminDb();
         await db('notifications').where(q => q.where({ userId }).orWhereNull('userId')).where({ appName }).update({ isRead: true });
         return true;
     },
 
     delete: async (id, userId) => {
-        const db = getDb();
+        const db = getAdminDb();
         await db('notifications').where({ id }).andWhere(q => q.where({ userId }).orWhereNull('userId')).del();
         return true;
     },
 
     findAll: async (appName = null) => {
-        const db = getDb();
+        const db = getAdminDb();
         let query = db('notifications').leftJoin('users', 'notifications.userId', 'users.id')
             .select('notifications.*', 'users.email');
         

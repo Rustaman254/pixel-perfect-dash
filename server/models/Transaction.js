@@ -1,9 +1,9 @@
-import { getDb } from '../config/db.js';
+import { getRipplifyDb } from '../config/db.js';
 import { v4 as uuidv4 } from 'uuid';
 
 const Transaction = {
     create: async (transactionData) => {
-        const db = getDb();
+        const db = getRipplifyDb();
         const trackingToken = uuidv4();
         const [result] = await db('transactions').insert({
             userId: transactionData.userId,
@@ -24,7 +24,7 @@ const Transaction = {
     },
 
     findAllByUserId: async (userId) => {
-        const db = getDb();
+        const db = getRipplifyDb();
         return await db('transactions').leftJoin('payment_links', 'transactions.linkId', 'payment_links.id')
             .select('transactions.*', 'payment_links.name as linkName', 'payment_links.slug as linkSlug')
             .where('transactions.userId', userId)
@@ -32,17 +32,17 @@ const Transaction = {
     },
 
     findById: async (id) => {
-        const db = getDb();
+        const db = getRipplifyDb();
         return await db('transactions').where({ id }).first();
     },
 
     findByTransactionId: async (transactionId) => {
-        const db = getDb();
+        const db = getRipplifyDb();
         return await db('transactions').where({ transactionId }).first();
     },
 
     findByTrackingToken: async (token) => {
-        const db = getDb();
+        const db = getRipplifyDb();
         return await db('transactions')
             .leftJoin('payment_links', 'transactions.linkId', 'payment_links.id')
             .leftJoin('users', 'payment_links.userId', 'users.id')
@@ -53,7 +53,7 @@ const Transaction = {
     },
 
     findStats: async (userId) => {
-        const db = getDb();
+        const db = getRipplifyDb();
         return await db('transactions')
             .select(db.raw(`DATE(createdAt) as date`))
             .select(db.raw(`SUM(CASE WHEN status IN ('Completed', 'Funds locked', 'Shipped') THEN amount ELSE 0 END) as revenue`))
@@ -67,7 +67,7 @@ const Transaction = {
     },
 
     findPaymentMethodStats: async (userId) => {
-        const db = getDb();
+        const db = getRipplifyDb();
         return await db('transactions')
             .select('currency as name')
             .select(db.raw(`COUNT(*) as count`))
@@ -77,7 +77,7 @@ const Transaction = {
     },
 
     findAdminStats: async () => {
-        const db = getDb();
+        const db = getRipplifyDb();
         return await db('users')
             .leftJoin('transactions', 'users.id', 'transactions.userId')
             .select('users.id', 'users.businessName', 'users.email')
@@ -90,12 +90,12 @@ const Transaction = {
     },
 
     updateStatus: async (id, status) => {
-        const db = getDb();
+        const db = getRipplifyDb();
         return await db('transactions').where({ id }).update({ status });
     },
 
     updateTransactionId: async (id, transactionId) => {
-        const db = getDb();
+        const db = getRipplifyDb();
         return await db('transactions').where({ id }).update({ transactionId });
     }
 };

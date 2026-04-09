@@ -1,8 +1,8 @@
-import { getDb } from '../config/db.js';
+import { getRipplifyDb } from '../config/db.js';
 
 const PaymentLink = {
     create: async (linkData) => {
-        const db = getDb();
+        const db = getRipplifyDb();
         const [result] = await db('payment_links').insert({
             userId: linkData.userId,
             name: linkData.name,
@@ -28,24 +28,24 @@ const PaymentLink = {
     },
 
     findAllByUserId: async (userId) => {
-        const db = getDb();
+        const db = getRipplifyDb();
         return await db('payment_links').where({ userId }).orderBy('createdAt', 'desc');
     },
 
     findBySlug: async (slug) => {
-        const db = getDb();
+        const db = getRipplifyDb();
         return await db('payment_links').join('users', 'payment_links.userId', 'users.id')
             .select('payment_links.*', 'users.businessName', 'users.fullName', 'users.email as sellerEmail', 'users.businessLogo')
             .where('payment_links.slug', slug).first();
     },
 
     findById: async (id) => {
-        const db = getDb();
+        const db = getRipplifyDb();
         return await db('payment_links').where({ id }).first();
     },
 
     updateStatus: async (id, status) => {
-        const db = getDb();
+        const db = getRipplifyDb();
         await db('payment_links').where({ id }).update({ 
             status,
             updatedAt: db.fn.now()
@@ -54,18 +54,18 @@ const PaymentLink = {
     },
 
     incrementClicks: async (id) => {
-        const db = getDb();
+        const db = getRipplifyDb();
         await db('payment_links').where({ id }).increment('clicks', 1);
     },
 
     updatePaymentStats: async (id, amount) => {
-        const db = getDb();
+        const db = getRipplifyDb();
         await db('payment_links').where({ id }).increment('paymentCount', 1);
         await db('payment_links').where({ id }).increment('totalEarnedValue', amount);
     },
 
     updateBuyerDetails: async (id, details) => {
-        const db = getDb();
+        const db = getRipplifyDb();
         await db('payment_links').where({ id }).update({
             buyerName: details.buyerName,
             buyerEmail: details.buyerEmail,
@@ -74,7 +74,7 @@ const PaymentLink = {
     },
 
     delete: async (id, userId) => {
-        const db = getDb();
+        const db = getRipplifyDb();
         return await db('payment_links').where({ id, userId }).del();
     }
 };

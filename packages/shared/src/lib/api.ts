@@ -2,7 +2,7 @@ const getBaseUrl = () => {
   if (typeof window !== "undefined") {
     const hostname = window.location.hostname;
     if (hostname === "localhost" || hostname === "127.0.0.1") {
-      return "http://localhost:3002/api";
+      return "http://localhost:3007/api";
     }
   }
   return import.meta.env.VITE_API_URL || "https://ripplify.sokostack.xyz/api";

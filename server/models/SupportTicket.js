@@ -1,8 +1,8 @@
-import { getDb } from '../config/db.js';
+import { getAdminDb } from '../config/db.js';
 
 const SupportTicket = {
     create: async (ticketData) => {
-        const db = getDb();
+        const db = getAdminDb();
         const [result] = await db('support_tickets').insert({
             userId: ticketData.userId || null,
             name: ticketData.name,
@@ -15,12 +15,12 @@ const SupportTicket = {
     },
 
     findAllForAdmin: async () => {
-        const db = getDb();
+        const db = getAdminDb();
         return await db('support_tickets').orderBy('createdAt', 'desc');
     },
 
     updateStatus: async (id, status) => {
-        const db = getDb();
+        const db = getAdminDb();
         await db('support_tickets').where({ id }).update({ status });
         return await db('support_tickets').where({ id }).first();
     }

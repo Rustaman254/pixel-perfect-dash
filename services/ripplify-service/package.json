@@ -10,16 +10,16 @@
   },
   "dependencies": {
     "@sokostack/shared-service": "file:../shared",
-    "express": "^5.0.1",
-    "knex": "^3.1.0",
-    "pg": "^8.13.0",
-    "dotenv": "^16.4.0",
-    "helmet": "^8.1.0",
     "cors": "^2.8.6",
-    "intasend-node": "^1.1.1",
+    "dotenv": "^16.4.0",
+    "express": "^5.0.1",
     "flutterwave-node-v3": "^1.1.6",
+    "helmet": "^8.1.0",
+    "intasend-node": "^1.1.2",
+    "knex": "^3.1.0",
+    "node-forge": "^1.3.1",
+    "pg": "^8.13.0",
     "slugify": "^1.6.6",
-    "uuid": "^13.0.0",
-    "node-forge": "^1.3.1"
+    "uuid": "^13.0.0"
   }
 }

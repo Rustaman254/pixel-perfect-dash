@@ -1,8 +1,8 @@
-import { getDb } from "../config/db.js";
+import { getAuthDb } from "../config/db.js";
 
 const ReferralCode = {
     create: async ({ code, userId, discount = 0, maxUses = -1, pointsPerReferral = 10, expiresAt = null }) => {
-        const db = getDb();
+        const db = getAuthDb();
         const [result] = await db('referral_codes').insert({
             code, userId, discount, maxUses, pointsPerReferral, expiresAt
         }).returning('*');
@@ -10,7 +10,7 @@ const ReferralCode = {
     },
 
     findAll: async () => {
-        const db = getDb();
+        const db = getAuthDb();
         return await db('referral_codes')
             .leftJoin('users', 'referral_codes.userId', 'users.id')
             .select('referral_codes.*', 'users.email as userEmail', 'users.fullName as userFullName', 'users.businessName as userBusiness')
@@ -18,36 +18,36 @@ const ReferralCode = {
     },
 
     findByCode: async (code) => {
-        const db = getDb();
+        const db = getAuthDb();
         return await db('referral_codes').where({ code, isActive: true }).first();
     },
 
     findById: async (id) => {
-        const db = getDb();
+        const db = getAuthDb();
         return await db('referral_codes').where({ id }).first();
     },
 
     delete: async (id) => {
-        const db = getDb();
+        const db = getAuthDb();
         await db('referral_usage').where({ referralCodeId: id }).del();
         await db('referral_codes').where({ id }).del();
         return true;
     },
 
     toggleActive: async (id, isActive) => {
-        const db = getDb();
+        const db = getAuthDb();
         await db('referral_codes').where({ id }).update({ isActive });
         return true;
     },
 
     incrementUses: async (code) => {
-        const db = getDb();
+        const db = getAuthDb();
         await db('referral_codes').where({ code }).increment('currentUses', 1);
         return true;
     },
 
     recordUsage: async (referralCodeId, code, referrerId, referredUserId, pointsAwarded) => {
-        const db = getDb();
+        const db = getAuthDb();
         await db('referral_usage').insert({
             referralCodeId, code, referrerId, referredUserId, pointsAwarded
         });
@@ -59,7 +59,7 @@ const ReferralCode = {
     },
 
     getUsageByCodeId: async (codeId) => {
-        const db = getDb();
+        const db = getAuthDb();
         return await db('referral_usage')
             .leftJoin('users', 'referral_usage.referredUserId', 'users.id')
             .select('referral_usage.*', 'users.fullName as referredName', 'users.email as referredEmail', 'users.businessName as referredBusiness')
@@ -68,7 +68,7 @@ const ReferralCode = {
     },
 
     getReferralsByUserId: async (userId) => {
-        const db = getDb();
+        const db = getAuthDb();
         return await db('referral_usage')
             .leftJoin('referral_codes', 'referral_usage.referralCodeId', 'referral_codes.id')
             .leftJoin('users', 'referral_usage.referredUserId', 'users.id')
@@ -78,7 +78,7 @@ const ReferralCode = {
     },
 
     validateForRegistration: async (code) => {
-        const db = getDb();
+        const db = getAuthDb();
         const referral = await db('referral_codes')
             .leftJoin('users', 'referral_codes.userId', 'users.id')
             .select('referral_codes.*', 'users.fullName as referrerName', 'users.email as referrerEmail')

@@ -1,4 +1,4 @@
-import { getDb } from '../config/db.js';
+import { getAuthDb } from '../config/db.js';
 
 const ALLOWED_COLUMNS = [
     'id', 'email', 'password', 'role', 'fullName', 'phone', 'businessName',
@@ -9,7 +9,7 @@ const ALLOWED_COLUMNS = [
 
 const User = {
     create: async (userData) => {
-        const db = getDb();
+        const db = getAuthDb();
         const [result] = await db('users').insert({
             email: userData.email,
             password: userData.password,
@@ -32,7 +32,7 @@ const User = {
     },
 
     findOne: async (query) => {
-        const db = getDb();
+        const db = getAuthDb();
         const keys = Object.keys(query);
         const values = Object.values(query);
 
@@ -52,7 +52,7 @@ const User = {
     },
 
     findById: async (id) => {
-        const db = getDb();
+        const db = getAuthDb();
         const user = await db('users').where({ id }).first();
         if (!user) return null;
 
@@ -61,7 +61,7 @@ const User = {
     },
 
     update: async (id, userData) => {
-        const db = getDb();
+        const db = getAuthDb();
         const keys = Object.keys(userData);
 
         if (keys.length === 0) return null;

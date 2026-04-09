@@ -1,8 +1,8 @@
-import { getDb } from '../config/db.js';
+import { getRipplifyDb } from '../config/db.js';
 
 const Payout = {
     create: async (payoutData) => {
-        const db = getDb();
+        const db = getRipplifyDb();
         const [result] = await db('payouts').insert({
             userId: payoutData.userId,
             amount: payoutData.amount,
@@ -16,7 +16,7 @@ const Payout = {
     },
 
     findAll: async () => {
-        const db = getDb();
+        const db = getRipplifyDb();
         return await db('payouts')
             .leftJoin('users', 'payouts.userId', 'users.id')
             .select('payouts.*', 'users.fullName', 'users.email', 'users.businessName')
@@ -24,12 +24,12 @@ const Payout = {
     },
 
     findAllByUserId: async (userId) => {
-        const db = getDb();
+        const db = getRipplifyDb();
         return await db('payouts').where({ userId }).orderBy('createdAt', 'desc');
     },
 
     updateStatus: async (id, status) => {
-        const db = getDb();
+        const db = getRipplifyDb();
         await db('payouts').where({ id }).update({ status });
         return await db('payouts').where({ id }).first();
     }

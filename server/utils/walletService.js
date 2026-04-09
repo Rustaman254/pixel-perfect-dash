@@ -36,7 +36,7 @@ const walletService = {
 
         const db = getDb();
         
-        // SQLite doesn't currently expose full BEGIN/COMMIT cleanly via sqlite3 library wrapper without manual driver management but we can do it via exec
+        // Using raw SQL for transaction handling
         await db.run('BEGIN TRANSACTION');
 
         try {

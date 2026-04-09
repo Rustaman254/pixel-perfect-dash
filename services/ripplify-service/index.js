@@ -102,6 +102,8 @@ app.use('/api/wallets', walletRoutes);
 app.use('/api/payouts', payoutRoutes);
 app.use('/api/payment-methods', paymentMethodRoutes);
 app.use('/api/notifications', (req, res) => res.json([]));
+app.use('/api/apps/active', (req, res) => res.json([]));
+app.use('/api/apps/all', (req, res) => res.json([]));
 
 // Internal routes for admin service
 app.get('/internal/transactions', internalAuth, transCtrl.internalGetTransactions);

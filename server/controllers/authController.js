@@ -4,7 +4,7 @@ import crypto from "crypto";
 import User from "../models/User.js";
 import ApiKey from "../models/ApiKey.js";
 import Notification from "../models/Notification.js";
-import { getDb } from "../config/db.js";
+import { getDb, getAuthDb, getRipplifyDb } from "../config/db.js";
 import emailService from "../services/emailService.js";
 
 const generateToken = (id, email, role) => {
@@ -79,11 +79,14 @@ export const registerUser = async (req, res) => {
         if (user) {
             // Create default payout method in user_payout_methods table
             try {
-                const db = getDb();
-                await db.run(
-                    `INSERT INTO user_payout_methods (userId, method, label, details, isDefault) VALUES (?, ?, ?, ?, 1)`,
-                    [user.id, finalPayoutMethod, finalPayoutMethod === 'mpesa' ? 'M-Pesa' : 'Bank Account', finalPayoutDetails]
-                );
+                const db = getRipplifyDb();
+                await db('user_payout_methods').insert({
+                    userId: user.id,
+                    method: finalPayoutMethod,
+                    label: finalPayoutMethod === 'mpesa' ? 'M-Pesa' : 'Bank Account',
+                    details: finalPayoutDetails,
+                    isDefault: true
+                });
             } catch (payoutErr) {
                 console.error('Failed to create default payout method:', payoutErr.message);
             }

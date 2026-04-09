@@ -1,13 +1,13 @@
-import { getDb } from '../config/db.js';
+import { getAuthDb } from '../config/db.js';
 
 const UserCurrency = {
     findAllByUserId: async (userId) => {
-        const db = getDb();
+        const db = getAuthDb();
         return await db('user_currencies').where({ userId });
     },
 
     upsert: async (userId, code, enabled) => {
-        const db = getDb();
+        const db = getAuthDb();
         const existing = await db('user_currencies').where({ userId, code }).first();
 
         if (existing) {

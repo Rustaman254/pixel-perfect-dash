@@ -1,9 +1,9 @@
-import { getDb } from '../config/db.js';
+import { getAuthDb } from '../config/db.js';
 import { v4 as uuidv4 } from 'uuid';
 
 const ApiKey = {
     create: async (userId, name) => {
-        const db = getDb();
+        const db = getAuthDb();
         const key = `rf_${uuidv4().replace(/-/g, '')}`;
         const [result] = await db('api_keys').insert({
             userId,
@@ -15,7 +15,7 @@ const ApiKey = {
     },
 
     findByKey: async (key) => {
-        const db = getDb();
+        const db = getAuthDb();
         return await db('api_keys')
             .join('users', 'api_keys.userId', 'users.id')
             .select('api_keys.*', 'users.businessName', 'users.email as userEmail')
@@ -25,7 +25,7 @@ const ApiKey = {
     },
 
     findAll: async () => {
-        const db = getDb();
+        const db = getAuthDb();
         return await db('api_keys')
             .join('users', 'api_keys.userId', 'users.id')
             .select('api_keys.*', 'users.email as userEmail', 'users.businessName')
@@ -33,17 +33,17 @@ const ApiKey = {
     },
 
     findByUserId: async (userId) => {
-        const db = getDb();
+        const db = getAuthDb();
         return await db('api_keys').where({ userId }).orderBy('createdAt', 'desc');
     },
 
     delete: async (id) => {
-        const db = getDb();
+        const db = getAuthDb();
         return await db('api_keys').where({ id }).del();
     },
 
     updateStatus: async (id, status) => {
-        const db = getDb();
+        const db = getAuthDb();
         return await db('api_keys').where({ id }).update({ status });
     }
 };
