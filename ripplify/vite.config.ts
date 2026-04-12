@@ -17,6 +17,16 @@ export default defineConfig(({ mode }) => ({
         target: "http://127.0.0.1:3001",
         changeOrigin: true,
       },
+      "/links": {
+        target: "http://127.0.0.1:3001",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/links/, '/api/links'),
+      },
+      "/notifications": {
+        target: "http://127.0.0.1:3001",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/notifications/, '/api/notifications'),
+      },
       "/sso.html": {
         target: "http://127.0.0.1:3001",
         changeOrigin: true,
