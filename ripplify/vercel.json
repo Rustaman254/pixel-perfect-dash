@@ -4,6 +4,8 @@
   "framework": "vite",
   "routes": [
     { "src": "/api/(.*)", "dest": "https://sokostack.ddns.net/api/ripplify/$1" },
+    { "src": "/auth/(.*)", "dest": "https://sokostack.ddns.net/api/auth/$1" },
+    { "src": "/auth", "dest": "https://sokostack.ddns.net/api/auth" },
     { "handle": "filesystem" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
