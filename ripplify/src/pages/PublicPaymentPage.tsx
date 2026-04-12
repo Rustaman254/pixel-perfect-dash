@@ -844,7 +844,10 @@ const PublicPaymentPage = () => {
                                             <div className="flex justify-between text-sm"><span className="text-slate-500">Shipping Fee</span><span className="font-bold">{link.currency} {link.shippingFee.toLocaleString()}</span></div>
                                         )}
                                         <div className="flex justify-between text-sm"><span className="text-slate-500">Escrow Fee</span><span className="text-emerald-600 font-bold">Free</span></div>
-                                        <div className="pt-3 border-t border-slate-100 flex justify-between items-center"><span className="font-bold text-slate-900">Total Secure Amount</span><span className="text-xl font-black text-[#025864]">{link.currency} {(link.price + (link.category === 'product' ? (link.shippingFee || 0) : 0)).toLocaleString()}</span></div>
+                                        <div className="pt-3 border-t border-slate-100 flex justify-between items-center">
+                                            <span className="font-bold text-slate-900">Total Secure Amount</span>
+                                            <span className="text-xl font-black text-[#025864]">{link.currency} {(Number(link.price) + (link.category === 'product' ? Number(link.shippingFee) || 0 : 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 space-y-3">
