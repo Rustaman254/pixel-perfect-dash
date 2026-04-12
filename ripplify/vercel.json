@@ -4,8 +4,8 @@
   "framework": "vite",
   "routes": [
     { "src": "/api/auth/(.*)", "dest": "https://sokostack.ddns.net/api/auth/$1" },
-    { "src": "/api/links/(.*)", "dest": "https://sokostack.ddns.net/api/links/$1" },
-    { "src": "/api/payment-links/(.*)", "dest": "https://sokostack.ddns.net/api/payment-links/$1" },
+    { "src": "/api/links/(.*)", "dest": "https://sokostack.ddns.net/api/ripplify/links/$1" },
+    { "src": "/api/payment-links/(.*)", "dest": "https://sokostack.ddns.net/api/ripplify/payment-links/$1" },
     { "src": "/api/(.*)", "dest": "https://sokostack.ddns.net/api/ripplify/$1" },
     { "handle": "filesystem" },
     { "src": "/(.*)", "dest": "/index.html" }
