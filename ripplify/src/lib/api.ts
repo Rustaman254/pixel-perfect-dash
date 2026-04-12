@@ -4,6 +4,8 @@ const getBaseUrl = () => {
         if (hostname === "localhost" || hostname === "127.0.0.1") {
             return "/api";
         }
+        // Vercel/production - use relative API path (proxied by vercel.json)
+        return "";
     }
     return "http://localhost:3001";
 };
