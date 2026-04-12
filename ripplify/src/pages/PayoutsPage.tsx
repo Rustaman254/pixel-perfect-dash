@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 const PayoutsPage = () => {
     usePageTitle("Payouts");
     const navigate = useNavigate();
-    const { userProfile, links, payouts, refreshData } = useAppContext();
+    const { userProfile, links, payouts, refreshData, wallets } = useAppContext();
     const { toast } = useToast();
     const [loading, setLoading] = useState(false);
     const [showModal, setShowModal] = useState(false);
@@ -100,14 +100,22 @@ const PayoutsPage = () => {
     };
 
     // Balance calculations
-    const totalEarned = links.reduce((acc, l) => acc + (l.totalEarnedValue || 0), 0);
+    const totalEarned = links?.reduce((acc, l) => acc + (Number(l.totalEarnedValue) || 0), 0) || 0;
     const paidOut = payouts
-        .filter(p => p.status === "Completed")
-        .reduce((acc, p) => acc + p.amount, 0);
+        ?.filter(p => p.status === "Completed")
+        .reduce((acc, p) => acc + (Number(p.amount) || 0), 0) || 0;
     const withdrawnSum = payouts
-        .filter(p => ["Processing", "Completed"].includes(p.status))
-        .reduce((acc, p) => acc + p.amount + (p.fee || 0), 0);
-    const available = totalEarned - withdrawnSum;
+        ?.filter(p => ["Processing", "Completed"].includes(p.status))
+        .reduce((acc, p) => acc + (Number(p.amount) || 0) + (Number(p.fee) || 0), 0) || 0;
+    
+    // Use wallet balance if available, otherwise calculate from links
+    const walletBalance = wallets?.reduce((acc, w) => acc + (Number(w.balance) || 0), 0) || 0;
+    const available = walletBalance > 0 ? walletBalance : (totalEarned - withdrawnSum);
+
+    const formatAmount = (amount: number) => {
+        if (amount == null || isNaN(amount)) return "0.00";
+        return amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
 
     const hasMpesa = payoutMethods.some(m => m.method === 'mpesa' && m.isActive);
     const hasBank = payoutMethods.some(m => m.method === 'bank' && m.isActive);
@@ -229,7 +237,7 @@ const PayoutsPage = () => {
                                 <Wallet className="w-5 h-5 text-emerald-600" />
                                 <div>
                                     <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider">Available Balance</p>
-                                    <p className="text-lg font-black text-emerald-900">KES {available.toLocaleString()}</p>
+                                    <p className="text-lg font-black text-emerald-900">KES {formatAmount(available)}</p>
                                 </div>
                             </div>
 
