@@ -77,8 +77,8 @@ const Dashboard = () => {
     : "+0";
 
   const statCards = [
-    { title: "Total Revenue", value: stats ? `KES ${Number(stats.revenue || 0).toLocaleString()}` : "...", change: `${revChange}%`, positive: Number(revChange) >= 0, icon: DollarSign, color: "bg-emerald-50 text-emerald-600" },
-    { title: "Total Volume", value: stats ? `KES ${Number(stats.volume || 0).toLocaleString()}` : "...", change: "", positive: true, icon: TrendingUp, color: "bg-blue-50 text-blue-600" },
+    { title: "Total Revenue", value: stats ? `KES ${Number(stats.revenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "...", change: `${revChange}%`, positive: Number(revChange) >= 0, icon: DollarSign, color: "bg-emerald-50 text-emerald-600" },
+    { title: "Total Volume", value: stats ? `KES ${Number(stats.volume || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "...", change: "", positive: true, icon: TrendingUp, color: "bg-blue-50 text-blue-600" },
     { title: "Sellers", value: stats ? stats.sellers || 0 : "...", change: `${analytics?.userStats?.verified || 0} verified`, positive: true, icon: Users, color: "bg-indigo-50 text-indigo-600" },
     { title: "Transactions", value: stats ? stats.transactions || 0 : "...", change: `${txChange}%`, positive: Number(txChange) >= 0, icon: CreditCard, color: "bg-orange-50 text-orange-600" },
     { title: "Payment Links", value: stats ? stats.links || 0 : "...", change: "", positive: true, icon: Link2, color: "bg-purple-50 text-purple-600" },

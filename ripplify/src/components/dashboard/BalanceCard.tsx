@@ -8,13 +8,18 @@ const BalanceCard = () => {
   const { toast } = useToast();
   const { links, payouts } = useAppContext();
 
-  const totalEarnings = links.reduce((acc, link) => acc + (link.totalEarnedValue || 0), 0);
+  const totalEarnings = links?.reduce((acc, link) => acc + (Number(link.totalEarnedValue) || 0), 0) || 0;
   
   const withdrawnSum = payouts
-    .filter(p => ["Processing", "Completed"].includes(p.status))
-    .reduce((acc, p) => acc + p.amount, 0);
+    ?.filter(p => ["Processing", "Completed"].includes(p.status))
+    .reduce((acc, p) => acc + (Number(p.amount) || 0), 0) || 0;
     
   const availableBalance = totalEarnings - withdrawnSum;
+
+  const formatAmount = (amount: number) => {
+    if (amount == null || isNaN(amount)) return "0.00";
+    return amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
 
   const handleAction = (label: string) => {
     toast({
@@ -31,8 +36,8 @@ const BalanceCard = () => {
         <div>
           <p className="text-sm opacity-80 mb-1">Available for Payout</p>
           <div className="flex items-baseline gap-3">
-            <h2 className="text-2xl md:text-3xl font-bold">KES {availableBalance.toLocaleString()}</h2>
-            <span className="text-xs font-medium text-emerald-300">Total Revenue: KES {totalEarnings.toLocaleString()}</span>
+            <h2 className="text-2xl md:text-3xl font-bold">KES {formatAmount(availableBalance)}</h2>
+            <span className="text-xs font-medium text-emerald-300">Total Revenue: KES {formatAmount(totalEarnings)}</span>
           </div>
         </div>
         <div className="flex items-center gap-2">
