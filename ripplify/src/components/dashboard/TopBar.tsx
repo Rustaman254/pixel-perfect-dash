@@ -1,8 +1,8 @@
-import { Search, Calendar, ChevronDown, Download, Menu, LogOut, Bell, ExternalLink, Clock, LayoutGrid, CheckCircle2, LineChart } from "lucide-react";
+import { Search, Calendar, Download, Menu, LogOut, Bell, ExternalLink, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAppContext } from "@/contexts/AppContext";
 import { useState, useEffect } from "react";
-import { fetchWithAuth, publicFetch } from "@/lib/api";
+import { fetchWithAuth } from "@/lib/api";
 import { Link, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
@@ -18,8 +18,6 @@ const TopBar = ({ onMenuToggle }: TopBarProps) => {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [showAppSwitcher, setShowAppSwitcher] = useState(false);
-  const [apps, setApps] = useState<any[]>([]);
 
   const fetchNotifications = async () => {
     try {
@@ -31,18 +29,8 @@ const TopBar = ({ onMenuToggle }: TopBarProps) => {
     }
   };
 
-  const fetchApps = async () => {
-    try {
-      const data = await publicFetch('/apps/active');
-      setApps(data);
-    } catch (e) {
-      console.error("Fetch apps failed", e);
-    }
-  };
-
   useEffect(() => {
     fetchNotifications();
-    fetchApps();
     const interval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(interval);
   }, []);
@@ -90,18 +78,6 @@ const TopBar = ({ onMenuToggle }: TopBarProps) => {
 
         {/* App Switcher & Notifications container */}
         <div className="flex items-center gap-1 sm:gap-2 mr-1">
-          {/* Inline Apps */}
-          <div className="hidden lg:grid grid-cols-3 gap-2 mr-2">
-          {apps.slice(0, 3).map((app) => (
-             <a key={app.id} href={app.url} className="flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-slate-100 transition-colors border border-transparent hover:border-slate-200 group">
-                <div className="w-6 h-6 rounded bg-slate-100 text-slate-600 flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                  {app.icon === 'BarChart' ? <LineChart className="w-3.5 h-3.5" /> : <LayoutGrid className="w-3.5 h-3.5" />}
-                </div>
-                <span className="text-sm font-semibold text-slate-700 group-hover:text-primary whitespace-nowrap">{app.name === 'Insights' ? 'Watchtower' : app.name}</span>
-             </a>
-          ))}
-        </div>
-
         {/* Notification Bell */}
         <div className="relative">
           <button
