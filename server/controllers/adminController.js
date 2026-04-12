@@ -11,8 +11,8 @@ import Payout from '../models/Payout.js';
 
 export const getPlatformRevenue = async () => {
     const db = getDb();
-    const transactionRevenue = await db.get(`SELECT SUM(fee) as total FROM transactions WHERE status = 'Completed'`);
-    const payoutRevenue = await db.get(`SELECT SUM(fee) as total FROM payouts WHERE status IN ('Processing', 'Completed')`);
+    const transactionRevenue = await db.get(`SELECT SUM("fee") as total FROM "transactions" WHERE "status" = 'Completed'`);
+    const payoutRevenue = await db.get(`SELECT SUM("fee") as total FROM "payouts" WHERE "status" IN ('Processing', 'Completed')`);
     return (transactionRevenue?.total || 0) + (payoutRevenue?.total || 0);
 };
 
@@ -20,15 +20,15 @@ export const getPlatformStats = async (req, res) => {
     try {
         const db = getDb();
 
-        const totalVolume = await db.get(`SELECT SUM(amount) as total FROM transactions WHERE status = 'Completed'`);
+        const totalVolume = await db.get(`SELECT SUM("amount") as total FROM "transactions" WHERE "status" = 'Completed'`);
         const totalRevenue = await getPlatformRevenue();
-        const transactionRevenue = await db.get(`SELECT SUM(fee) as total FROM transactions WHERE status = 'Completed'`);
-        const payoutRevenue = await db.get(`SELECT SUM(fee) as total FROM payouts WHERE status IN ('Processing', 'Completed')`);
-        const activeSellers = await db.get(`SELECT COUNT(*) as count FROM users WHERE role = 'seller'`);
-        const totalLinks = await db.get(`SELECT COUNT(*) as count FROM payment_links`);
-        const totalTransactions = await db.get(`SELECT COUNT(*) as count FROM transactions`);
-        const pendingTransactions = await db.get(`SELECT COUNT(*) as count FROM transactions WHERE status = 'Pending'`);
-        const disputedTransactions = await db.get(`SELECT COUNT(*) as count FROM transactions WHERE status = 'Disputed'`);
+        const transactionRevenue = await db.get(`SELECT SUM("fee") as total FROM "transactions" WHERE "status" = 'Completed'`);
+        const payoutRevenue = await db.get(`SELECT SUM("fee") as total FROM "payouts" WHERE "status" IN ('Processing', 'Completed')`);
+        const activeSellers = await db.get(`SELECT COUNT(*) as count FROM "users" WHERE "role" = 'seller'`);
+        const totalLinks = await db.get(`SELECT COUNT(*) as count FROM "payment_links"`);
+        const totalTransactions = await db.get(`SELECT COUNT(*) as count FROM "transactions"`);
+        const pendingTransactions = await db.get(`SELECT COUNT(*) as count FROM "transactions" WHERE "status" = 'Pending'`);
+        const disputedTransactions = await db.get(`SELECT COUNT(*) as count FROM "transactions" WHERE "status" = 'Disputed'`);
 
         const companyStats = await Transaction.findAdminStats();
 
@@ -641,7 +641,7 @@ export const updatePayoutStatus = async (req, res) => {
 export const getFeatureFlags = async (req, res) => {
     try {
         const db = getDb();
-        const flags = await db.all(`SELECT * FROM feature_flags ORDER BY category, name`);
+        const flags = await db.all(`SELECT * FROM "feature_flags" ORDER BY "category", "name"`);
         res.json(flags);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -667,7 +667,7 @@ export const createFeatureFlag = async (req, res) => {
             `INSERT INTO feature_flags (key, name, description, category) VALUES (?, ?, ?, ?)`,
             [key, name, description || '', category || 'general']
         );
-        const flag = await db.get(`SELECT * FROM feature_flags WHERE id = ?`, result.lastID);
+        const flag = await db.get(`SELECT * FROM "feature_flags" WHERE "id" = ?`, result.lastID);
         res.status(201).json(flag);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -677,7 +677,7 @@ export const createFeatureFlag = async (req, res) => {
 export const deleteFeatureFlag = async (req, res) => {
     try {
         const db = getDb();
-        await db.run(`DELETE FROM feature_flags WHERE id = ?`, req.params.id);
+        await db.run(`DELETE FROM "feature_flags" WHERE "id" = ?`, req.params.id);
         res.json({ message: "Feature flag deleted" });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -698,7 +698,7 @@ export const updateFeatureFlag = async (req, res) => {
         updates.push('updatedAt = CURRENT_TIMESTAMP');
         values.push(req.params.id);
         await db.run(`UPDATE feature_flags SET ${updates.join(', ')} WHERE id = ?`, values);
-        const flag = await db.get(`SELECT * FROM feature_flags WHERE id = ?`, req.params.id);
+        const flag = await db.get(`SELECT * FROM "feature_flags" WHERE "id" = ?`, req.params.id);
         res.json(flag);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -709,11 +709,11 @@ export const updateFeatureFlag = async (req, res) => {
 export const getEnabledFeatures = async (req, res) => {
     try {
         const db = getDb();
-        const globalFlags = await db.all(`SELECT key, isEnabled FROM feature_flags`);
+        const globalFlags = await db.all(`SELECT "key", "isEnabled" FROM feature_flags`);
 
         if (req.user?.id && req.user.role !== 'admin') {
             // Check per-user overrides
-            const overrides = await db.all(`SELECT featureKey, isEnabled FROM user_feature_overrides WHERE userId = ?`, req.user.id);
+            const overrides = await db.all(`SELECT "featureKey", "isEnabled" FROM user_feature_overrides WHERE "userId" = ?`, req.user.id);
             const overrideMap = {};
             overrides.forEach(o => { overrideMap[o.featureKey] = o.isEnabled; });
 
@@ -864,10 +864,10 @@ export const getUserFeatureOverrides = async (req, res) => {
         const { userId } = req.params;
 
         // Get all global feature flags
-        const globalFlags = await db.all(`SELECT * FROM feature_flags ORDER BY category, name`);
+        const globalFlags = await db.all(`SELECT * FROM "feature_flags" ORDER BY "category", "name"`);
 
         // Get user-specific overrides
-        const overrides = await db.all(`SELECT * FROM user_feature_overrides WHERE userId = ?`, userId);
+        const overrides = await db.all(`SELECT * FROM "user_feature_overrides" WHERE "userId" = ?`, userId);
         const overrideMap = {};
         overrides.forEach(o => { overrideMap[o.featureKey] = o; });
 
@@ -896,7 +896,7 @@ export const setUserFeatureOverride = async (req, res) => {
 
         // Check if override exists
         const existing = await db.get(
-            `SELECT * FROM user_feature_overrides WHERE userId = ? AND featureKey = ?`,
+            `SELECT * FROM "user_feature_overrides" WHERE "userId" = ? AND "featureKey" = ?`,
             userId, featureKey
         );
 
@@ -913,8 +913,8 @@ export const setUserFeatureOverride = async (req, res) => {
         }
 
         // Notify user about the feature change
-        const user = await db.get(`SELECT * FROM users WHERE id = ?`, userId);
-        const flag = await db.get(`SELECT name FROM feature_flags WHERE key = ?`, featureKey);
+        const user = await db.get(`SELECT * FROM "users" WHERE "id" = ?`, userId);
+        const flag = await db.get(`SELECT "name" FROM "feature_flags" WHERE "key" = ?`, featureKey);
         if (user) {
             const flagName = flag?.name || featureKey;
             await Notification.create({
@@ -940,7 +940,7 @@ export const removeUserFeatureOverride = async (req, res) => {
     try {
         const db = getDb();
         const { userId, featureKey } = req.params;
-        await db.run(`DELETE FROM user_feature_overrides WHERE userId = ? AND featureKey = ?`, userId, featureKey);
+        await db.run(`DELETE FROM "user_feature_overrides" WHERE "userId" = ? AND "featureKey" = ?`, userId, featureKey);
         res.json({ message: `Override removed. User ${userId} now uses global setting for ${featureKey}.` });
     } catch (error) {
         res.status(500).json({ message: error.message });

@@ -26,18 +26,18 @@ export const SSO_HUB_URL = (() => {
     if (typeof window !== "undefined") {
         const hostname = window.location.hostname;
         if (hostname === "localhost" || hostname === "127.0.0.1") {
-            return "http://localhost:3006/sso.html";
+            return "http://localhost:3001/sso.html";
         }
     }
-    return "https://auth.sokostack.xyz/sso.html";
+    return "http://localhost:3001/sso.html";
 })();
 
 // Product switcher URLs
 export const PRODUCTS = {
-    ripplify: "https://ripplify.sokostack.xyz",
-    shopalize: "https://shopalize.sokostack.xyz",
-    watchtower: "https://watchtower.sokostack.xyz",
-    admin: "https://admin.sokostack.xyz",
+    ripplify: "http://localhost:8080",
+    shopalize: "http://localhost:8081",
+    watchtower: "http://localhost:8083",
+    admin: "http://localhost:8082",
 };
 
 export const fetchWithAuth = async (endpoint: string, options: RequestInit = {}) => {

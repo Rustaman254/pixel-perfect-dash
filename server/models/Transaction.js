@@ -55,13 +55,13 @@ const Transaction = {
     findStats: async (userId) => {
         const db = getRipplifyDb();
         return await db('transactions')
-            .select(db.raw(`DATE(createdAt) as date`))
-            .select(db.raw(`SUM(CASE WHEN status IN ('Completed', 'Funds locked', 'Shipped') THEN amount ELSE 0 END) as revenue`))
+            .select(db.raw(`DATE("createdAt") as date`))
+            .select(db.raw(`SUM(CASE WHEN "status" IN ('Completed', 'Funds locked', 'Shipped') THEN "amount" ELSE 0 END) as revenue`))
             .select(db.raw(`COUNT(*) as count`))
-            .select(db.raw(`SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) as successfulCount`))
-            .select(db.raw(`SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) as pendingCount`))
-            .where({ userId })
-            .groupByRaw(`DATE(createdAt)`)
+            .select(db.raw(`SUM(CASE WHEN "status" = 'Completed' THEN 1 ELSE 0 END) as successfulCount`))
+            .select(db.raw(`SUM(CASE WHEN "status" = 'Pending' THEN 1 ELSE 0 END) as pendingCount`))
+            .where('userId', userId)
+            .groupByRaw(`DATE("createdAt")`)
             .orderBy('date', 'asc')
             .limit(30);
     },
@@ -71,8 +71,8 @@ const Transaction = {
         return await db('transactions')
             .select('currency as name')
             .select(db.raw(`COUNT(*) as count`))
-            .select(db.raw(`SUM(amount) as totalAmount`))
-            .where({ userId })
+            .select(db.raw(`SUM("amount") as totalAmount`))
+            .where('userId', userId)
             .groupBy('currency');
     },
 

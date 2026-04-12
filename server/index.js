@@ -61,6 +61,9 @@ const allowedOrigins = process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split
     'https://ripplify-hazel.vercel.app',
     'https://ripplify.vercel.app',
     'https://ripplify.sokostack.xyz',
+    'https://shopalize.sokostack.xyz',
+    'https://admin.sokostack.xyz',
+    'https://auth.sokostack.xyz',
     'https://watchtower.sokostack.xyz',
     'http://localhost:3000',
     'http://localhost:3001',
@@ -68,12 +71,18 @@ const allowedOrigins = process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split
     'http://localhost:5174',
     'http://localhost:5175',
     'http://localhost:8080',
+    'http://localhost:8081',
+    'http://localhost:8082',
+    'http://localhost:8083',
     'http://127.0.0.1:3000',
     'http://127.0.0.1:3001',
     'http://127.0.0.1:5173',
     'http://127.0.0.1:5174',
     'http://127.0.0.1:5175',
-    'http://127.0.0.1:8080'
+    'http://127.0.0.1:8080',
+    'http://127.0.0.1:8081',
+    'http://127.0.0.1:8082',
+    'http://127.0.0.1:8083'
 ];
 
 // CORS middleware - must be before all routes
@@ -131,6 +140,7 @@ app.use("/api/payments", paymentRoutes);
 app.use("/api/transfers", transferRoutes);
 app.use("/api/user-payout-methods", payoutMethodRoutes);
 app.use("/api/apps", appRoutes);
+app.use("/api/wallets", walletRoutes);
 
 // Global Error Handler
 app.use((err, req, res, next) => {

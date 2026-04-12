@@ -108,7 +108,7 @@ export const createTransaction = async (req, res) => {
             const depositInfo = await cryptoService.getDepositAddress(userId, network);
             
             await db.run(
-                `UPDATE transactions SET paymentMethod = ?, network = ? WHERE id = ?`,
+                `UPDATE "transactions" SET "paymentMethod" = ?, "network" = ? WHERE "id" = ?`,
                 ['crypto', network, newTransaction.id]
             );
             
@@ -145,7 +145,7 @@ export const createTransaction = async (req, res) => {
             const invoiceId = stkResponse?.invoice?.invoice_id || stkResponse?.invoice?.id || null;
             if (invoiceId) {
                 await db.run(
-                    `UPDATE transactions SET paymentMethod = ?, externalRef = ? WHERE id = ?`,
+                    `UPDATE "transactions" SET "paymentMethod" = ?, "externalRef" = ? WHERE "id" = ?`,
                     ['mpesa', invoiceId, newTransaction.id]
                 );
             }
@@ -195,7 +195,7 @@ export const createTransaction = async (req, res) => {
 
             if (invoiceId) {
                 await db.run(
-                    `UPDATE transactions SET paymentMethod = ?, externalRef = ? WHERE id = ?`,
+                    `UPDATE "transactions" SET "paymentMethod" = ?, "externalRef" = ? WHERE "id" = ?`,
                     [req.body.paymentMethod, invoiceId, newTransaction.id]
                 );
             }
@@ -256,7 +256,7 @@ export const handleIntaSendWebhook = async (req, res) => {
             if (!transaction) {
                 // Try by externalRef (invoiceId)
                 const db = getDb();
-                const row = await db.get('SELECT * FROM transactions WHERE externalRef = ?', [invoiceId]);
+                const row = await db.get('SELECT * FROM "transactions" WHERE "externalRef" = ?', [invoiceId]);
                 if (row) {
                     transaction = row;
                 }
@@ -283,7 +283,7 @@ export const handleIntaSendWebhook = async (req, res) => {
 
                 // Send SMS to seller
                 try {
-                    const seller = await db.get(`SELECT phone, fullName, businessName FROM users WHERE id = ?`, transaction.userId);
+                    const seller = await db.get(`SELECT phone, fullName, businessName FROM "users" WHERE "id" = ?`, transaction.userId);
                     if (seller?.phone) {
                         await smsService.sendTransactionSMS(seller.phone, {
                             ...transaction,
@@ -344,7 +344,7 @@ export const checkIntaSendPaymentStatus = async (req, res) => {
             }
             if (!transaction) {
                 const db = getDb();
-                const row = await db.get('SELECT * FROM transactions WHERE externalRef = ?', [invoiceId]);
+                const row = await db.get('SELECT * FROM "transactions" WHERE "externalRef" = ?', [invoiceId]);
                 if (row) transaction = row;
             }
 
@@ -369,7 +369,7 @@ export const checkIntaSendPaymentStatus = async (req, res) => {
                 // Send SMS to seller
                 try {
                     const db = getDb();
-                    const seller = await db.get(`SELECT phone, fullName, businessName FROM users WHERE id = ?`, transaction.userId);
+                    const seller = await db.get(`SELECT phone, fullName, businessName FROM "users" WHERE "id" = ?`, transaction.userId);
                     if (seller?.phone) {
                         await smsService.sendTransactionSMS(seller.phone, {
                             ...transaction,

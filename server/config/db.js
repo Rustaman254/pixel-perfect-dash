@@ -85,9 +85,43 @@ const tableToDb = {
 const getDbName = (table) => tableToDb[table?.toLowerCase()] || 'auth_db';
 
 export const createConnection = (dbName) => {
-  if (connections[dbName]) return connections[dbName];
+  if (connections[dbName]) return addQueryMethods(connections[dbName]);
   const db = knex({ ...pgConfig, connection: { ...pgConfig.connection, database: dbName } });
   connections[dbName] = db;
+  return addQueryMethods(db);
+};
+
+const addQueryMethods = (db) => {
+  const fixCase = (row) => {
+    if (!row) return row;
+    const fixed = {};
+    for (const [key, value] of Object.entries(row)) {
+      const lowerKey = key.toLowerCase();
+      if (lowerKey === 'isenabled' && !('isEnabled' in fixed)) {
+        fixed.isEnabled = value;
+      } else if (lowerKey === 'userid' && !('userId' in fixed)) {
+        fixed.userId = value;
+      } else if (lowerKey === 'featurekey' && !('featureKey' in fixed)) {
+        fixed.featureKey = value;
+      } else {
+        fixed[key] = value;
+      }
+    }
+    return fixed;
+  };
+
+  db.all = async (sql, ...params) => {
+    const result = await db.raw(sql, params.length === 1 && Array.isArray(params[0]) ? params[0] : params);
+    return result.rows.map(fixCase);
+  };
+  db.get = async (sql, ...params) => {
+    const result = await db.raw(sql, params.length === 1 && Array.isArray(params[0]) ? params[0] : params);
+    return fixCase(result.rows[0]);
+  };
+  db.run = async (sql, ...params) => {
+    const result = await db.raw(sql, params.length === 1 && Array.isArray(params[0]) ? params[0] : params);
+    return { lastID: result.rowCount, rows: result.rows.map(fixCase), changes: result.rowCount };
+  };
   return db;
 };
 

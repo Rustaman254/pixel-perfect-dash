@@ -8,23 +8,23 @@ const walletService = {
     // Get all wallet balances for a user
     async getBalances(userId) {
         const db = getDb();
-        return await db.all(`SELECT * FROM wallets WHERE userId = ?`, [userId]);
+        return await db.all(`SELECT * FROM "wallets" WHERE "userId" = ?`, [userId]);
     },
 
     // Get specific currency balance for a user
     async getBalance(userId, currency, network) {
         const db = getDb();
         let wallet = await db.get(
-            `SELECT * FROM wallets WHERE userId = ? AND currency_code = ? AND network = ?`,
+            `SELECT * FROM "wallets" WHERE "userId" = ? AND "currency_code" = ? AND "network" = ?`,
             [userId, currency, network]
         );
         if (!wallet) {
             // Auto-create wallet if it doesn't exist
             const res = await db.run(
-                `INSERT INTO wallets (userId, currency_code, network) VALUES (?, ?, ?)`,
+                `INSERT INTO "wallets" ("userId", "currency_code", "network") VALUES (?, ?, ?)`,
                 [userId, currency, network]
             );
-            wallet = await db.get(`SELECT * FROM wallets WHERE id = ?`, res.lastID);
+            wallet = await db.get(`SELECT * FROM "wallets" WHERE "id" = ?`, res.lastID);
         }
         return wallet;
     },

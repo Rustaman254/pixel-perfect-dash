@@ -17,7 +17,7 @@ export const requireFeature = (featureKey) => {
             // Check per-user override first
             if (req.user?.id) {
                 const userOverride = await db.get(
-                    `SELECT isEnabled FROM user_feature_overrides WHERE userId = ? AND featureKey = ?`,
+                    `SELECT "isEnabled" FROM "user_feature_overrides" WHERE "userId" = ? AND "featureKey" = ?`,
                     req.user.id, featureKey
                 );
                 if (userOverride && !userOverride.isEnabled) {
@@ -29,8 +29,8 @@ export const requireFeature = (featureKey) => {
                 }
             }
 
-            // Check global feature flag
-            const flag = await db.get(`SELECT isEnabled FROM feature_flags WHERE key = ?`, featureKey);
+            // Check global feature flag - use the correct table and column names
+            const flag = await db.get(`SELECT "isEnabled" FROM "feature_flags" WHERE "key" = ?`, featureKey);
 
             // If no flag exists, allow by default
             if (!flag) return next();

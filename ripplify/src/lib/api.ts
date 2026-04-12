@@ -5,13 +5,13 @@ const getBaseUrl = () => {
             return "/api";
         }
     }
-    return import.meta.env.VITE_API_URL || "https://sokostack.ddns.net/api/ripplify";
+    return "http://localhost:3001";
 };
 
 export const BASE_URL = getBaseUrl();
-export const BACKEND_URL = BASE_URL.replace('/api', '');
+export const BACKEND_URL = "http://localhost:3001";
 
-// SSO hub URL - points to auth service
+// SSO hub URL - points to the same server
 export const SSO_HUB_URL = (() => {
     if (typeof window !== "undefined") {
         const hostname = window.location.hostname;
@@ -19,15 +19,15 @@ export const SSO_HUB_URL = (() => {
             return "http://localhost:3001/sso.html";
         }
     }
-    return import.meta.env.VITE_SSO_URL || "https://auth.sokostack.xyz/sso.html";
+    return "http://localhost:3001/sso.html";
 })();
 
 // Product switcher URLs
 export const PRODUCTS = {
-    ripplify: import.meta.env.VITE_RIPPLIFY_URL || "https://ripplify.sokostack.xyz",
-    shopalize: import.meta.env.VITE_SHOPALIZE_URL || "https://shopalize.sokostack.xyz",
-    watchtower: import.meta.env.VITE_WATCHTOWER_URL || "https://watchtower.sokostack.xyz",
-    admin: import.meta.env.VITE_ADMIN_URL || "https://admin.sokostack.xyz",
+    ripplify: "http://localhost:8080",
+    shopalize: "http://localhost:8081",
+    watchtower: "http://localhost:8083",
+    admin: "http://localhost:8082",
 };
 
 export const fetchWithAuth = async (endpoint: string, options: RequestInit = {}) => {
