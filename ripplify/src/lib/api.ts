@@ -4,10 +4,9 @@ const getBaseUrl = () => {
         if (hostname === "localhost" || hostname === "127.0.0.1") {
             return "/api";
         }
-        // Vercel/production - use relative API path (proxied by Vercel)
-        return "";
+        return "/api"; // Production needs /api prefix
     }
-    return "http://localhost:3001";
+    return "/api";
 };
 
 const API_PREFIX = (() => {
@@ -16,32 +15,28 @@ const API_PREFIX = (() => {
         if (hostname === "localhost" || hostname === "127.0.0.1") {
             return ""; // Vite proxy handles /api prefix
         }
-        // Production needs /api prefix for Vercel rewrites
-        return "/api";
+        return "/api"; // Production needs /api prefix for nginx routing
     }
-    return "";
+    return "/api";
 })();
 
 export const BASE_URL = getBaseUrl();
-export const BACKEND_URL = "http://localhost:3001";
+export const BACKEND_URL = "";
 
 // SSO hub URL - points to the same server
 export const SSO_HUB_URL = (() => {
     if (typeof window !== "undefined") {
-        const hostname = window.location.hostname;
-        if (hostname === "localhost" || hostname === "127.0.0.1") {
-            return "http://localhost:3001/sso.html";
-        }
+        return window.location.origin + "/sso.html";
     }
-    return "http://localhost:3001/sso.html";
+    return "";
 })();
 
 // Product switcher URLs
 export const PRODUCTS = {
-    ripplify: "http://localhost:8080",
-    shopalize: "http://localhost:8081",
-    watchtower: "http://localhost:8083",
-    admin: "http://localhost:8082",
+    ripplify: "",
+    shopalize: "",
+    watchtower: "",
+    admin: "",
 };
 
 export const fetchWithAuth = async (endpoint: string, options: RequestInit = {}) => {
