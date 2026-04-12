@@ -27,6 +27,26 @@ export default defineConfig(({ mode }) => ({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/notifications/, '/api/notifications'),
       },
+      "/transactions": {
+        target: "http://127.0.0.1:3001",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/transactions/, '/api/transactions'),
+      },
+      "/payouts": {
+        target: "http://127.0.0.1:3001",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/payouts/, '/api/payouts'),
+      },
+      "/wallets": {
+        target: "http://127.0.0.1:3001",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/wallets/, '/api/wallets'),
+      },
+      "/auth": {
+        target: "http://127.0.0.1:3001",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/auth/, '/api/auth'),
+      },
       "/sso.html": {
         target: "http://127.0.0.1:3001",
         changeOrigin: true,
