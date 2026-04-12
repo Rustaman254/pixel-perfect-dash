@@ -1,16 +1,8 @@
 {
-  "version": 2,
-  "builds": [
-    { "src": "dist/**", "use": "@vercel/static" }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "https://sokostack.ddns.net/api/ripplify/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/dist/index.html"
-    }
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "framework": "vite",
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "https://sokostack.ddns.net/api/ripplify/$1" }
   ]
 }
