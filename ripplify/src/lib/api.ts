@@ -4,11 +4,23 @@ const getBaseUrl = () => {
         if (hostname === "localhost" || hostname === "127.0.0.1") {
             return "/api";
         }
-        // Vercel/production - use relative API path (proxied by vercel.json)
+        // Vercel/production - use relative API path (proxied by Vercel)
         return "";
     }
     return "http://localhost:3001";
 };
+
+const API_PREFIX = (() => {
+    if (typeof window !== "undefined") {
+        const hostname = window.location.hostname;
+        if (hostname === "localhost" || hostname === "127.0.0.1") {
+            return "";
+        }
+        // Production needs /api prefix for Vercel rewrites
+        return "/api";
+    }
+    return "";
+})();
 
 export const BASE_URL = getBaseUrl();
 export const BACKEND_URL = "http://localhost:3001";
@@ -40,7 +52,7 @@ export const fetchWithAuth = async (endpoint: string, options: RequestInit = {})
         ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
     };
 
-    const response = await fetch(`${BASE_URL}${endpoint}`, {
+    const response = await fetch(`${API_PREFIX}${endpoint}`, {
         ...options,
         headers,
     });
@@ -61,7 +73,7 @@ export const fetchWithAuth = async (endpoint: string, options: RequestInit = {})
 };
 
 export const publicFetch = async (endpoint: string, options: RequestInit = {}) => {
-    const response = await fetch(`${BASE_URL}${endpoint}`, {
+    const response = await fetch(`${API_PREFIX}${endpoint}`, {
         ...options,
         headers: {
             'Content-Type': 'application/json',
