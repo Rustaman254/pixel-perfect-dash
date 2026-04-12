@@ -212,6 +212,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     const refreshData = async () => {
         if (!isAuthenticated) return;
         try {
+            console.log("Refreshing data...");
             const [linksData, transactionsData, payoutsData, walletsData, profileData] = await Promise.all([
                 fetchWithAuth('/links/my'),
                 fetchWithAuth('/transactions/my'),
@@ -220,12 +221,16 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
                 fetchWithAuth('/auth/me').catch(() => null)
             ]);
 
+            console.log("Links data received:", linksData);
+
             const formattedLinks = linksData.map((l: any) => ({
                 ...l,
                 url: `${window.location.origin}/pay/${l.slug}`,
                 earned: `${l.currency} ${l.totalEarnedValue.toLocaleString()}`,
                 created: new Date(l.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
             }));
+
+            console.log("Formatted links:", formattedLinks);
 
             setLinks(formattedLinks);
             setTransactions(transactionsData);
