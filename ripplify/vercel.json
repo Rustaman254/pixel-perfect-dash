@@ -3,9 +3,7 @@
   "outputDirectory": "dist",
   "framework": "vite",
   "routes": [
-    { "src": "/api/(.*)", "dest": "https://sokostack.ddns.net/api/ripplify/$1" },
-    { "src": "/auth/(.*)", "dest": "https://sokostack.ddns.net/api/auth/$1" },
-    { "src": "/auth", "dest": "https://sokostack.ddns.net/api/auth" },
+    { "src": "/api/(.*)", "dest": "https://sokostack.ddns.net/api/$1" },
     { "handle": "filesystem" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
