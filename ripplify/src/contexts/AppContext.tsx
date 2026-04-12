@@ -212,18 +212,21 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     const refreshData = async () => {
         if (!isAuthenticated) return;
         try {
-            console.log("Refreshing data...");
-            const [linksData, transactionsData, payoutsData, walletsData, profileData] = await Promise.all([
+            const [linksData, transactionsData, payoutsData, walletsData, profileData] = await Promise.allSettled([
                 fetchWithAuth('/links/my'),
                 fetchWithAuth('/transactions/my'),
                 fetchWithAuth('/payouts/my'),
-                fetchWithAuth('/wallets').catch(() => []),
-                fetchWithAuth('/auth/me').catch(() => null)
+                fetchWithAuth('/wallets'),
+                fetchWithAuth('/auth/me')
             ]);
 
-            console.log("Links data received:", linksData);
+            const linksResult = linksData.status === 'fulfilled' ? linksData.value : [];
+            const transactionsResult = transactionsData.status === 'fulfilled' ? transactionsData.value : [];
+            const payoutsResult = payoutsData.status === 'fulfilled' ? payoutsData.value : [];
+            const walletsResult = walletsData.status === 'fulfilled' ? walletsData.value : [];
+            const profileResult = profileData.status === 'fulfilled' ? profileData.value : null;
 
-            const formattedLinks = linksData.map((l: any) => ({
+            const formattedLinks = linksResult.map((l: any) => ({
                 ...l,
                 url: `${window.location.origin}/pay/${l.slug}`,
                 earned: `${l.currency} ${l.totalEarnedValue.toLocaleString()}`,
@@ -233,13 +236,13 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
             console.log("Formatted links:", formattedLinks);
 
             setLinks(formattedLinks);
-            setTransactions(transactionsData);
-            setPayouts(payoutsData);
-            setWallets(walletsData);
-            if (profileData && profileData.user) {
-                setUserProfile(profileData.user);
-            } else if (profileData) {
-                setUserProfile(profileData);
+            setTransactions(transactionsResult);
+            setPayouts(payoutsResult);
+            setWallets(walletsResult);
+            if (profileResult && profileResult.user) {
+                setUserProfile(profileResult.user);
+            } else if (profileResult) {
+                setUserProfile(profileResult);
             }
         } catch (error) {
             console.error("Error refreshing data:", error);

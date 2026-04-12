@@ -33,7 +33,6 @@ const PaymentLinksPage = () => {
     const [selectedLink, setSelectedLink] = useState<any>(null);
 
     const filtered = links.filter((l) => {
-        console.log("Filtering link:", l);
         const matchSearch = l.name.toLowerCase().includes(search.toLowerCase()) || (l.slug && l.slug.includes(search.toLowerCase()));
         const matchStatus = statusFilter === "All" || l.status === statusFilter;
         return matchSearch && matchStatus;
