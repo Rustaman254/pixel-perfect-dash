@@ -16,20 +16,31 @@ const ApiKey = {
 
     findByKey: async (key) => {
         const db = getAuthDb();
-        return await db('api_keys')
-            .join('users', 'api_keys.userId', 'users.id')
-            .select('api_keys.*', 'users.businessName', 'users.email as userEmail')
-            .where('api_keys.key', key)
-            .where('api_keys.status', 'Active')
-            .first();
+        const apiKey = await db('api_keys').where('key', key).where('status', 'Active').first();
+        if (!apiKey) return null;
+        
+        const user = await db('users').where('id', apiKey.userId).first();
+        return {
+            ...apiKey,
+            businessName: user?.businessName || '',
+            userEmail: user?.email || ''
+        };
     },
 
     findAll: async () => {
         const db = getAuthDb();
-        return await db('api_keys')
-            .join('users', 'api_keys.userId', 'users.id')
-            .select('api_keys.*', 'users.email as userEmail', 'users.businessName')
-            .orderBy('api_keys.createdAt', 'desc');
+        const apiKeys = await db('api_keys').orderBy('createdAt', 'desc');
+        
+        const result = await Promise.all(apiKeys.map(async (apiKey) => {
+            const user = await db('users').where('id', apiKey.userId).first();
+            return {
+                ...apiKey,
+                userEmail: user?.email || '',
+                businessName: user?.businessName || ''
+            };
+        }));
+        
+        return result;
     },
 
     findByUserId: async (userId) => {

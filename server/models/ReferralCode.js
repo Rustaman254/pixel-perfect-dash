@@ -11,10 +11,19 @@ const ReferralCode = {
 
     findAll: async () => {
         const db = getAuthDb();
-        return await db('referral_codes')
-            .leftJoin('users', 'referral_codes.userId', 'users.id')
-            .select('referral_codes.*', 'users.email as userEmail', 'users.fullName as userFullName', 'users.businessName as userBusiness')
-            .orderBy('referral_codes.createdAt', 'desc');
+        const codes = await db('referral_codes').orderBy('createdAt', 'desc');
+        
+        const result = await Promise.all(codes.map(async (code) => {
+            const user = await db('users').where('id', code.userId).first();
+            return {
+                ...code,
+                userEmail: user?.email || '',
+                userFullName: user?.fullName || '',
+                userBusiness: user?.businessName || ''
+            };
+        }));
+        
+        return result;
     },
 
     findByCode: async (code) => {
@@ -60,39 +69,59 @@ const ReferralCode = {
 
     getUsageByCodeId: async (codeId) => {
         const db = getAuthDb();
-        return await db('referral_usage')
-            .leftJoin('users', 'referral_usage.referredUserId', 'users.id')
-            .select('referral_usage.*', 'users.fullName as referredName', 'users.email as referredEmail', 'users.businessName as referredBusiness')
-            .where({ referralCodeId: codeId })
-            .orderBy('referral_usage.createdAt', 'desc');
+        const usage = await db('referral_usage').where({ referralCodeId: codeId }).orderBy('createdAt', 'desc');
+        
+        const result = await Promise.all(usage.map(async (u) => {
+            const user = await db('users').where('id', u.referredUserId).first();
+            return {
+                ...u,
+                referredName: user?.fullName || '',
+                referredEmail: user?.email || '',
+                referredBusiness: user?.businessName || ''
+            };
+        }));
+        
+        return result;
     },
 
     getReferralsByUserId: async (userId) => {
         const db = getAuthDb();
-        return await db('referral_usage')
-            .leftJoin('referral_codes', 'referral_usage.referralCodeId', 'referral_codes.id')
-            .leftJoin('users', 'referral_usage.referredUserId', 'users.id')
-            .select('referral_usage.*', 'referral_codes.code', 'users.fullName as referredName', 'users.email as referredEmail')
-            .where({ referrerId: userId })
-            .orderBy('referral_usage.createdAt', 'desc');
+        const usage = await db('referral_usage').where({ referrerId: userId }).orderBy('createdAt', 'desc');
+        
+        const result = await Promise.all(usage.map(async (u) => {
+            const user = await db('users').where('id', u.referredUserId).first();
+            const code = await db('referral_codes').where('id', u.referralCodeId).first();
+            return {
+                ...u,
+                code: code?.code || '',
+                referredName: user?.fullName || '',
+                referredEmail: user?.email || ''
+            };
+        }));
+        
+        return result;
     },
 
     validateForRegistration: async (code) => {
         const db = getAuthDb();
-        const referral = await db('referral_codes')
-            .leftJoin('users', 'referral_codes.userId', 'users.id')
-            .select('referral_codes.*', 'users.fullName as referrerName', 'users.email as referrerEmail')
-            .where('referral_codes.code', code)
-            .where('referral_codes.isActive', true).first();
+        const referral = await db('referral_codes').where('code', code).where('isActive', true).first();
         
         if (!referral) return { valid: false, message: "Invalid referral code" };
+        
+        const user = await db('users').where('id', referral.userId).first();
+        const referralWithUser = {
+            ...referral,
+            referrerName: user?.fullName || '',
+            referrerEmail: user?.email || ''
+        };
+        
         if (referral.maxUses > 0 && referral.currentUses >= referral.maxUses) {
             return { valid: false, message: "This referral code has reached its usage limit" };
         }
         if (referral.expiresAt && new Date(referral.expiresAt) < new Date()) {
             return { valid: false, message: "This referral code has expired" };
         }
-        return { valid: true, referral };
+        return { valid: true, referral: referralWithUser };
     }
 };
 

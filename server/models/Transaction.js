@@ -1,4 +1,4 @@
-import { getRipplifyDb } from '../config/db.js';
+import { getRipplifyDb, getAuthDb } from '../config/db.js';
 import { v4 as uuidv4 } from 'uuid';
 
 const Transaction = {
@@ -43,13 +43,26 @@ const Transaction = {
 
     findByTrackingToken: async (token) => {
         const db = getRipplifyDb();
-        return await db('transactions')
-            .leftJoin('payment_links', 'transactions.linkId', 'payment_links.id')
-            .leftJoin('users', 'payment_links.userId', 'users.id')
-            .select('transactions.*', 'payment_links.name as linkName', 'payment_links.slug as linkSlug', 
-                'payment_links.status as linkStatus', 'payment_links.currency', 'payment_links.price', 
-                'payment_links.deliveryDays', 'payment_links.updatedAt as linkUpdatedAt', 'users.businessName')
-            .where('transactions.trackingToken', token).first();
+        const transaction = await db('transactions').where('trackingToken', token).first();
+        if (!transaction) return null;
+        
+        // Get payment link data
+        const link = transaction.linkId ? await db('payment_links').where('id', transaction.linkId).first() : null;
+        
+        // Get user data from auth_db
+        const user = link ? await getAuthDb()('users').where('id', link.userId).first() : null;
+        
+        return {
+            ...transaction,
+            linkName: link?.name || null,
+            linkSlug: link?.slug || null,
+            linkStatus: link?.status || null,
+            currency: link?.currency || transaction.currency,
+            price: link?.price || null,
+            deliveryDays: link?.deliveryDays || null,
+            linkUpdatedAt: link?.updatedAt || null,
+            businessName: user?.businessName || ''
+        };
     },
 
     findStats: async (userId) => {
@@ -78,15 +91,28 @@ const Transaction = {
 
     findAdminStats: async () => {
         const db = getRipplifyDb();
-        return await db('users')
-            .leftJoin('transactions', 'users.id', 'transactions.userId')
-            .select('users.id', 'users.businessName', 'users.email')
-            .select(db.raw(`COUNT(transactions.id) as txCount`))
-            .select(db.raw(`SUM(CASE WHEN transactions.status = 'Completed' THEN transactions.amount ELSE 0 END) as totalVolume`))
-            .select(db.raw(`SUM(transactions.fee) as totalFees`))
-            .where('users.role', 'seller')
-            .groupBy('users.id')
-            .orderByRaw('totalVolume DESC');
+        const authDb = getAuthDb();
+        
+        // Get users with transactions
+        const transactions = await db('transactions').select('userId');
+        const userIds = [...new Set(transactions.map(t => t.userId))];
+        
+        const result = await Promise.all(userIds.map(async (userId) => {
+            const user = await authDb('users').where('id', userId).first();
+            const txCount = transactions.filter(t => t.userId === userId).length;
+            const completedTxs = await db('transactions').where('userId', userId).where('status', 'Completed').select(db.raw('SUM(amount) as totalVolume, SUM(fee) as totalFees')).first();
+            
+            return {
+                id: userId,
+                email: user?.email || '',
+                businessName: user?.businessName || '',
+                txCount,
+                totalVolume: completedTxs?.totalVolume || 0,
+                totalFees: completedTxs?.totalFees || 0
+            };
+        }));
+        
+        return result.sort((a, b) => (b.totalVolume || 0) - (a.totalVolume || 0));
     },
 
     updateStatus: async (id, status) => {

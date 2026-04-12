@@ -1,4 +1,4 @@
-import { getRipplifyDb } from '../config/db.js';
+import { getRipplifyDb, getAuthDb } from '../config/db.js';
 
 const PaymentLink = {
     create: async (linkData) => {
@@ -34,9 +34,20 @@ const PaymentLink = {
 
     findBySlug: async (slug) => {
         const db = getRipplifyDb();
-        return await db('payment_links').join('users', 'payment_links.userId', 'users.id')
-            .select('payment_links.*', 'users.businessName', 'users.fullName', 'users.email as sellerEmail', 'users.businessLogo')
-            .where('payment_links.slug', slug).first();
+        const link = await db('payment_links').where('slug', slug).first();
+        if (!link) return null;
+        
+        // Get user data from auth_db
+        const authDb = getAuthDb();
+        const user = await authDb('users').where('id', link.userId).first();
+        
+        return {
+            ...link,
+            businessName: user?.businessName || '',
+            fullName: user?.fullName || '',
+            sellerEmail: user?.email || '',
+            businessLogo: user?.businessLogo || null
+        };
     },
 
     findById: async (id) => {

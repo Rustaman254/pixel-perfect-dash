@@ -1,4 +1,4 @@
-import { getRipplifyDb } from '../config/db.js';
+import { getRipplifyDb, getAuthDb } from '../config/db.js';
 
 const Payout = {
     create: async (payoutData) => {
@@ -17,10 +17,21 @@ const Payout = {
 
     findAll: async () => {
         const db = getRipplifyDb();
-        return await db('payouts')
-            .leftJoin('users', 'payouts.userId', 'users.id')
-            .select('payouts.*', 'users.fullName', 'users.email', 'users.businessName')
-            .orderBy('payouts.createdAt', 'desc');
+        const payouts = await db('payouts').orderBy('createdAt', 'desc');
+        
+        // Add user data from auth_db
+        const authDb = getAuthDb();
+        const result = await Promise.all(payouts.map(async (payout) => {
+            const user = await authDb('users').where('id', payout.userId).first();
+            return {
+                ...payout,
+                fullName: user?.fullName || '',
+                email: user?.email || '',
+                businessName: user?.businessName || ''
+            };
+        }));
+        
+        return result;
     },
 
     findAllByUserId: async (userId) => {

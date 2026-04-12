@@ -187,7 +187,50 @@ async function migrate() {
   }
 
   console.log('Migrations complete.');
+  
+  // Add missing columns to users table in auth_db
+  await addUsersColumns();
+  
   await db.destroy();
+}
+
+async function addUsersColumns() {
+  console.log('Checking users table columns...');
+  
+  const authDb = knex({
+    client: 'pg',
+    connection: {
+      host: process.env.PG_HOST || 'localhost',
+      port: parseInt(process.env.PG_PORT || '5432'),
+      user: process.env.PG_USER || 'sokostack',
+      password: process.env.PG_PASSWORD || 'sokostack2026',
+      database: 'auth_db',
+    },
+  });
+  
+  try {
+    const columns = [
+      { name: 'businessName', type: 'VARCHAR(255)' },
+      { name: 'fullName', type: 'VARCHAR(255)' },
+      { name: 'businessLogo', type: 'TEXT' },
+      { name: 'phone', type: 'VARCHAR(50)' },
+      { name: 'role', type: 'VARCHAR(50)' },
+    ];
+    
+    for (const col of columns) {
+      const exists = await authDb.schema.hasColumn('users', col.name);
+      if (!exists) {
+        console.log(`Adding ${col.name} column to users...`);
+        await authDb.raw(`ALTER TABLE users ADD COLUMN ${col.name} ${col.type}`);
+      }
+    }
+    
+    console.log('Users table columns check complete.');
+  } catch (error) {
+    console.error('Error adding users columns:', error.message);
+  } finally {
+    await authDb.destroy();
+  }
 }
 
 migrate().catch(console.error);

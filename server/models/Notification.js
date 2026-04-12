@@ -46,17 +46,30 @@ const Notification = {
 
     findAll: async (appName = null) => {
         const db = getAdminDb();
-        let query = db('notifications').leftJoin('users', 'notifications.userId', 'users.id')
-            .select('notifications.*', 'users.email');
+        let notifications;
         
         if (appName) {
-            query = query.where(q => q.whereNotNull('notifications.userId').orWhere('notifications.targetRole', 'admin'))
-                .where('notifications.appName', appName);
+            notifications = await db('notifications')
+                .where(q => q.whereNotNull('userId').orWhere('targetRole', 'admin'))
+                .where('appName', appName)
+                .orderBy('createdAt', 'desc');
         } else {
-            query = query.where(q => q.whereNotNull('notifications.userId').orWhere('notifications.targetRole', 'admin'));
+            notifications = await db('notifications')
+                .where(q => q.whereNotNull('userId').orWhere('targetRole', 'admin'))
+                .orderBy('createdAt', 'desc');
         }
-
-        return await query.orderBy('notifications.createdAt', 'desc');
+        
+        // Get user emails from auth_db
+        const authDb = getAuthDb();
+        const result = await Promise.all(notifications.map(async (n) => {
+            const user = n.userId ? await authDb('users').where('id', n.userId).first() : null;
+            return {
+                ...n,
+                email: user?.email || null
+            };
+        }));
+        
+        return result;
     }
 };
 
