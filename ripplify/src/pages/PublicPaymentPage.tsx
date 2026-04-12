@@ -118,7 +118,12 @@ const PublicPaymentPage = () => {
                     }, 3000);
                 }
             } catch (err: any) {
-                setError(err.message);
+                const errorMessage = err.message || 'Failed to load payment link';
+                if (errorMessage.includes('does not exist') || errorMessage.includes('column')) {
+                    setError("This payment link is currently unavailable. Please contact the seller.");
+                } else {
+                    setError(errorMessage);
+                }
             } finally {
                 setLoading(false);
             }
@@ -139,7 +144,10 @@ const PublicPaymentPage = () => {
                             setStep(4);
                         }
                     })
-                    .catch(console.error);
+                    .catch((err) => {
+                        // Silently handle errors during polling - link may have expired
+                        console.log('Polling error:', err.message);
+                    });
             }
         }, 5000);
 
