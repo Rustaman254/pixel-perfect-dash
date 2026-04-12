@@ -14,7 +14,7 @@ const API_PREFIX = (() => {
     if (typeof window !== "undefined") {
         const hostname = window.location.hostname;
         if (hostname === "localhost" || hostname === "127.0.0.1") {
-            return "";
+            return ""; // Vite proxy handles /api prefix
         }
         // Production needs /api prefix for Vercel rewrites
         return "/api";
