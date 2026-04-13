@@ -158,7 +158,7 @@ const ForgotPassword = () => {
 
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || otp.length < 4 || !newPassword}
                   className="w-full bg-[#025864] text-white py-4 rounded-xl font-bold hover:bg-[#013a42] transition-colors flex items-center justify-center gap-2 mt-4 disabled:opacity-70"
                 >
                   {loading ? "Resetting..." : "Reset Password"} <KeyRound className="w-5 h-5" />

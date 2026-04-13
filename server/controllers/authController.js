@@ -342,7 +342,7 @@ export const sendOTP = async (req, res) => {
         // Generate a random 4-digit code
         const otpCode = Math.floor(1000 + Math.random() * 9000).toString();
 
-        await db.run("INSERT INTO otps (email, otp, phone) VALUES (?, ?, ?)", [email, otpCode, ""]);
+        await db.run("INSERT INTO otps (email, otp, phone) VALUES (?, ?, ?)", email, otpCode, "");
 
         try {
             console.log('Attempting to send OTP email to:', email);
@@ -362,12 +362,13 @@ export const sendOTP = async (req, res) => {
 // @route   POST /api/auth/verify-otp
 // @access  Public
 export const verifyOTP = async (req, res) => {
+    console.log('[verifyOTP] Request received:', { email: req.body?.email, otp: req.body?.otp });
     try {
         const { email, otp } = req.body;
         if (!email || !otp) return res.status(400).json({ message: "Email and OTP are required." });
 
         const db = getDb();
-        const record = await db.get("SELECT * FROM otps WHERE email = ? ORDER BY createdAt DESC LIMIT 1", email);
+        const record = await db.get("SELECT * FROM otps WHERE email = ? ORDER BY \"createdAt\" DESC LIMIT 1", email);
 
         if (!record) {
             return res.status(400).json({ message: "No OTP request found for this email.", success: false });
@@ -384,8 +385,8 @@ export const verifyOTP = async (req, res) => {
             res.status(400).json({ message: "Invalid OTP", success: false });
         }
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: "Server error" });
+        console.error('VerifyOTP error:', error);
+        res.status(500).json({ message: "Server error", details: error.message });
     }
 };
 // @desc    Update user profile

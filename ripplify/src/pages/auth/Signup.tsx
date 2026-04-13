@@ -107,7 +107,7 @@ const Signup = () => {
 
   const handleVerifyOTP = async () => {
     if (formData.otp.length < 4) {
-      toast({ title: "Error", description: "Invalid OTP.", variant: "destructive" });
+      toast({ title: "Error", description: "Please enter the complete 4-digit OTP.", variant: "destructive" });
       return;
     }
     setLoading(true);
@@ -263,7 +263,7 @@ const Signup = () => {
               </div>
               <button
                 onClick={handleVerifyOTP}
-                disabled={loading}
+                disabled={loading || formData.otp.length < 4}
                 className="w-full bg-[#025864] text-white py-4 rounded-xl font-bold hover:bg-[#013a42] transition-colors disabled:opacity-70"
               >
                 {loading ? "Verifying..." : "Verify & Continue"}

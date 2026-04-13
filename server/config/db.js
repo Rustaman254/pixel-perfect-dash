@@ -103,6 +103,10 @@ const addQueryMethods = (db) => {
         fixed.userId = value;
       } else if (lowerKey === 'featurekey' && !('featureKey' in fixed)) {
         fixed.featureKey = value;
+      } else if (lowerKey === 'createdat' && !('createdAt' in fixed)) {
+        fixed.createdAt = value;
+      } else if (lowerKey === 'updatedat' && !('updatedAt' in fixed)) {
+        fixed.updatedAt = value;
       } else {
         fixed[key] = value;
       }
@@ -111,15 +115,18 @@ const addQueryMethods = (db) => {
   };
 
   db.all = async (sql, ...params) => {
-    const result = await db.raw(sql, params.length === 1 && Array.isArray(params[0]) ? params[0] : params);
+    const rawParams = params.length === 1 && Array.isArray(params[0]) ? params[0] : params;
+    const result = await db.raw(sql, rawParams);
     return result.rows.map(fixCase);
   };
   db.get = async (sql, ...params) => {
-    const result = await db.raw(sql, params.length === 1 && Array.isArray(params[0]) ? params[0] : params);
+    const rawParams = params.length === 1 && Array.isArray(params[0]) ? params[0] : params;
+    const result = await db.raw(sql, rawParams);
     return fixCase(result.rows[0]);
   };
   db.run = async (sql, ...params) => {
-    const result = await db.raw(sql, params.length === 1 && Array.isArray(params[0]) ? params[0] : params);
+    const rawParams = params.length === 1 && Array.isArray(params[0]) ? params[0] : params;
+    const result = await db.raw(sql, rawParams);
     return { lastID: result.rowCount, rows: result.rows.map(fixCase), changes: result.rowCount };
   };
   return db;

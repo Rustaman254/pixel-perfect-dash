@@ -13,8 +13,8 @@ const generateApiKey = () => {
   return key;
 };
 
-// Helper: generate 6-digit OTP
-const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
+// Helper: generate 4-digit OTP
+const generateOTP = () => Math.floor(1000 + Math.random() * 9000).toString();
 
 // POST /api/auth/register
 export const register = async (req, res) => {

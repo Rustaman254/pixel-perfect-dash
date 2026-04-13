@@ -43,7 +43,7 @@ export default defineConfig(({ mode }) => ({
         rewrite: (path) => path.replace(/^\/wallets/, '/api/wallets'),
       },
       "/auth": {
-        target: "http://127.0.0.1:3001",
+        target: "http://127.0.0.1:3006",
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/auth/, '/api/auth'),
       },
