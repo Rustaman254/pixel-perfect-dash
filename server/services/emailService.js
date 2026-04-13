@@ -91,6 +91,13 @@ class EmailService {
             );
             this.templates.otp = handlebars.compile(otpTemplate);
 
+            // Seller Payment Notification template
+            const sellerPaymentTemplate = fs.readFileSync(
+                path.join(templatesDir, 'seller-payment.hbs'),
+                'utf8'
+            );
+            this.templates.sellerPayment = handlebars.compile(sellerPaymentTemplate);
+
             console.log('Email templates loaded successfully');
         } catch (error) {
             console.error('Error loading email templates:', error.message);
@@ -215,6 +222,29 @@ class EmailService {
             user.email,
             notification.title,
             this.templates.notification,
+            data
+        );
+    }
+
+    async sendSellerPaymentNotification(seller, transaction) {
+        const data = {
+            sellerName: seller.fullName || seller.businessName || 'Seller',
+            sellerEmail: seller.email,
+            buyerName: transaction.buyerName,
+            amount: transaction.amount,
+            currency: transaction.currency,
+            transactionId: transaction.transactionId,
+            date: new Date(transaction.createdAt).toLocaleDateString(),
+            time: new Date(transaction.createdAt).toLocaleTimeString(),
+            productName: transaction.linkName || 'Payment Link',
+            viewOrdersUrl: `${process.env.FRONTEND_URL || 'https://sokostack.ddns.net'}/orders`,
+            currentYear: new Date().getFullYear()
+        };
+
+        return this.sendEmail(
+            seller.email,
+            `Payment Received - ${transaction.amount} ${transaction.currency} from ${transaction.buyerName}`,
+            this.templates.sellerPayment,
             data
         );
     }

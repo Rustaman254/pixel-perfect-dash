@@ -41,6 +41,11 @@ const Transaction = {
         return await db('transactions').where({ transactionId }).first();
     },
 
+    findByLinkId: async (linkId) => {
+        const db = getRipplifyDb();
+        return await db('transactions').where({ linkId }).first();
+    },
+
     findByTrackingToken: async (token) => {
         const db = getRipplifyDb();
         const transaction = await db('transactions').where('trackingToken', token).first();

@@ -3,6 +3,8 @@ import PaymentLink from '../models/PaymentLink.js';
 import UserPaymentMethod from '../models/UserPaymentMethod.js';
 import User from '../models/User.js';
 import slugify from '../utils/slugify.js';
+import emailService from '../services/emailService.js';
+import Transaction from '../models/Transaction.js';
 
 export const createLink = async (req, res) => {
     try {
@@ -142,6 +144,25 @@ export const confirmDelivery = async (req, res) => {
         if (!link) return res.status(404).json({ message: "Link not found" });
 
         const updated = await PaymentLink.updateStatus(link.id, 'Completed');
+
+        // Send seller notification that funds are released
+        try {
+            const seller = await User.findById(link.userId);
+            if (seller?.email) {
+                const transaction = await Transaction.findByLinkId(link.id);
+                if (transaction) {
+                    await emailService.sendSellerPaymentNotification(seller, {
+                        ...transaction,
+                        status: 'Completed',
+                        linkName: link.name
+                    });
+                    console.log('Funds release notification sent to seller:', seller.email);
+                }
+            }
+        } catch (emailError) {
+            console.error('Failed to send funds release email:', emailError.message);
+        }
+
         res.json(updated);
     } catch (error) {
         res.status(500).json({ message: error.message });

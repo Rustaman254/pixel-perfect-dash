@@ -294,6 +294,17 @@ export const handleIntaSendWebhook = async (req, res) => {
                     console.error('Failed to send transaction SMS:', smsError.message);
                 }
 
+                // Send seller notification email
+                try {
+                    const seller = await db.get(`SELECT email, fullName, businessName FROM "users" WHERE "id" = ?`, transaction.userId);
+                    if (seller?.email) {
+                        await emailService.sendSellerPaymentNotification(seller, transaction);
+                        console.log('Seller notification email sent to:', seller.email);
+                    }
+                } catch (emailError) {
+                    console.error('Failed to send seller notification email:', emailError.message);
+                }
+
                 // Send receipt email to buyer
                 try {
                     const buyer = {
