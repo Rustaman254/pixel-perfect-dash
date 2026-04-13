@@ -13,16 +13,23 @@ const Dashboard = () => {
   const [analytics, setAnalytics] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const { currentProject } = useProjectContext();
+  const [platformStats, setPlatformStats] = useState<any>(null);
 
   const loadData = async () => {
     try {
-      const projectId = currentProject.id;
-      const [statsData, analyticsData] = await Promise.all([
-        projectFetch(projectId, "stats"),
-        projectFetch(projectId, "analytics?period=30d"),
-      ]);
-      setStats(statsData);
-      setAnalytics(analyticsData);
+      // Load platform stats
+      const platformData = await fetchWithAuth("/admin/dashboard");
+      setPlatformStats(platformData);
+      
+      // Load project stats if a project is selected
+      if (currentProject?.id) {
+        const [statsData, analyticsData] = await Promise.all([
+          projectFetch(currentProject.id, "stats"),
+          projectFetch(currentProject.id, "analytics?period=30d"),
+        ]);
+        setStats(statsData);
+        setAnalytics(analyticsData);
+      }
     } catch (error) {
       console.error("Failed to load admin data:", error);
     } finally {
@@ -68,23 +75,19 @@ const Dashboard = () => {
     value: item.count,
   })) || [];
 
-  const comp = analytics?.comparison;
-  const revChange = comp?.lastMonth?.revenue > 0
-    ? (((comp.thisMonth.revenue - comp.lastMonth.revenue) / comp.lastMonth.revenue) * 100).toFixed(1)
-    : "+0";
-  const txChange = comp?.lastMonth?.transactions > 0
-    ? (((comp.thisMonth.transactions - comp.lastMonth.transactions) / comp.lastMonth.transactions) * 100).toFixed(1)
-    : "+0";
+  const comp = analytics?.Comparison || analytics?.comparison;
+  const revChange = "+0";
+  const txChange = "+0";
 
   const statCards = [
-    { title: "Total Revenue", value: stats ? `KES ${Number(stats.revenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "...", change: `${revChange}%`, positive: Number(revChange) >= 0, icon: DollarSign, color: "bg-emerald-50 text-emerald-600" },
-    { title: "Total Volume", value: stats ? `KES ${Number(stats.volume || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "...", change: "", positive: true, icon: TrendingUp, color: "bg-blue-50 text-blue-600" },
-    { title: "Sellers", value: stats ? stats.sellers || 0 : "...", change: `${analytics?.userStats?.verified || 0} verified`, positive: true, icon: Users, color: "bg-indigo-50 text-indigo-600" },
-    { title: "Transactions", value: stats ? stats.transactions || 0 : "...", change: `${txChange}%`, positive: Number(txChange) >= 0, icon: CreditCard, color: "bg-orange-50 text-orange-600" },
-    { title: "Payment Links", value: stats ? stats.links || 0 : "...", change: "", positive: true, icon: Link2, color: "bg-purple-50 text-purple-600" },
-    { title: "Pending", value: stats ? stats.pendingTransactions || 0 : "...", change: "escrow", positive: true, icon: Wallet, color: "bg-yellow-50 text-yellow-600" },
-    { title: "Disputed", value: stats ? stats.disputedTransactions || 0 : "...", change: "flagged", positive: false, icon: AlertTriangle, color: "bg-red-50 text-red-600" },
-    { title: "Disabled", value: analytics?.userStats?.disabled || 0, change: `${analytics?.userStats?.suspended || 0} suspended`, positive: false, icon: ArrowDownRight, color: "bg-slate-50 text-slate-600" },
+    { title: "Ripplify Revenue", value: stats ? `KES ${Number(stats.ripplifyRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "...", change: `${revChange}%`, positive: Number(revChange) >= 0, icon: DollarSign, color: "bg-emerald-50 text-emerald-600" },
+    { title: "Total Revenue", value: stats ? `KES ${Number(stats.totalRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "...", change: "", positive: true, icon: TrendingUp, color: "bg-blue-50 text-blue-600" },
+    { title: "Total Users", value: stats ? stats.totalUsers || 0 : "...", change: `${stats?.todaySignups || 0} today`, positive: true, icon: Users, color: "bg-indigo-50 text-indigo-600" },
+    { title: "Transactions", value: stats ? stats.totalTransactions || 0 : "...", change: `${txChange}%`, positive: Number(txChange) >= 0, icon: CreditCard, color: "bg-orange-50 text-orange-600" },
+    { title: "Stores", value: stats ? stats.totalStores || 0 : "...", change: `${stats?.publishedStores || 0} published`, positive: true, icon: Link2, color: "bg-purple-50 text-purple-600" },
+    { title: "Pending Payments", value: stats ? `KES ${Number(stats.ripplifyPending || 0).toLocaleString()}` : "...", change: "escrow", positive: true, icon: Wallet, color: "bg-yellow-50 text-yellow-600" },
+    { title: "Orders", value: stats ? stats.totalOrders || 0 : "...", change: "shopalize", positive: true, icon: AlertTriangle, color: "bg-red-50 text-red-600" },
+    { title: "Active Users", value: stats ? stats.activeUsers || 0 : "...", change: `${stats?.uniqueVisitors || 0} visitors`, positive: false, icon: ArrowDownRight, color: "bg-slate-50 text-slate-600" },
   ];
 
   const shortcuts = [
@@ -101,7 +104,7 @@ const Dashboard = () => {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-slate-900">Platform Overview</h1>
-          <p className="text-sm text-slate-500">Monitor {currentProject.name} operations in real-time</p>
+          <p className="text-sm text-slate-500">Monitor {currentProject?.name || "platform"} operations in real-time</p>
         </div>
         <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-full text-xs font-bold animate-pulse">
           <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Live

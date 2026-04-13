@@ -1,14 +1,14 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || 'internal-sokostack-2026-secret';
+const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || 'internal-api-key-2025';
 
 const SERVICE_URLS = {
-  auth: process.env.AUTH_SERVICE_URL || 'http://localhost:3001',
-  ripplify: process.env.RIPPLIFY_SERVICE_URL || 'http://localhost:3002',
-  shopalize: process.env.SHOPALIZE_SERVICE_URL || 'http://localhost:3003',
-  watchtower: process.env.WATCHTOWER_SERVICE_URL || 'http://localhost:3004',
-  admin: process.env.ADMIN_SERVICE_URL || 'http://localhost:3005',
+  auth: process.env.AUTH_SERVICE_URL || 'http://localhost:3006',
+  ripplify: process.env.RIPPLIFY_SERVICE_URL || 'http://localhost:3007',
+  shopalize: process.env.SHOPALIZE_SERVICE_URL || 'http://localhost:3008',
+  watchtower: process.env.WATCHTOWER_SERVICE_URL || 'http://localhost:3009',
+  admin: process.env.ADMIN_SERVICE_URL || 'http://localhost:3010',
 };
 
 // Internal service-to-service HTTP client
@@ -16,7 +16,13 @@ export const callService = async (serviceName, path, options = {}) => {
   const baseUrl = SERVICE_URLS[serviceName];
   if (!baseUrl) throw new Error(`Unknown service: ${serviceName}`);
 
-  const url = `${baseUrl}${path}`;
+  // Add /api/ prefix for auth service internal routes
+  let fullPath = path;
+  if (serviceName === 'auth' && path.startsWith('/internal/')) {
+    fullPath = '/api/auth' + path;
+  }
+
+  const url = `${baseUrl}${fullPath}`;
 
   const config = {
     ...options,
@@ -59,7 +65,10 @@ export const authService = {
 };
 
 export const ripplifyService = {
-  getTransactionStats: (userId) => callService('ripplify', `/internal/transactions/stats?userId=${userId}`),
+  getTransactionStats: (userId) => {
+    const query = userId ? `?userId=${userId}` : '';
+    return callService('ripplify', `/internal/transactions/stats${query}`);
+  },
   getUserTransactions: (userId, query = '') => callService('ripplify', `/internal/transactions?userId=${userId}${query}`),
   getUserPayouts: (userId) => callService('ripplify', `/internal/payouts?userId=${userId}`),
   getPaymentLinks: (userId) => callService('ripplify', `/internal/links?userId=${userId}`),

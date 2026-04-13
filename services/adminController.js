@@ -312,25 +312,18 @@ export const getUserRoles = async (req, res) => {
 export const deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const { force } = req.query;
 
     if (parseInt(id) === SUPER_ADMIN_ID) {
       return res.status(403).json({ message: "Cannot delete the super admin account." });
     }
 
-    if (!force && req.user.id === parseInt(id)) {
+    if (req.user.id === parseInt(id)) {
       return res.status(400).json({ message: "You cannot delete your own admin account." });
     }
 
-    // Try internal delete first
-    try {
-      await callService('auth', `/api/auth/internal/users/${id}`, {
-        method: 'DELETE',
-      });
-    } catch (e) {
-      // If internal fails, just mark as deleted in admin DB
-      console.log('Internal delete failed, using soft delete:', e.message);
-    }
+    const result = await callService('auth', `/api/auth/internal/users/${id}`, {
+      method: 'DELETE',
+    });
 
     res.json({ message: "User deleted successfully" });
   } catch (error) {

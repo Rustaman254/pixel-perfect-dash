@@ -7,14 +7,16 @@ export const getAllStores = async (req, res) => {
   try {
     const { status, search, page = 1, limit = 50 } = req.query;
 
-    let query = db()('projects').orderBy('createdAt', 'desc');
-    if (status) query = query.where({ status });
-    if (search) query = query.where(function () {
+    let baseQuery = db()('projects');
+    if (status) baseQuery = baseQuery.where({ status });
+    if (search) baseQuery = baseQuery.where(function () {
       this.where('name', 'ilike', `%${search}%`).orWhere('slug', 'ilike', `%${search}%`);
     });
 
-    const total = await query.clone().count('id as count').first();
-    const projects = await query.limit(parseInt(limit)).offset((parseInt(page) - 1) * parseInt(limit));
+    const countResult = await db()('projects').count('id as count').first();
+    const total = parseInt(countResult?.count || 0);
+
+    const projects = await baseQuery.clone().orderBy('createdAt', 'desc').limit(parseInt(limit)).offset((parseInt(page) - 1) * parseInt(limit));
 
     const enriched = await Promise.all(projects.map(async (project) => {
       const [productCount, orderCount, revenueResult, owner] = await Promise.all([
@@ -33,7 +35,7 @@ export const getAllStores = async (req, res) => {
       };
     }));
 
-    res.json({ stores: enriched, total: parseInt(total?.count || 0), page: parseInt(page), limit: parseInt(limit) });
+    res.json({ stores: enriched, total, page: parseInt(page), limit: parseInt(limit) });
   } catch (error) {
     console.error('Get all stores error:', error);
     res.status(500).json({ message: error.message });
