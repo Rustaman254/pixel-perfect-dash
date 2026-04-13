@@ -11,27 +11,25 @@ const getBaseUrl = () => {
     if (hostname === "localhost" || hostname === "127.0.0.1") {
       return "/api";
     }
+    return "/api";
   }
-  return import.meta.env.VITE_API_URL || "https://admin.sokostack.xyz/api";
+  return "/api";
 };
 
 export const BASE_URL = getBaseUrl();
 
 export const SSO_HUB_URL = (() => {
   if (typeof window !== "undefined") {
-    const hostname = window.location.hostname;
-    if (hostname === "localhost" || hostname === "127.0.0.1") {
-      return "http://localhost:3001/sso.html";
-    }
+    return window.location.origin + "/sso.html";
   }
-  return import.meta.env.VITE_SSO_URL || "https://auth.sokostack.xyz/sso.html";
+  return "";
 })();
 
 export const PRODUCTS = {
-  ripplify: import.meta.env.VITE_RIPPLIFY_URL || "https://ripplify.sokostack.xyz",
-  shopalize: import.meta.env.VITE_SHOPALIZE_URL || "https://shopalize.sokostack.xyz",
-  watchtower: import.meta.env.VITE_WATCHTOWER_URL || "https://watchtower.sokostack.xyz",
-  admin: import.meta.env.VITE_ADMIN_URL || "https://admin.sokostack.xyz",
+  ripplify: "",
+  shopalize: "",
+  watchtower: "",
+  admin: "",
 };
 
 export const fetchWithAuth = async (endpoint: string, options: RequestInit = {}) => {
