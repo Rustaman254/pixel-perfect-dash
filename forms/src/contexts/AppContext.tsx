@@ -1,0 +1,328 @@
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { fetchWithAuth, BASE_URL } from '@/lib/api';
+import { useSSOSync } from '@/hooks/useSSOSync';
+
+// Common Types
+export type LinkType = "reusable" | "one-time" | "donation";
+export type DealStatus = "Active" | "Waiting for payment" | "Funds locked" | "Shipped" | "Completed" | "Disputed" | "Expired" | "Used";
+export type UserRole = "seller" | "admin";
+
+export interface PaymentLink {
+    id: number;
+    userId: number;
+    name: string;
+    url: string;
+    slug: string;
+    clicks: number;
+    earned: string;
+    status: DealStatus;
+    price: string;
+    currency: string;
+    created: string;
+    createdAt: string;
+    description: string;
+    linkType: LinkType;
+    expiryDate: string | null;
+    expiryLabel: string | null;
+    deliveryDays: number | null;
+    buyerName: string;
+    buyerPhone: string;
+    buyerEmail?: string;
+    hasPhotos: boolean;
+    paymentCount: number;
+    totalEarnedValue: number;
+    category: "product" | "service";
+    shippingFee: number;
+    minDonation: number;
+}
+
+export interface Transaction {
+    id: number;
+    userId: number;
+    linkId: number | null;
+    linkName?: string;
+    linkSlug?: string;
+    trackingToken?: string;
+    buyerName: string;
+    buyerEmail: string;
+    buyerPhone: string;
+    amount: number;
+    currency: string;
+    status: string;
+    transactionId: string;
+    type: string;
+    createdAt: string;
+}
+
+export interface Payout {
+    id: number;
+    userId: number;
+    amount: number;
+    currency: string;
+    method: string;
+    details: string;
+    status: string;
+    createdAt: string;
+}
+
+export interface Wallet {
+    id: number;
+    userId: number;
+    currency_code: string;
+    network: string;
+    balance: number;
+    locked_balance: number;
+    address: string | null;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface UserProfile {
+    id: number;
+    businessName: string;
+    fullName: string;
+    email: string;
+    phone: string;
+    website: string;
+    description: string;
+    country: string;
+    currency: string;
+    profilePictureUrl: string | null;
+    role: UserRole;
+    location: string;
+    payoutMethod: string;
+    payoutDetails: string;
+    isVerified: boolean;
+    isDisabled?: boolean;
+    isSuspended?: boolean;
+    accountStatus?: 'active' | 'disabled' | 'suspended' | 'unverified';
+    suspendReason?: string;
+    transactionLimit?: number;
+    kycStatus?: string;
+    kybStatus?: string;
+}
+
+interface AppContextType {
+    userProfile: UserProfile | null;
+    setUserProfile: React.Dispatch<React.SetStateAction<UserProfile | null>>;
+    links: PaymentLink[];
+    setLinks: React.Dispatch<React.SetStateAction<PaymentLink[]>>;
+    payouts: Payout[];
+    setPayouts: React.Dispatch<React.SetStateAction<Payout[]>>;
+    wallets: Wallet[];
+    setWallets: React.Dispatch<React.SetStateAction<Wallet[]>>;
+    transactions: Transaction[];
+    setTransactions: React.Dispatch<React.SetStateAction<Transaction[]>>;
+    isAuthenticated: boolean;
+    setIsAuthenticated: (val: boolean) => void;
+    login: (userData: Partial<UserProfile>, token?: string) => void;
+    logout: () => void;
+    refreshData: () => Promise<void>;
+    featureFlags: Record<string, boolean>;
+    isFeatureEnabled: (key: string) => boolean;
+}
+
+const AppContext = createContext<AppContextType | undefined>(undefined);
+
+export const AppProvider = ({ children }: { children: ReactNode }) => {
+    const [links, setLinks] = useState<PaymentLink[]>([]);
+    const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [payouts, setPayouts] = useState<Payout[]>([]);
+    const [wallets, setWallets] = useState<Wallet[]>([]);
+    const [userProfile, setUserProfile] = useState<UserProfile | null>(() => {
+        const saved = localStorage.getItem('ripplify_profile');
+        return saved ? JSON.parse(saved) : null;
+    });
+    const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+    const [featureFlags, setFeatureFlags] = useState<Record<string, boolean>>({});
+
+    const validateToken = async (): Promise<{ valid: boolean; user?: Partial<UserProfile> }> => {
+        const token = localStorage.getItem('auth_token');
+        if (!token) return { valid: false };
+        
+        try {
+            const res = await fetch(`${BASE_URL}/auth/me`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            
+            if (!res.ok) {
+                if (res.status === 401) {
+                    localStorage.removeItem('auth_token');
+                    localStorage.removeItem('ripplify_profile');
+                }
+                return { valid: false };
+            }
+            
+            const data = await res.json();
+            return { valid: true, user: data.user || data };
+        } catch {
+            return { valid: false };
+        }
+    };
+
+    useEffect(() => {
+        const initAuth = async () => {
+            const token = localStorage.getItem('auth_token');
+            if (!token) {
+                setIsAuthenticated(false);
+                return;
+            }
+            
+            const validation = await validateToken();
+            if (validation.valid && validation.user) {
+                setUserProfile(validation.user as UserProfile);
+                setIsAuthenticated(true);
+            } else {
+                setIsAuthenticated(false);
+            }
+        };
+        
+        initAuth();
+    }, []);
+
+    const loadFeatureFlags = async () => {
+        if (!isAuthenticated) return;
+        try {
+            const flags = await fetchWithAuth('/auth/features');
+            // auth-service returns an object { flagKey: isEnabled }
+            setFeatureFlags(flags || {});
+        } catch (e) {
+            console.error("Failed to load feature flags:", e);
+        }
+    };
+
+    const isFeatureEnabled = (key: string): boolean => {
+        // Admins always have access
+        if (userProfile?.role === 'admin') return true;
+        return featureFlags[key] !== false;
+    };
+
+    const { setAuth: syncToSSO } = useSSOSync((token, profile) => {
+        // Sync FROM SSO Hub on initial load
+        if (token && !localStorage.getItem('auth_token')) {
+            localStorage.setItem('auth_token', token);
+            if (profile) {
+                localStorage.setItem('ripplify_profile', JSON.stringify(profile));
+                setUserProfile(profile);
+            }
+            setIsAuthenticated(true);
+        }
+    });
+
+    const refreshData = async () => {
+        if (!isAuthenticated) return;
+        try {
+            const [linksData, transactionsData, payoutsData, walletsData, profileData] = await Promise.allSettled([
+                fetchWithAuth('/links/my'),
+                fetchWithAuth('/transactions/my'),
+                fetchWithAuth('/payouts/my'),
+                fetchWithAuth('/wallets'),
+                fetchWithAuth('/auth/me')
+            ]);
+
+            const linksResult = linksData.status === 'fulfilled' ? linksData.value : [];
+            const transactionsResult = transactionsData.status === 'fulfilled' ? transactionsData.value : [];
+            const payoutsResult = payoutsData.status === 'fulfilled' ? payoutsData.value : [];
+            const walletsResult = walletsData.status === 'fulfilled' ? walletsData.value : [];
+            const profileResult = profileData.status === 'fulfilled' ? profileData.value : null;
+
+            const formattedLinks = linksResult.map((l: any) => ({
+                ...l,
+                url: `${window.location.origin}/pay/${l.slug}`,
+                earned: `${l.currency} ${l.totalEarnedValue.toLocaleString()}`,
+                created: new Date(l.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+            }));
+
+            console.log("Formatted links:", formattedLinks);
+
+            setLinks(formattedLinks);
+            setTransactions(transactionsResult);
+            setPayouts(payoutsResult);
+            setWallets(walletsResult);
+            if (profileResult && profileResult.user) {
+                setUserProfile(profileResult.user);
+            } else if (profileResult) {
+                setUserProfile(profileResult);
+            }
+        } catch (error) {
+            console.error("Error refreshing data:", error);
+            if (String(error).includes('401')) {
+                logout();
+            }
+        }
+    };
+
+    useEffect(() => {
+        if (isAuthenticated === null) return;
+        
+        if (isAuthenticated) {
+            refreshData();
+            loadFeatureFlags();
+
+            const interval = setInterval(() => {
+                refreshData();
+                loadFeatureFlags();
+            }, 30000);
+
+            return () => clearInterval(interval);
+        } else {
+            setLinks([]);
+            setTransactions([]);
+            setPayouts([]);
+            setWallets([]);
+            setFeatureFlags({});
+        }
+    }, [isAuthenticated]);
+
+    useEffect(() => {
+        if (userProfile) {
+            localStorage.setItem('ripplify_profile', JSON.stringify(userProfile));
+        } else {
+            localStorage.removeItem('ripplify_profile');
+        }
+    }, [userProfile]);
+
+    const login = (userData: any, token?: string) => {
+        setIsAuthenticated(true);
+        setUserProfile(userData);
+        if (token) {
+            localStorage.setItem('auth_token', token);
+            syncToSSO(token, userData);
+        }
+    };
+
+    const logout = () => {
+        setIsAuthenticated(false);
+        setUserProfile(null);
+        setLinks([]);
+        setTransactions([]);
+        setPayouts([]);
+        setWallets([]);
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('ripplify_profile');
+        syncToSSO(null, null);
+    };
+
+    return (
+        <AppContext.Provider value={{
+            links, setLinks,
+            transactions, setTransactions,
+            payouts, setPayouts,
+            wallets, setWallets,
+            userProfile, setUserProfile,
+            isAuthenticated, setIsAuthenticated,
+            login, logout, refreshData,
+            featureFlags, isFeatureEnabled
+        }}>
+            {children}
+        </AppContext.Provider>
+    );
+};
+
+export const useAppContext = () => {
+    const context = useContext(AppContext);
+    if (context === undefined) {
+        throw new Error('useAppContext must be used within an AppProvider');
+    }
+    return context;
+};

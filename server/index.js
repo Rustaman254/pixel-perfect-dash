@@ -24,6 +24,7 @@ import walletRoutes from "./routes/walletRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 import transferRoutes from "./routes/transferRoutes.js";
 import payoutMethodRoutes from "./routes/payoutMethodRoutes.js";
+import formsRoutes from "./routes/formsRoutes.js";
 
 dotenv.config();
 
@@ -141,6 +142,7 @@ app.use("/api/transfers", transferRoutes);
 app.use("/api/user-payout-methods", payoutMethodRoutes);
 app.use("/api/apps", appRoutes);
 app.use("/api/wallets", walletRoutes);
+app.use("/api/forms", formsRoutes);
 
 // Global Error Handler
 app.use((err, req, res, next) => {

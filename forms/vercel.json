@@ -1,0 +1,11 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "framework": "vite",
+  "routes": [
+    { "src": "/api/auth/(.*)", "dest": "https://sokostack.ddns.net/api/auth/$1" },
+    { "src": "/api/(.*)", "dest": "https://sokostack.ddns.net/api/$1" },
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
+}
