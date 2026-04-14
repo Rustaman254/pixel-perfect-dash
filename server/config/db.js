@@ -42,6 +42,8 @@ const tableToDb = {
   user_currencies: 'auth_db',
   referral_codes: 'auth_db',
   referral_usage: 'auth_db',
+  forms: 'auth_db',
+  form_responses: 'auth_db',
   payment_links: 'ripplify_db',
   transactions: 'ripplify_db',
   wallets: 'ripplify_db',
