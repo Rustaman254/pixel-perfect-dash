@@ -323,7 +323,7 @@ User: userId=${userId}`,
         return { status: "error", message: "Form not found" };
       }
       
-      let updateData: any = {};
+      let updateData = {};
       
       if (input.title) {
         updateData.title = input.title;
