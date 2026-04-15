@@ -2,9 +2,9 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAppContext } from "@/contexts/AppContext";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, Download, ArrowLeft, BarChart3, ChevronDown, ChevronUp, CheckSquare, Circle, List, Type, AlignLeft, Hash, Calendar } from "lucide-react";
 import { toast } from "sonner";
 
@@ -69,7 +69,6 @@ const FormResponses = () => {
       if (res.ok) {
         const data = await res.json();
         setForm(data);
-        // Expand all responses by default
         setExpandedResponses(new Set(data.responses?.map((r: Response) => r.id) || []));
       } else {
         toast.error('Failed to load form');
@@ -193,40 +192,34 @@ const FormResponses = () => {
           </Card>
         ) : (
           <div className="space-y-6">
-            {/* Response Cards */}
-            {form?.responses?.map((response, responseIndex) => (
-              <Card 
-                key={response.id} 
-                className={`border-slate-200/50 shadow-sm hover:shadow-md transition-all ${expandedResponses.has(response.id) ? 'ring-1 ring-[#025864]/20' : ''}`}
-              >
-                <CardContent className="p-0">
-                  {/* Response Header */}
-                  <div 
-                    className="flex items-center gap-4 p-4 cursor-pointer hover:bg-slate-50/50 transition-colors"
-                    onClick={() => toggleResponseExpand(response.id)}
-                  >
-                    <div className="w-10 h-10 rounded-lg bg-[#025864]/10 flex items-center justify-center text-[#025864] font-bold text-lg">
-                      {responseIndex + 1}
-                    </div>
-                    
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        {response.email && (
-                          <span className="font-medium text-slate-800">{response.email}</span>
-                        )}
-                        {!response.email && (
-                          <span className="font-medium text-slate-800">Anonymous Response</span>
-                        )}
+            {form?.responses?.map((response, responseIndex) => {
+              const Icon = questionTypeIcons['text'] || Type;
+              
+              return (
+                <Card 
+                  key={response.id} 
+                  className={`border-slate-200/50 shadow-sm hover:shadow-md transition-all ${expandedResponses.has(response.id) ? 'ring-1 ring-[#025864]/20' : ''}`}
+                >
+                  <CardContent className="p-0">
+                    {/* Response Header - Same style as question cards */}
+                    <div 
+                      className="flex items-center gap-4 p-4 cursor-pointer hover:bg-slate-50/50 transition-colors"
+                      onClick={() => toggleResponseExpand(response.id)}
+                    >
+                      <div className="flex-1 flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-[#025864]/10 flex items-center justify-center text-[#025864] font-semibold text-sm">
+                          {responseIndex + 1}
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium text-slate-800 line-clamp-1">
+                            {response.email || 'Anonymous Response'}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            <Icon className="inline h-3 w-3 mr-1" />
+                            {new Date(response.submittedAt).toLocaleString()}
+                          </p>
+                        </div>
                       </div>
-                      <p className="text-xs text-slate-500">
-                        Submitted {new Date(response.submittedAt).toLocaleString()}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-slate-500">
-                        {form.questions?.length || 0} question{(form.questions?.length || 0) !== 1 ? 's' : ''}
-                      </span>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -239,58 +232,108 @@ const FormResponses = () => {
                         )}
                       </Button>
                     </div>
-                  </div>
 
-                  {/* Expanded Questions */}
-                  {expandedResponses.has(response.id) && (
-                    <div className="border-t border-slate-100 p-5 space-y-4 bg-slate-50/30">
-                      {form.questions?.map((question, qIndex) => {
-                        const answer = response.answers[question.id];
-                        const Icon = questionTypeIcons[question.type] || Type;
-                        
-                        return (
-                          <div 
-                            key={question.id} 
-                            className="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md transition-all"
-                            style={{ borderLeftColor: theme.color, borderLeftWidth: '3px' }}
-                          >
-                            <div className="p-4">
-                              {/* Question */}
-                              <div className="flex items-start gap-3 mb-3">
-                                <div className="w-6 h-6 rounded bg-slate-100 flex items-center justify-center flex-shrink-0">
-                                  <span className="text-xs font-medium text-slate-600">{qIndex + 1}</span>
-                                </div>
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <Icon className="h-4 w-4 text-slate-400" />
-                                    <span className="text-xs text-slate-500">{questionTypeLabels[question.type] || 'Question'}</span>
-                                    {question.required && <span className="text-xs text-red-500">• Required</span>}
-                                  </div>
-                                  <p className="font-medium text-slate-800">
-                                    {question.question || 'Untitled Question'}
-                                  </p>
-                                  {question.description && (
-                                    <p className="text-sm text-slate-500 mt-1">{question.description}</p>
-                                  )}
-                                </div>
+                    {/* Expanded Questions - Same style as question cards */}
+                    {expandedResponses.has(response.id) && (
+                      <div className="border-t border-slate-100 p-5 space-y-4 bg-slate-50/30">
+                        {form.questions?.map((question, qIndex) => {
+                          const answer = response.answers[question.id];
+                          const answerValue = answer !== undefined && answer !== null && answer !== '' 
+                            ? (Array.isArray(answer) ? answer.join(', ') : String(answer))
+                            : '';
+                          const QIcon = questionTypeIcons[question.type] || Type;
+                          
+                          return (
+                            <div 
+                              key={question.id} 
+                              className="border rounded-lg p-4 space-y-4 bg-white"
+                            >
+                              {/* Question Header - Same style as form builder */}
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline" className="text-xs">
+                                  {questionTypeLabels[question.type] || 'Question'}
+                                </Badge>
+                                {question.required && <span className="text-xs text-red-500">• Required</span>}
                               </div>
                               
-                              {/* Answer */}
-                              <div className="ml-9 pl-3 border-l-2 border-slate-100">
-                                <p className="text-xs text-slate-500 mb-1">Answer:</p>
-                                <div className="text-sm">
-                                  {formatAnswer(question, answer)}
-                                </div>
+                              {/* Question Text - Read only input */}
+                              <input
+                                readOnly
+                                className="flex w-full rounded-md border bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 md:text-sm h-10 border-slate-200 font-medium text-slate-900"
+                                value={question.question || 'Untitled Question'}
+                              />
+                              
+                              {/* Question Description (if any) */}
+                              {question.description && (
+                                <input
+                                  readOnly
+                                  className="flex h-10 w-full rounded-md border bg-background px-3 py-2 ring-offset-background placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 md:text-sm text-sm border-slate-200 text-slate-500"
+                                  value={question.description}
+                                />
+                              )}
+                              
+                              {/* Answer Input - Where user enters answer in form, show the answer here */}
+                              <div>
+                                <Label className="text-xs text-slate-500 mb-2 block">Answer:</Label>
+                                {question.type === 'textarea' ? (
+                                  <textarea
+                                    readOnly
+                                    className="flex w-full rounded-md border bg-slate-50 px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 md:text-sm min-h-[80px] border-slate-200 text-slate-700"
+                                    value={answerValue}
+                                    placeholder="No answer"
+                                  />
+                                ) : question.type === 'checkbox' ? (
+                                  <div className="space-y-2">
+                                    {question.options?.map((option: string, optIndex: number) => {
+                                      const isChecked = Array.isArray(answer) && answer.includes(option);
+                                      return (
+                                        <div key={optIndex} className="flex items-center gap-3 p-2 rounded bg-slate-50">
+                                          <div className={`w-4 h-4 border-2 rounded-sm flex items-center justify-center ${isChecked ? 'bg-[#025864] border-[#025864]' : 'border-slate-300'}`}>
+                                            {isChecked && <CheckSquare className="h-3 w-3 text-white" />}
+                                          </div>
+                                          <span className={isChecked ? 'text-slate-900 font-medium' : 'text-slate-500'}>{option}</span>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                ) : question.type === 'radio' ? (
+                                  <div className="space-y-2">
+                                    {question.options?.map((option: string, optIndex: number) => {
+                                      const isChecked = answer === option;
+                                      return (
+                                        <div key={optIndex} className="flex items-center gap-3 p-2 rounded bg-slate-50">
+                                          <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${isChecked ? 'border-[#025864]' : 'border-slate-300'}`}>
+                                            {isChecked && <div className="w-2 h-2 rounded-full bg-[#025864]" />}
+                                          </div>
+                                          <span className={isChecked ? 'text-slate-900 font-medium' : 'text-slate-500'}>{option}</span>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                ) : question.type === 'select' ? (
+                                  <div className="flex items-center gap-3 p-3 rounded bg-slate-50 border border-slate-200">
+                                    <List className="h-4 w-4 text-slate-400" />
+                                    <span className="text-slate-700">{answerValue || 'No answer'}</span>
+                                  </div>
+                                ) : (
+                                  <input
+                                    readOnly
+                                    type={question.type === 'date' ? 'date' : question.type === 'email' ? 'email' : question.type === 'number' ? 'number' : 'text'}
+                                    className="flex w-full rounded-md border bg-slate-50 px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 md:text-sm h-10 border-slate-200 text-slate-700"
+                                    value={answerValue}
+                                    placeholder="No answer"
+                                  />
+                                )}
                               </div>
                             </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
+                          );
+                        })}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
       </main>
