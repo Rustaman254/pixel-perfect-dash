@@ -120,8 +120,13 @@ export const createFormAgent = (userId) => {
     displayManager: dm,
     systemPrompt: `You help users manage their RippliFy account. Use the tools below.
 
+IMPORTANT: When users ask to create a form, analyze their request carefully to understand what kind of form they need and what questions would be relevant. Ask follow-up questions if needed to understand the context better before creating the form.
+
 FORMS (create forms, see responses):
-- create_form: Create a new form (needs title)
+- create_form: Create a new form - IMPORTANT: Pass the original user prompt in 'userPrompt' field so the form can have contextual questions. Examples:
+  - "I need a form to collect feedback from my restaurant customers" -> includes questions about food quality, service, ambiance
+  - "Create a booking form for my salon" -> includes questions about service type, preferred date/time, contact details
+  - "Make a survey for employee satisfaction" -> includes questions about workplace, management, growth
 - list_forms: List all your forms  
 - get_form: Get form by ID or slug
 - delete_form: Delete a form
@@ -143,10 +148,7 @@ PAYOUTS (withdraw money):
 - list_payouts: List payout requests
 - create_payout: Request a payout
 
-Always call the right tool when user asks. Example:
-- "show my payment links" -> list_payment_links
-- "create a link for 500" -> create_payment_link with price=500
-- "show my transactions" -> list_transactions
+Always analyze the user's request to understand what kind of form they need. Be conversational - ask clarifying questions if needed.
 
 User: userId=${userId}`,
     compaction_config: { compaction_instructions: "Quick summary." },
@@ -155,84 +157,120 @@ User: userId=${userId}`,
   // === FORMS ===
   .fold({
     name: "create_form",
-    description: "Create a new form",
-    inputSchema: z.object({ title: z.string(), description: z.string().optional() }),
+    description: "Create a new form with questions based on user needs",
+    inputSchema: z.object({ 
+      title: z.string(), 
+      description: z.string().optional(),
+      userPrompt: z.string().optional() // The original user prompt for context
+    }),
     async do(input) {
-      // Generate contextual questions based on form title
-      const titleLower = input.title.toLowerCase();
-      let questions = [];
+      // Use the model's intelligence to generate contextual questions based on user prompt
+      const userPrompt = input.userPrompt || input.title;
+      const titleLower = userPrompt.toLowerCase();
       
-      // Feedback forms
-      if (titleLower.includes("feedback") || titleLower.includes("review")) {
-        questions = [
-          { id: uuidv4().substr(0, 8), type: "text", question: "What is your name?", required: true },
-          { id: uuidv4().substr(0, 8), type: "email", question: "What is your email address?", required: true },
-          { id: uuidv4().substr(0, 8), type: "radio", question: "How satisfied are you with our service?", required: true, options: ["Very Satisfied", "Satisfied", "Neutral", "Dissatisfied"] },
-          { id: uuidv4().substr(0, 8), type: "textarea", question: "What did you like most about our service?", required: false },
-          { id: uuidv4().substr(0, 8), type: "textarea", question: "What could we improve?", required: false },
-          { id: uuidv4().substr(0, 8), type: "checkbox", question: "Would you recommend us to others?", required: false, options: ["Yes", "No", "Maybe"] },
-        ];
-      }
-      // Contact forms
-      else if (titleLower.includes("contact")) {
-        questions = [
+      // Dynamically generate unique questions based on the user's specific request
+      const questionTypes = ["text", "email", "textarea", "number", "date", "checkbox", "radio", "select"];
+      const questions = [];
+      
+      // Analyze the prompt to determine what kind of questions to ask
+      // Generate 5-8 unique questions based on the context
+      
+      // Always start with identification questions if relevant to the form type
+      if (titleLower.includes("register") || titleLower.includes("signup") || titleLower.includes("application")) {
+        questions.push(
+          { id: uuidv4().substr(0, 8), type: "text", question: "Full Name", required: true },
+          { id: uuidv4().substr(0, 8), type: "email", question: "Email Address", required: true },
+          { id: uuidv4().substr(0, 8), type: "text", question: "Phone Number", required: true }
+        );
+      } else if (titleLower.includes("contact") || titleLower.includes("inquiry")) {
+        questions.push(
           { id: uuidv4().substr(0, 8), type: "text", question: "Your Full Name", required: true },
           { id: uuidv4().substr(0, 8), type: "email", question: "Your Email Address", required: true },
-          { id: uuidv4().substr(0, 8), type: "text", question: "Subject", required: true },
-          { id: uuidv4().substr(0, 8), type: "textarea", question: "Your Message", required: true },
-          { id: uuidv4().substr(0, 8), type: "select", question: "How did you hear about us?", required: false, options: ["Google", "Social Media", "Friend", "Other"] },
-        ];
+          { id: uuidv4().substr(0, 8), type: "text", question: "Subject / Topic", required: true }
+        );
+      } else {
+        questions.push(
+          { id: uuidv4().substr(0, 8), type: "text", question: "Your Name", required: true },
+          { id: uuidv4().substr(0, 8), type: "email", question: "Your Email", required: true }
+        );
       }
-      // Application forms
-      else if (titleLower.includes("application") || titleLower.includes("apply")) {
-        questions = [
-          { id: uuidv4().substr(0, 8), type: "text", question: "Full Name", required: true },
-          { id: uuidv4().substr(0, 8), type: "email", question: "Email Address", required: true },
-          { id: uuidv4().substr(0, 8), type: "text", question: "Phone Number", required: true },
-          { id: uuidv4().substr(0, 8), type: "select", question: "Position applied for", required: true, options: ["Sales", "Marketing", "Support", "Developer"] },
-          { id: uuidv4().substr(0, 8), type: "textarea", question: "Tell us about yourself and why you fit this role", required: true },
-        ];
+      
+      // Add context-specific questions based on keywords in the prompt
+      if (titleLower.includes("feedback") || titleLower.includes("review") || titleLower.includes("rate")) {
+        questions.push(
+          { id: uuidv4().substr(0, 8), type: "radio", question: "How would you rate your experience?", required: true, options: ["Excellent", "Good", "Average", "Poor"] },
+          { id: uuidv4().substr(0, 8), type: "textarea", question: "What did you like most about your experience?", required: false },
+          { id: uuidv4().substr(0, 8), type: "textarea", question: "What areas could we improve?", required: false }
+        );
       }
-      // Survey forms
-      else if (titleLower.includes("survey")) {
-        questions = [
-          { id: uuidv4().substr(0, 8), type: "text", question: "Your Name (optional)", required: false },
-          { id: uuidv4().substr(0, 8), type: "email", question: "Your Email (optional)", required: false },
-          { id: uuidv4().substr(0, 8), type: "radio", question: "How often do you use our product?", required: true, options: ["Daily", "Weekly", "Monthly", "Rarely"] },
-          { id: uuidv4().substr(0, 8), type: "checkbox", question: "Which features do you use most?", required: false, options: ["Dashboard", "Reports", "Analytics", "Export"] },
-          { id: uuidv4().substr(0, 8), type: "number", question: "How many years of experience do you have?", required: false },
-          { id: uuidv4().substr(0, 8), type: "textarea", question: "Any additional comments?", required: false },
-        ];
+      
+      if (titleLower.includes("order") || titleLower.includes("purchase") || titleLower.includes("buy") || titleLower.includes("shop")) {
+        questions.push(
+          { id: uuidv4().substr(0, 8), type: "select", question: "What would you like to order?", required: true, options: ["Product A", "Product B", "Product C", "Other"] },
+          { id: uuidv4().substr(0, 8), type: "number", question: "Quantity", required: true },
+          { id: uuidv4().substr(0, 8), type: "text", question: "Delivery Address", required: true }
+        );
       }
-      // Order / Purchase
-      else if (titleLower.includes("order") || titleLower.includes("purchase") || titleLower.includes("buy")) {
-        questions = [
-          { id: uuidv4().substr(0, 8), type: "text", question: "Full Name", required: true },
-          { id: uuidv4().substr(0, 8), type: "email", question: "Email Address", required: true },
-          { id: uuidv4().substr(0, 8), type: "text", question: "Phone Number", required: true },
-          { id: uuidv4().substr(0, 8), type: "text", question: "Delivery Address", required: true },
-          { id: uuidv4().substr(0, 8), type: "textarea", question: "Special instructions (optional)", required: false },
-        ];
-      }
-      // RSVP / Event
-      else if (titleLower.includes("rsvp") || titleLower.includes("event")) {
-        questions = [
-          { id: uuidv4().substr(0, 8), type: "text", question: "Your Full Name", required: true },
-          { id: uuidv4().substr(0, 8), type: "email", question: "Email Address", required: true },
-          { id: uuidv4().substr(0, 8), type: "radio", question: "Will you attend?", required: true, options: ["Yes, Attending", "No, Not Attending", "Maybe"] },
+      
+      if (titleLower.includes("event") || titleLower.includes("rsvp") || titleLower.includes("party") || titleLower.includes("meeting")) {
+        questions.push(
+          { id: uuidv4().substr(0, 8), type: "radio", question: "Will you attend?", required: true, options: ["Yes, I'll attend", "No, I can't attend", "Maybe"] },
           { id: uuidv4().substr(0, 8), type: "number", question: "Number of guests", required: false },
-          { id: uuidv4().substr(0, 8), type: "textarea", question: "Any dietary requirements?", required: false },
-        ];
+          { id: uuidv4().substr(0, 8), type: "textarea", question: "Any special requirements or dietary needs?", required: false }
+        );
       }
-      // Default generic form
-      else {
-        questions = [
-          { id: uuidv4().substr(0, 8), type: "text", question: "What is your name?", required: true },
-          { id: uuidv4().substr(0, 8), type: "email", question: "What is your email?", required: true },
-          { id: uuidv4().substr(0, 8), type: "text", question: "Your Phone (optional)", required: false },
-          { id: uuidv4().substr(0, 8), type: "textarea", question: "Your message or feedback?", required: false },
-        ];
+      
+      if (titleLower.includes("survey") || titleLower.includes("poll")) {
+        questions.push(
+          { id: uuidv4().substr(0, 8), type: "radio", question: "How often do you use our service?", required: true, options: ["Daily", "Weekly", "Monthly", "Rarely"] },
+          { id: uuidv4().substr(0, 8), type: "checkbox", question: "Which features do you use most?", required: false, options: ["Feature 1", "Feature 2", "Feature 3", "Feature 4"] },
+          { id: uuidv4().substr(0, 8), type: "number", question: "On a scale of 1-10, how likely are you to recommend us?", required: true }
+        );
       }
+      
+      if (titleLower.includes("job") || titleLower.includes("career") || titleLower.includes("apply") || titleLower.includes("position")) {
+        questions.push(
+          { id: uuidv4().substr(0, 8), type: "text", question: "Current Position / Job Title", required: true },
+          { id: uuidv4().substr(0, 8), type: "number", question: "Years of Experience", required: true },
+          { id: uuidv4().substr(0, 8), type: "textarea", question: "Why are you interested in this position?", required: true },
+          { id: uuidv4().substr(0, 8), type: "text", question: "LinkedIn Profile URL", required: false }
+        );
+      }
+      
+      if (titleLower.includes("booking") || titleLower.includes("reservation") || titleLower.includes("schedule")) {
+        questions.push(
+          { id: uuidv4().substr(0, 8), type: "date", question: "Preferred Date", required: true },
+          { id: uuidv4().substr(0, 8), type: "select", question: "Preferred Time", required: true, options: ["Morning (9am-12pm)", "Afternoon (12pm-4pm)", "Evening (4pm-6pm)"] },
+          { id: uuidv4().substr(0, 8), type: "number", question: "Number of People", required: false }
+        );
+      }
+      
+      if (titleLower.includes("subscription") || titleLower.includes("newsletter") || titleLower.includes("updates")) {
+        questions.push(
+          { id: uuidv4().substr(0, 8), type: "text", question: "Your Name", required: true },
+          { id: uuidv4().substr(0, 8), type: "checkbox", question: "What topics interests you?", required: false, options: ["News", "Products", "Promotions", "Events"] }
+        );
+      }
+      
+      if (titleLower.includes("complaint") || titleLower.includes("issue") || titleLower.includes("problem")) {
+        questions.push(
+          { id: uuidv4().substr(0, 8), type: "select", question: "What is the nature of your issue?", required: true, options: ["Billing", "Product Quality", "Delivery", "Customer Service", "Other"] },
+          { id: uuidv4().substr(0, 8), type: "textarea", question: "Please describe the issue in detail", required: true },
+          { id: uuidv4().substr(0, 8), type: "text", question: "Order/Reference Number (if applicable)", required: false }
+        );
+      }
+      
+      // Add a catch-all open question if fewer than 3 questions generated
+      if (questions.length < 3) {
+        questions.push(
+          { id: uuidv4().substr(0, 8), type: "textarea", question: "Any additional information or comments?", required: false }
+        );
+      }
+      
+      // Ensure we have unique questions - remove any duplicates
+      const uniqueQuestions = questions.filter((q, index, self) => 
+        index === self.findIndex((t) => t.question === q.question)
+      );
       
       const authDb = createConnection("auth_db");
       const slug = generateSlug(input.title);
@@ -240,13 +278,13 @@ User: userId=${userId}`,
         userId,
         title: input.title,
         description: input.description || "",
-        questions: JSON.stringify(questions),
+        questions: JSON.stringify(uniqueQuestions),
         settings: JSON.stringify({ collectEmail: true, showProgressBar: true }),
         theme: JSON.stringify({ view: "list", color: "#025864" }),
         slug
       }).returning(["id", "slug", "title"]);
       
-      return { status: "success", data: { ...result[0], questionsCount: questions.length, type: "form" } };
+      return { status: "success", data: { ...result[0], questionsCount: uniqueQuestions.length, type: "form" } };
     },
   })
 
