@@ -24,7 +24,8 @@ import {
   Hash,
   GripVertical,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Settings
 } from "lucide-react";
 import { toast } from "sonner";
 import AIAssistant from "@/components/ai/AIAssistant";
@@ -91,6 +92,7 @@ const FormBuilder = () => {
   const [previewAnswers, setPreviewAnswers] = useState<Record<string, any>>({});
   const [expandedQuestions, setExpandedQuestions] = useState<Set<string>>(new Set());
   const [aiTrigger, setAiTrigger] = useState(0);
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
 
   useEffect(() => {
     if (isEditing) {
@@ -293,6 +295,10 @@ const FormBuilder = () => {
               <Button variant="outline" onClick={previewForm} className="border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300">
                 <Eye className="h-4 w-4 mr-2" />
                 Preview
+              </Button>
+              <Button variant="outline" onClick={() => setShowSettingsDialog(true)} className="border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300">
+                <Settings className="h-4 w-4 mr-2" />
+                Settings
               </Button>
               <Button 
                 onClick={saveForm} 
@@ -545,141 +551,6 @@ const FormBuilder = () => {
                 </div>
               </CardContent>
             </Card>
-
-            {/* Settings */}
-            <Card className="border-slate-200/50 shadow-sm hover:shadow-md transition-shadow">
-              <CardHeader className="bg-gradient-to-r from-slate-50 to-white border-b border-slate-100 pb-4">
-                <CardTitle className="text-lg font-semibold text-slate-800 flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-[#025864]"></div>
-                  Settings
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-4 space-y-4">
-                <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50/50">
-                  <div>
-                    <Label className="text-sm font-medium text-slate-700">Collect email</Label>
-                    <p className="text-xs text-slate-500">Require respondents to provide email</p>
-                  </div>
-                  <Switch
-                    checked={settings.collectEmail}
-                    onCheckedChange={(checked) => setSettings({ ...settings, collectEmail: checked })}
-                    className="data-[state=checked]:bg-[#025864]"
-                  />
-                </div>
-                <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50/50">
-                  <div>
-                    <Label className="text-sm font-medium text-slate-700">Show progress bar</Label>
-                    <p className="text-xs text-slate-500">Display completion progress</p>
-                  </div>
-                  <Switch
-                    checked={settings.showProgressBar}
-                    onCheckedChange={(checked) => setSettings({ ...settings, showProgressBar: checked })}
-                    className="data-[state=checked]:bg-[#025864]"
-                  />
-                </div>
-                <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50/50">
-                  <div>
-                    <Label className="text-sm font-medium text-slate-700">Shuffle questions</Label>
-                    <p className="text-xs text-slate-500">Randomize question order</p>
-                  </div>
-                  <Switch
-                    checked={settings.shuffleQuestions}
-                    onCheckedChange={(checked) => setSettings({ ...settings, shuffleQuestions: checked })}
-                    className="data-[state=checked]:bg-[#025864]"
-                  />
-                </div>
-                <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50/50">
-                  <div>
-                    <Label className="text-sm font-medium text-slate-700">Limit responses</Label>
-                    <p className="text-xs text-slate-500">Set maximum response count</p>
-                  </div>
-                  <Switch
-                    checked={settings.limitResponses}
-                    onCheckedChange={(checked) => setSettings({ ...settings, limitResponses: checked })}
-                    className="data-[state=checked]:bg-[#025864]"
-                  />
-                </div>
-                {settings.limitResponses && (
-                  <div className="p-3 rounded-lg bg-slate-50/50 space-y-2">
-                    <Label className="text-sm font-medium text-slate-700">Max responses</Label>
-                    <Input
-                      type="number"
-                      value={settings.maxResponses || ''}
-                      onChange={(e) => setSettings({ ...settings, maxResponses: parseInt(e.target.value) })}
-                      placeholder="100"
-                      className="h-9 border-slate-200 focus:border-[#025864] focus:ring-[#025864]/20"
-                    />
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Theme Settings */}
-            <Card className="border-slate-200/50 shadow-sm hover:shadow-md transition-shadow">
-              <CardHeader className="bg-gradient-to-r from-slate-50 to-white border-b border-slate-100 pb-4">
-                <CardTitle className="text-lg font-semibold text-slate-800 flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-[#025864]"></div>
-                  Appearance
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-4 space-y-5">
-                <div>
-                  <Label className="text-sm font-medium text-slate-700 mb-3 block">View Style</Label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { value: 'list', label: 'List', icon: List },
-                      { value: 'chat', label: 'Chat', icon: Type },
-                      { value: 'card', label: 'Card', icon: CheckSquare },
-                    ].map((option) => (
-                      <Button
-                        key={option.value}
-                        variant={theme.view === option.value ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => setTheme({ ...theme, view: option.value as any })}
-                        style={theme.view === option.value ? { backgroundColor: theme.color } : {}}
-                        className={theme.view !== option.value ? 'border-slate-200' : ''}
-                      >
-                        {option.label}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-slate-700 mb-3 block">Theme Color</Label>
-                  <div className="flex gap-3 items-center">
-                    <div className="relative">
-                      <input
-                        type="color"
-                        value={theme.color}
-                        onChange={(e) => setTheme({ ...theme, color: e.target.value })}
-                        className="w-12 h-12 rounded-lg border-2 border-slate-200 cursor-pointer hover:border-slate-300 transition-colors"
-                      />
-                      <div 
-                        className="absolute inset-0 rounded-lg pointer-events-none"
-                        style={{ backgroundColor: theme.color, opacity: 0.1 }}
-                      ></div>
-                    </div>
-                    <Input
-                      value={theme.color}
-                      onChange={(e) => setTheme({ ...theme, color: e.target.value })}
-                      className="flex-1 h-12 border-slate-200 focus:border-[#025864] focus:ring-[#025864]/20 font-mono"
-                      placeholder="#025864"
-                    />
-                  </div>
-                </div>
-                <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50/50">
-                  <div>
-                    <Label className="text-sm font-medium text-slate-700">Show "Powered by"</Label>
-                    <p className="text-xs text-slate-500">Display brand attribution</p>
-                  </div>
-                  <Switch
-                    checked={theme.showPoweredBy}
-                    onCheckedChange={(checked) => setTheme({ ...theme, showPoweredBy: checked })}
-                    className="data-[state=checked]:bg-[#025864]"
-                  />
-                </div>
-              </CardContent>
-            </Card>
           </div>
         </div>
       </main>
@@ -810,6 +681,133 @@ const FormBuilder = () => {
         }}
         onFormUpdated={handleFormUpdateFromAI}
       />
+
+      {/* Settings Dialog */}
+      <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold flex items-center gap-2">
+              <Settings className="h-5 w-5" />
+              Settings & Appearance
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-6 mt-4">
+            {/* Settings Section */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-[#025864]"></div>
+                Form Settings
+              </h3>
+              
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50/50">
+                  <div>
+                    <Label className="text-sm font-medium text-slate-700">Collect email</Label>
+                    <p className="text-xs text-slate-500">Require respondents to provide email</p>
+                  </div>
+                  <Switch
+                    checked={settings.collectEmail}
+                    onCheckedChange={(checked) => setSettings({ ...settings, collectEmail: checked })}
+                    className="data-[state=checked]:bg-[#025864]"
+                  />
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50/50">
+                  <div>
+                    <Label className="text-sm font-medium text-slate-700">Show progress bar</Label>
+                    <p className="text-xs text-slate-500">Display completion progress</p>
+                  </div>
+                  <Switch
+                    checked={settings.showProgressBar}
+                    onCheckedChange={(checked) => setSettings({ ...settings, showProgressBar: checked })}
+                    className="data-[state=checked]:bg-[#025864]"
+                  />
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50/50">
+                  <div>
+                    <Label className="text-sm font-medium text-slate-700">Shuffle questions</Label>
+                    <p className="text-xs text-slate-500">Randomize question order</p>
+                  </div>
+                  <Switch
+                    checked={settings.shuffleQuestions}
+                    onCheckedChange={(checked) => setSettings({ ...settings, shuffleQuestions: checked })}
+                    className="data-[state=checked]:bg-[#025864]"
+                  />
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50/50">
+                  <div>
+                    <Label className="text-sm font-medium text-slate-700">Limit responses</Label>
+                    <p className="text-xs text-slate-500">Set maximum response count</p>
+                  </div>
+                  <Switch
+                    checked={settings.limitResponses}
+                    onCheckedChange={(checked) => setSettings({ ...settings, limitResponses: checked })}
+                    className="data-[state=checked]:bg-[#025864]"
+                  />
+                </div>
+                {settings.limitResponses && (
+                  <div className="p-3 rounded-lg bg-slate-50/50 space-y-2">
+                    <Label className="text-sm font-medium text-slate-700">Max responses</Label>
+                    <Input
+                      type="number"
+                      value={settings.maxResponses || ''}
+                      onChange={(e) => setSettings({ ...settings, maxResponses: parseInt(e.target.value) })}
+                      placeholder="100"
+                      className="h-9 border-slate-200 focus:border-[#025864] focus:ring-[#025864]/20"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Appearance Section */}
+            <div className="space-y-4 pt-4 border-t border-slate-200">
+              <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-[#025864]"></div>
+                Appearance
+              </h3>
+              
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-sm font-medium text-slate-700 mb-3 block">Theme Color</Label>
+                  <div className="flex gap-3 items-center">
+                    <div className="relative">
+                      <input
+                        type="color"
+                        value={theme.color}
+                        onChange={(e) => setTheme({ ...theme, color: e.target.value })}
+                        className="w-12 h-12 rounded-lg border-2 border-slate-200 cursor-pointer hover:border-slate-300 transition-colors"
+                      />
+                      <div 
+                        className="absolute inset-0 rounded-lg pointer-events-none"
+                        style={{ backgroundColor: theme.color, opacity: 0.1 }}
+                      ></div>
+                    </div>
+                    <Input
+                      value={theme.color}
+                      onChange={(e) => setTheme({ ...theme, color: e.target.value })}
+                      className="flex-1 h-12 border-slate-200 focus:border-[#025864] focus:ring-[#025864]/20 font-mono"
+                      placeholder="#025864"
+                    />
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50/50">
+                  <div>
+                    <Label className="text-sm font-medium text-slate-700">Show "Powered by"</Label>
+                    <p className="text-xs text-slate-500">Display brand attribution</p>
+                  </div>
+                  <Switch
+                    checked={theme.showPoweredBy}
+                    onCheckedChange={(checked) => setTheme({ ...theme, showPoweredBy: checked })}
+                    className="data-[state=checked]:bg-[#025864]"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
