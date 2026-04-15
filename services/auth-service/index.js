@@ -72,8 +72,8 @@ app.post('/api/agent/chat', async (req, res) => {
     const lastMsg = result.messages[result.messages.length - 1];
     
     // Extract progress information from messages
-    const progress: any = {};
-    const progressMessages: any[] = [];
+    const progress = {};
+    const progressMessages = [];
     
     for (const msg of result.messages) {
       if (msg.text?.includes('Setting title:')) {
@@ -149,7 +149,7 @@ wss.on('connection', async (ws, req) => {
           const lastMsg = result.messages[result.messages.length - 1];
           
           // Also extract progress info for WS
-          const progress: any = {};
+const progress = {};
           for (const msg of result.messages) {
             if (msg.text?.includes('Setting title:')) {
               const match = msg.text.match(/Setting title: "([^"]+)"/);
