@@ -118,15 +118,19 @@ export const createFormAgent = (userId) => {
     store,
     model,
     displayManager: dm,
-    systemPrompt: `You help users manage their RippliFy account. Use the tools below.
+systemPrompt: `You help users manage their RippliFy account. Use the tools below.
 
-IMPORTANT: When users ask to create a form, analyze their request carefully to understand what kind of form they need and what questions would be relevant. Ask follow-up questions if needed to understand the context better before creating the form.
+IMPORTANT: When users ask to create a form, analyze their request carefully to understand what kind of form they need and what questions would be relevant. Ask follow-up questions if needed to understand the context better before creating or updating a form.
 
-FORMS (create forms, see responses):
+FORMS (create or update forms):
 - create_form: Create a new form - IMPORTANT: Pass the original user prompt in 'userPrompt' field so the form can have contextual questions. Examples:
   - "I need a form to collect feedback from my restaurant customers" -> includes questions about food quality, service, ambiance
   - "Create a booking form for my salon" -> includes questions about service type, preferred date/time, contact details
   - "Make a survey for employee satisfaction" -> includes questions about workplace, management, growth
+- update_form: Update an existing form with new title, description, or questions. Pass 'formId' and 'userPrompt' for context. Examples:
+  - "add questions about pricing to my order form" -> adds pricing-related questions
+  - "change the title to Customer Feedback Form" -> updates the form title
+  - "add a date field for booking" -> adds a date question
 - list_forms: List all your forms  
 - get_form: Get form by ID or slug
 - delete_form: Delete a form
@@ -147,6 +151,12 @@ WALLETS (see balance):
 PAYOUTS (withdraw money):
 - list_payouts: List payout requests
 - create_payout: Request a payout
+
+When creating or updating forms, always show your progress by outputting what you're doing:
+- "Setting title: [title]"
+- "Adding description: [description]"
+- "Adding question X: [question text] (type: [type])"
+- "Form created/updated successfully!"
 
 Always analyze the user's request to understand what kind of form they need. Be conversational - ask clarifying questions if needed.
 
@@ -285,6 +295,64 @@ User: userId=${userId}`,
       }).returning(["id", "slug", "title"]);
       
       return { status: "success", data: { ...result[0], questionsCount: uniqueQuestions.length, type: "form" } };
+    },
+  })
+
+  .fold({
+    name: "update_form",
+    description: "Update an existing form with new title, description, or questions based on user needs",
+    inputSchema: z.object({ 
+      formId: z.string(),
+      title: z.string().optional(),
+      description: z.string().optional(),
+      questions: z.array(z.object({
+        id: z.string().optional(),
+        type: z.string(),
+        question: z.string(),
+        required: z.boolean().optional(),
+        options: z.array(z.string()).optional(),
+        description: z.string().optional()
+      })).optional(),
+      userPrompt: z.string().optional()
+    }),
+    async do(input) {
+      const authDb = createConnection("auth_db");
+      
+      const existingForm = await authDb("forms").where("id", input.formId).where("userId", userId).first();
+      if (!existingForm) {
+        return { status: "error", message: "Form not found" };
+      }
+      
+      let updateData: any = {};
+      
+      if (input.title) {
+        updateData.title = input.title;
+      }
+      
+      if (input.description !== undefined) {
+        updateData.description = input.description;
+      }
+      
+      if (input.questions) {
+        updateData.questions = JSON.stringify(input.questions);
+      }
+      
+      if (Object.keys(updateData).length > 0) {
+        await authDb("forms").where("id", input.formId).update(updateData);
+      }
+      
+      const updatedForm = await authDb("forms").where("id", input.formId).first();
+      updatedForm.questions = typeof updatedForm.questions === "string" ? JSON.parse(updatedForm.questions) : updatedForm.questions;
+      
+      return { 
+        status: "success", 
+        data: { 
+          ...updatedForm, 
+          questionsCount: updatedForm.questions?.length || 0, 
+          type: "form",
+          action: "updated"
+        } 
+      };
     },
   })
 
@@ -439,7 +507,14 @@ User: userId=${userId}`,
   return agent;
 };
 
-export const processAgentRequest = async (userId, message) => {
+export const processAgentRequest = async (userId, message, context = {}) => {
+  // Store context for the agent to use
   const agent = createFormAgent(userId);
-  return agent.processRequest(message);
+  
+  // If we have form context, include it in the request
+  const enhancedMessage = context.formId 
+    ? `[Form ID: ${context.formId}] Current form: ${JSON.stringify(context.currentForm || {})}. Request: ${message}`
+    : message;
+  
+  return agent.processRequest(enhancedMessage);
 };

@@ -27,6 +27,7 @@ import {
   ChevronUp
 } from "lucide-react";
 import { toast } from "sonner";
+import AIAssistant from "@/components/ai/AIAssistant";
 
 type QuestionType = 'text' | 'textarea' | 'number' | 'email' | 'date' | 'checkbox' | 'radio' | 'select';
 
@@ -89,12 +90,44 @@ const FormBuilder = () => {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewAnswers, setPreviewAnswers] = useState<Record<string, any>>({});
   const [expandedQuestions, setExpandedQuestions] = useState<Set<string>>(new Set());
+  const [aiTrigger, setAiTrigger] = useState(0);
 
   useEffect(() => {
     if (isEditing) {
       fetchForm();
     }
   }, [formId]);
+
+  useEffect(() => {
+    const handleAiFormUpdate = (e: CustomEvent) => {
+      const formData = e.detail;
+      if (formData) {
+        if (formData.title) setTitle(formData.title);
+        if (formData.description !== undefined) setDescription(formData.description);
+        if (formData.questions) {
+          setQuestions(formData.questions);
+          setExpandedQuestions(new Set(formData.questions.map((q: Question) => q.id)));
+        }
+        toast.success("Form updated by AI Assistant!");
+        setAiTrigger(prev => prev + 1);
+      }
+    };
+    
+    window.addEventListener('ai-form-updated', handleAiFormUpdate as any);
+    return () => window.removeEventListener('ai-form-updated', handleAiFormUpdate as any);
+  }, []);
+
+  const handleFormUpdateFromAI = (form: any) => {
+    if (form) {
+      if (form.title) setTitle(form.title);
+      if (form.description !== undefined) setDescription(form.description);
+      if (form.questions) {
+        setQuestions(form.questions);
+        setExpandedQuestions(new Set(form.questions.map((q: Question) => q.id)));
+      }
+      setAiTrigger(prev => prev + 1);
+    }
+  };
 
   const fetchForm = async () => {
     try {
@@ -766,6 +799,17 @@ const FormBuilder = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      <AIAssistant 
+        productName="Forms" 
+        formContext={{
+          formId: isEditing ? parseInt(formId || '0') : undefined,
+          title,
+          description,
+          questions
+        }}
+        onFormUpdated={handleFormUpdateFromAI}
+      />
     </div>
   );
 };

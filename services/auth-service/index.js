@@ -65,12 +65,53 @@ app.post('/api/agent/chat', async (req, res) => {
     if (!token) return res.status(401).json({ message: 'No token' });
     
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const { message } = req.body;
+    const { message, formId, currentForm } = req.body;
     if (!message) return res.status(400).json({ message: 'Message required' });
     
-    const result = await processAgentRequest(decoded.id, message);
+    const result = await processAgentRequest(decoded.id, message, { formId, currentForm });
     const lastMsg = result.messages[result.messages.length - 1];
-    res.json({ message: lastMsg?.text || 'No response', messages: result.messages });
+    
+    // Extract progress information from messages
+    const progress: any = {};
+    const progressMessages: any[] = [];
+    
+    for (const msg of result.messages) {
+      if (msg.text?.includes('Setting title:')) {
+        const match = msg.text.match(/Setting title: "([^"]+)"/);
+        if (match) progress.title = match[1];
+        progressMessages.push({ type: 'title', value: match[1] });
+      }
+      if (msg.text?.includes('Adding description:')) {
+        const match = msg.text.match(/Adding description: "([^"]+)"/);
+        if (match) progress.description = match[1];
+        progressMessages.push({ type: 'description', value: match[1] });
+      }
+      if (msg.text?.includes('Adding question')) {
+        const match = msg.text.match(/Adding question \d+: "([^"]+)" \(([^)]+)\)/);
+        if (match) {
+          if (!progress.questions) progress.questions = [];
+          progress.questions.push({ question: match[1], type: match[2] });
+          progressMessages.push({ type: 'question', value: match[1], qtype: match[2] });
+        }
+      }
+      if (msg.text?.includes('Form created') || msg.text?.includes('Form updated')) {
+        progressMessages.push({ type: 'complete', value: msg.text });
+      }
+    }
+    
+    // If form was created/updated, include the form data
+    if (result.toolResults?.create_form || result.toolResults?.update_form) {
+      const formResult = result.toolResults?.update_form || result.toolResults?.create_form;
+      if (formResult?.data) {
+        progress.form = formResult.data;
+      }
+    }
+    
+    res.json({ 
+      message: lastMsg?.text || 'No response', 
+      messages: result.messages,
+      progress: Object.keys(progress).length > 0 ? progress : null
+    });
   } catch (error) {
     console.error('Agent error:', error);
     res.status(500).json({ message: error.message });
@@ -97,9 +138,42 @@ wss.on('connection', async (ws, req) => {
         const data = JSON.parse(msg);
         if (data.type === 'chat') {
           ws.send(JSON.stringify({ type: 'thinking' }));
-          const result = await processAgentRequest(userId, data.message);
+          
+          // Extract form context if provided
+          const context = {
+            formId: data.formId,
+            currentForm: data.currentForm
+          };
+          
+          const result = await processAgentRequest(userId, data.message, context);
           const lastMsg = result.messages[result.messages.length - 1];
-          ws.send(JSON.stringify({ type: 'response', message: lastMsg?.text, messages: result.messages }));
+          
+          // Also extract progress info for WS
+          const progress: any = {};
+          for (const msg of result.messages) {
+            if (msg.text?.includes('Setting title:')) {
+              const match = msg.text.match(/Setting title: "([^"]+)"/);
+              if (match) progress.title = match[1];
+            }
+            if (msg.text?.includes('Adding description:')) {
+              const match = msg.text.match(/Adding description: "([^"]+)"/);
+              if (match) progress.description = match[1];
+            }
+            if (msg.text?.includes('Adding question')) {
+              const match = msg.text.match(/Adding question \d+: "([^"]+)" \(([^)]+)\)/);
+              if (match) {
+                if (!progress.questions) progress.questions = [];
+                progress.questions.push({ question: match[1], type: match[2] });
+              }
+            }
+          }
+          
+          ws.send(JSON.stringify({ 
+            type: 'response', 
+            message: lastMsg?.text, 
+            messages: result.messages,
+            progress: Object.keys(progress).length > 0 ? progress : null
+          }));
         }
       } catch (e) {
         ws.send(JSON.stringify({ type: 'error', message: e.message }));
