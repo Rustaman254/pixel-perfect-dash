@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Send, Bot, User, X, MessageSquare, FileText, CheckCircle, Clock } from "lucide-react";
+import { Loader2, Send, Bot, User, X, MessageSquare, Settings, CheckCircle, Clock } from "lucide-react";
 import { toast } from "sonner";
 
 interface Message {
@@ -12,13 +11,7 @@ interface Message {
   timestamp: Date;
 }
 
-interface AIAssistantProps {
-  productName?: string;
-}
-
-const AIAssistant: React.FC<AIAssistantProps> = ({ 
-  productName = "Forms"
-}) => {
+const AIAssistant: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -46,7 +39,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({
     setToolStatus("Thinking...");
 
     try {
-      const token = localStorage.getItem("auth_token");
+      const token = localStorage.getItem("admin_token");
       if (!token) {
         toast.error("Please log in to use the AI assistant");
         setLoading(false);
@@ -54,7 +47,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({
         return;
       }
 
-      const res = await fetch("/api/agent/chat", {
+      const res = await fetch("/api/admin/agent/chat", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -70,16 +63,6 @@ const AIAssistant: React.FC<AIAssistantProps> = ({
       if (res.ok) {
         const data = await res.json();
         const content = data.message || data.messages?.[data.messages.length - 1]?.text || "";
-        
-        // Check if a form was created - look for form ID in the response
-        const formIdMatch = content.match(/(?:form|id)[\s:]*(\d+)/i);
-        const createdMatch = content.includes("created") || content.includes("success");
-        
-        if ((formIdMatch || createdMatch) && (window.location.pathname === '/' || window.location.pathname === '/forms')) {
-          // Trigger a refresh event that FormsDashboard can listen to
-          window.dispatchEvent(new CustomEvent('ai-form-created'));
-          toast.success("Form created! Check your dashboard.");
-        }
         
         setMessages((prev) => [
           ...prev,
@@ -124,9 +107,9 @@ const AIAssistant: React.FC<AIAssistantProps> = ({
     <div className="fixed bottom-6 right-6 w-96 max-h-[500px] bg-white rounded-lg shadow-2xl border border-slate-200 flex flex-col overflow-hidden z-50">
       <div className="bg-[#025864] text-white px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <FileText className="h-5 w-5" />
+          <Settings className="h-5 w-5" />
           <div>
-            <span className="font-semibold text-sm block">{productName} Assistant</span>
+            <span className="font-semibold text-sm block">Admin Assistant</span>
             <span className="text-xs text-white/70">AI powered help</span>
           </div>
         </div>
@@ -140,7 +123,6 @@ const AIAssistant: React.FC<AIAssistantProps> = ({
         </Button>
       </div>
 
-      {/* Tool Status Bar */}
       {toolStatus && (
         <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex items-center gap-2">
           <Clock className="h-4 w-4 text-amber-600 animate-pulse" />
@@ -148,14 +130,14 @@ const AIAssistant: React.FC<AIAssistantProps> = ({
         </div>
       )}
 
-      <ScrollArea className="flex-1 p-4 max-h-[350px]">
+      <div className="flex-1 p-4 max-h-[350px] overflow-y-auto">
         <div className="space-y-4">
           {messages.length === 0 && (
             <div className="text-center text-slate-500 py-4">
               <Bot className="h-12 w-12 mx-auto mb-2 text-[#025864]" />
-              <p className="text-sm font-medium">{productName} Assistant</p>
+              <p className="text-sm font-medium">Admin Assistant</p>
               <p className="text-xs text-slate-400 mt-1">
-                Ask me anything - "show my forms", "create a form", etc.
+                Ask me anything - "show users", "enable feature", etc.
               </p>
             </div>
           )}
@@ -199,7 +181,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({
 
           <div ref={messagesEndRef} />
         </div>
-      </ScrollArea>
+      </div>
 
       <form onSubmit={handleSubmit} className="p-3 border-t border-slate-200 flex gap-2">
         <Input

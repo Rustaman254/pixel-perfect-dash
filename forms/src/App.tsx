@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import NotFound from "./pages/NotFound";
 
 // Auth
@@ -44,8 +44,11 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 const AppRoutes = () => {
+  const location = useLocation();
+  const isPublicForm = location.pathname.startsWith("/f/") || location.pathname.startsWith("/form/");
+  
   return (
-    <BrowserRouter>
+    <>
       <Routes>
         {/* Auth */}
         <Route path="/login" element={<Login />} />
@@ -65,7 +68,8 @@ const AppRoutes = () => {
 
         <Route path="*" element={<NotFound />} />
       </Routes>
-    </BrowserRouter>
+      {!isPublicForm && <AIAssistant productName="Forms" />}
+    </>
   );
 };
 
@@ -75,8 +79,9 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <AppRoutes />
-        <AIAssistant productName="Forms" />
+        <BrowserRouter>
+          <AppRoutes />
+        </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
   </AppProvider>

@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
 import { AppProvider, useAppContext } from "@/contexts/AppContext";
 import { ProjectProvider } from "@/contexts/ProjectContext";
+import AIAssistant from "./components/ai/AIAssistant";
 
 import AdminLogin from "@/pages/AdminLogin";
 import Dashboard from "@/pages/Dashboard";
@@ -77,6 +78,7 @@ const App = () => (
       <QueryClientProvider client={queryClient}>
         <AppRoutes />
         <Toaster position="bottom-right" richColors closeButton />
+        <AIAssistant />
       </QueryClientProvider>
     </ProjectProvider>
   </AppProvider>

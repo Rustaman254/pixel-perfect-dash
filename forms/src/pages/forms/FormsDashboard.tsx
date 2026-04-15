@@ -68,6 +68,14 @@ const FormsDashboard = () => {
 
   useEffect(() => {
     fetchForms();
+    
+    // Listen for AI form creation to refresh
+    const handleAIFormCreated = () => {
+      fetchForms();
+      toast.success("Form created by AI assistant");
+    };
+    window.addEventListener('ai-form-created', handleAIFormCreated);
+    return () => window.removeEventListener('ai-form-created', handleAIFormCreated);
   }, [refreshKey]);
 
   const fetchForms = async () => {

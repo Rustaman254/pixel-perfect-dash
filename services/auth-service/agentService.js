@@ -158,8 +158,95 @@ User: userId=${userId}`,
     description: "Create a new form",
     inputSchema: z.object({ title: z.string(), description: z.string().optional() }),
     async do(input) {
-      const result = await callApi("forms", userId, { method: "POST", title: input.title, description: input.description });
-      return { status: "success", data: { ...result[0], type: "form" } };
+      // Generate contextual questions based on form title
+      const titleLower = input.title.toLowerCase();
+      let questions = [];
+      
+      // Feedback forms
+      if (titleLower.includes("feedback") || titleLower.includes("review")) {
+        questions = [
+          { id: uuidv4().substr(0, 8), type: "text", question: "What is your name?", required: true },
+          { id: uuidv4().substr(0, 8), type: "email", question: "What is your email address?", required: true },
+          { id: uuidv4().substr(0, 8), type: "radio", question: "How satisfied are you with our service?", required: true, options: ["Very Satisfied", "Satisfied", "Neutral", "Dissatisfied"] },
+          { id: uuidv4().substr(0, 8), type: "textarea", question: "What did you like most about our service?", required: false },
+          { id: uuidv4().substr(0, 8), type: "textarea", question: "What could we improve?", required: false },
+          { id: uuidv4().substr(0, 8), type: "checkbox", question: "Would you recommend us to others?", required: false, options: ["Yes", "No", "Maybe"] },
+        ];
+      }
+      // Contact forms
+      else if (titleLower.includes("contact")) {
+        questions = [
+          { id: uuidv4().substr(0, 8), type: "text", question: "Your Full Name", required: true },
+          { id: uuidv4().substr(0, 8), type: "email", question: "Your Email Address", required: true },
+          { id: uuidv4().substr(0, 8), type: "text", question: "Subject", required: true },
+          { id: uuidv4().substr(0, 8), type: "textarea", question: "Your Message", required: true },
+          { id: uuidv4().substr(0, 8), type: "select", question: "How did you hear about us?", required: false, options: ["Google", "Social Media", "Friend", "Other"] },
+        ];
+      }
+      // Application forms
+      else if (titleLower.includes("application") || titleLower.includes("apply")) {
+        questions = [
+          { id: uuidv4().substr(0, 8), type: "text", question: "Full Name", required: true },
+          { id: uuidv4().substr(0, 8), type: "email", question: "Email Address", required: true },
+          { id: uuidv4().substr(0, 8), type: "text", question: "Phone Number", required: true },
+          { id: uuidv4().substr(0, 8), type: "select", question: "Position applied for", required: true, options: ["Sales", "Marketing", "Support", "Developer"] },
+          { id: uuidv4().substr(0, 8), type: "textarea", question: "Tell us about yourself and why you fit this role", required: true },
+        ];
+      }
+      // Survey forms
+      else if (titleLower.includes("survey")) {
+        questions = [
+          { id: uuidv4().substr(0, 8), type: "text", question: "Your Name (optional)", required: false },
+          { id: uuidv4().substr(0, 8), type: "email", question: "Your Email (optional)", required: false },
+          { id: uuidv4().substr(0, 8), type: "radio", question: "How often do you use our product?", required: true, options: ["Daily", "Weekly", "Monthly", "Rarely"] },
+          { id: uuidv4().substr(0, 8), type: "checkbox", question: "Which features do you use most?", required: false, options: ["Dashboard", "Reports", "Analytics", "Export"] },
+          { id: uuidv4().substr(0, 8), type: "number", question: "How many years of experience do you have?", required: false },
+          { id: uuidv4().substr(0, 8), type: "textarea", question: "Any additional comments?", required: false },
+        ];
+      }
+      // Order / Purchase
+      else if (titleLower.includes("order") || titleLower.includes("purchase") || titleLower.includes("buy")) {
+        questions = [
+          { id: uuidv4().substr(0, 8), type: "text", question: "Full Name", required: true },
+          { id: uuidv4().substr(0, 8), type: "email", question: "Email Address", required: true },
+          { id: uuidv4().substr(0, 8), type: "text", question: "Phone Number", required: true },
+          { id: uuidv4().substr(0, 8), type: "text", question: "Delivery Address", required: true },
+          { id: uuidv4().substr(0, 8), type: "textarea", question: "Special instructions (optional)", required: false },
+        ];
+      }
+      // RSVP / Event
+      else if (titleLower.includes("rsvp") || titleLower.includes("event")) {
+        questions = [
+          { id: uuidv4().substr(0, 8), type: "text", question: "Your Full Name", required: true },
+          { id: uuidv4().substr(0, 8), type: "email", question: "Email Address", required: true },
+          { id: uuidv4().substr(0, 8), type: "radio", question: "Will you attend?", required: true, options: ["Yes, Attending", "No, Not Attending", "Maybe"] },
+          { id: uuidv4().substr(0, 8), type: "number", question: "Number of guests", required: false },
+          { id: uuidv4().substr(0, 8), type: "textarea", question: "Any dietary requirements?", required: false },
+        ];
+      }
+      // Default generic form
+      else {
+        questions = [
+          { id: uuidv4().substr(0, 8), type: "text", question: "What is your name?", required: true },
+          { id: uuidv4().substr(0, 8), type: "email", question: "What is your email?", required: true },
+          { id: uuidv4().substr(0, 8), type: "text", question: "Your Phone (optional)", required: false },
+          { id: uuidv4().substr(0, 8), type: "textarea", question: "Your message or feedback?", required: false },
+        ];
+      }
+      
+      const authDb = createConnection("auth_db");
+      const slug = generateSlug(input.title);
+      const result = await authDb("forms").insert({
+        userId,
+        title: input.title,
+        description: input.description || "",
+        questions: JSON.stringify(questions),
+        settings: JSON.stringify({ collectEmail: true, showProgressBar: true }),
+        theme: JSON.stringify({ view: "list", color: "#025864" }),
+        slug
+      }).returning(["id", "slug", "title"]);
+      
+      return { status: "success", data: { ...result[0], questionsCount: questions.length, type: "form" } };
     },
   })
 

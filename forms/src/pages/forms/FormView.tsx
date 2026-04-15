@@ -66,7 +66,6 @@ const FormView = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate required questions
     if (form?.settings?.collectEmail && !email) {
       toast.error('Please enter your email');
       return;
@@ -111,15 +110,15 @@ const FormView = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#025864]" />
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#f8fafc' }}>
+        <Loader2 className="h-8 w-8 animate-spin" style={{ color: '#025864' }} />
       </div>
     );
   }
 
   if (!form) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#f8fafc' }}>
         <Card className="max-w-md">
           <CardContent className="py-8 text-center">
             <h2 className="text-xl font-semibold text-slate-900 mb-2">Form not found</h2>
@@ -131,12 +130,13 @@ const FormView = () => {
   }
 
   if (submitted) {
+    const theme = form?.theme || { view: 'list', color: '#025864', showPoweredBy: true };
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <Card className="max-w-md w-full">
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: '#f8fafc' }}>
+        <Card className="max-w-md w-full shadow-lg" style={{ borderTopColor: theme.color, borderTopWidth: '4px' }}>
           <CardContent className="py-12 text-center">
-            <div className="h-16 w-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <CheckCircle className="h-8 w-8 text-green-600" />
+            <div className="h-16 w-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: `${theme.color}20` }}>
+              <CheckCircle className="h-8 w-8" style={{ color: '#22c55e' }} />
             </div>
             <h2 className="text-xl font-semibold text-slate-900 mb-2">Thank you!</h2>
             <p className="text-slate-500 mb-6">Your response has been submitted successfully.</p>
@@ -149,35 +149,39 @@ const FormView = () => {
     );
   }
 
-  const progress = form.questions?.length 
-    ? (Object.keys(answers).filter(k => answers[k]).length / form.questions.length) * 100 
-    : 0;
-
   const theme = form?.theme || { view: 'list', color: '#025864', showPoweredBy: true };
   const isChatView = theme.view === 'chat';
   const isCardView = theme.view === 'card';
 
+  const getHexColor = (color: string) => {
+    if (color.startsWith('#')) return color;
+    const temp = document.createElement('div');
+    temp.style.color = color;
+    document.body.appendChild(temp);
+    const computed = window.getComputedStyle(temp).color;
+    document.body.removeChild(temp);
+    return computed || color;
+  };
+
+  const themeColorHex = getHexColor(theme.color);
+
   const renderQuestion = (question: Question, index: number) => {
-    const isAnswerOnRight = index % 2 === 0;
-    
     if (isChatView) {
       return (
         <div key={question.id} className="mb-6">
-          {/* Question on Left */}
           <div className="flex justify-start mb-2">
             <div className="max-w-[85%]">
               <div className="px-4 py-3 rounded-2xl bg-white border shadow-sm">
-                <p className="text-sm font-medium mb-1">{question.question}</p>
+                <p className="text-sm font-medium mb-1 text-slate-900">{question.question}</p>
                 {question.description && <p className="text-xs text-slate-500 mb-2">{question.description}</p>}
                 {question.required && <span className="text-xs text-red-500">* Required</span>}
               </div>
             </div>
           </div>
-          {/* Answer on Right */}
           <div className="flex justify-end">
             <div className="max-w-[85%]">
               <div className="px-4 py-3 rounded-2xl text-white" style={{ backgroundColor: theme.color }}>
-                {renderInput(question)}
+                <div className="text-white">{renderInput(question)}</div>
               </div>
             </div>
           </div>
@@ -187,59 +191,63 @@ const FormView = () => {
 
     if (isCardView) {
       return (
-        <div key={question.id} className="mb-6 p-4 bg-white rounded-lg border shadow-sm">
-          <Label className="text-base font-semibold block mb-2">
+        <div key={question.id} className="mb-5 p-5 bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all" style={{ borderLeftColor: theme.color, borderLeftWidth: '4px' }}>
+          <Label className="text-base font-semibold block mb-2 text-slate-900">
             {question.question}
             {question.required && <span className="text-red-500 ml-1">*</span>}
           </Label>
           {question.description && (
-            <p className="text-sm text-slate-500 mb-3">{question.description}</p>
+            <p className="text-sm text-slate-500 mb-4">{question.description}</p>
           )}
-          {renderInput(question)}
+          <div className="mt-1">{renderInput(question)}</div>
         </div>
       );
     }
 
-    // List view (default)
     return (
-      <div key={question.id} className="space-y-2">
-        <Label className="text-base">
+      <div key={question.id} className="py-4 px-5 bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md transition-all mb-4" style={{ borderLeftColor: theme.color, borderLeftWidth: '3px' }}>
+        <Label className="text-base text-slate-900 font-medium block mb-1">
           {question.question}
           {question.required && <span className="text-red-500 ml-1">*</span>}
         </Label>
         {question.description && (
-          <p className="text-sm text-slate-500">{question.description}</p>
+          <p className="text-sm text-slate-500 mb-3">{question.description}</p>
         )}
-        {renderInput(question)}
+        <div className="mt-2">{renderInput(question, false, theme.color)}</div>
       </div>
     );
   };
 
-  const renderInput = (question: Question, forChat: boolean = false) => {
-    const inputClass = forChat ? "bg-white/10 border-white/20 text-white placeholder:text-white/60" : "";
+  const renderInput = (question: Question, forChat: boolean = false, accentColor?: string) => {
+    const isChat = forChat || isChatView;
+    const inputClass = isChat 
+      ? "bg-white/10 border-white/30 text-white placeholder:text-white/60" 
+      : "w-full h-11 px-4 py-2 text-sm rounded-lg border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-offset-1 transition-all hover:border-slate-300";
+    const labelClass = isChat ? "text-white" : "text-slate-900";
+    const accent = accentColor || theme.color;
     
     switch (question.type) {
       case 'text':
-        return <Input className={inputClass} value={answers[question.id] || ''} onChange={(e) => handleAnswerChange(question.id, e.target.value)} placeholder="Your answer" />;
+        return <Input className={inputClass} style={!isChat ? { borderColor: `${accent}30` } : {}} value={answers[question.id] || ''} onChange={(e) => handleAnswerChange(question.id, e.target.value)} placeholder="Your answer" />;
       case 'textarea':
-        return <Textarea className={inputClass} value={answers[question.id] || ''} onChange={(e) => handleAnswerChange(question.id, e.target.value)} placeholder="Your answer" rows={4} />;
+        return <Textarea className={inputClass.replace('h-11', 'min-h-[100px]').replace('py-2', 'py-3')} style={!isChat ? { borderColor: `${accent}30` } : {}} value={answers[question.id] || ''} onChange={(e) => handleAnswerChange(question.id, e.target.value)} placeholder="Your answer" rows={4} />;
       case 'number':
-        return <Input type="number" className={inputClass} value={answers[question.id] || ''} onChange={(e) => handleAnswerChange(question.id, e.target.value)} placeholder="Your answer" />;
+        return <Input type="number" className={inputClass} style={!isChat ? { borderColor: `${accent}30` } : {}} value={answers[question.id] || ''} onChange={(e) => handleAnswerChange(question.id, e.target.value)} placeholder="Your answer" />;
       case 'email':
-        return <Input type="email" className={inputClass} value={answers[question.id] || ''} onChange={(e) => handleAnswerChange(question.id, e.target.value)} placeholder="your@email.com" />;
+        return <Input type="email" className={inputClass} style={!isChat ? { borderColor: `${accent}30` } : {}} value={answers[question.id] || ''} onChange={(e) => handleAnswerChange(question.id, e.target.value)} placeholder="your@email.com" />;
       case 'date':
-        return <Input type="date" className={inputClass} value={answers[question.id] || ''} onChange={(e) => handleAnswerChange(question.id, e.target.value)} />;
+        return <Input type="date" className={inputClass} style={!isChat ? { borderColor: `${accent}30` } : {}} value={answers[question.id] || ''} onChange={(e) => handleAnswerChange(question.id, e.target.value)} />;
       case 'checkbox':
         return (
           <div className="space-y-2">
             {question.options?.map((option, idx) => (
-              <div key={idx} className="flex items-center gap-2">
+              <div key={idx} className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer border border-transparent hover:border-slate-200">
                 <Checkbox checked={(answers[question.id] || []).includes(option)} onCheckedChange={(checked) => {
                   const current = answers[question.id] || [];
                   if (checked) handleAnswerChange(question.id, [...current, option]);
                   else handleAnswerChange(question.id, current.filter((o: string) => o !== option));
-                }} />
-                <Label className="text-white">{option}</Label>
+                }} className="border-slate-300" style={{ '--accent': accent } as any} />
+                <Label className={`${labelClass} cursor-pointer font-normal`}>{option}</Label>
               </div>
             ))}
           </div>
@@ -248,9 +256,9 @@ const FormView = () => {
         return (
           <RadioGroup value={answers[question.id] || ''} onValueChange={(value) => handleAnswerChange(question.id, value)}>
             {question.options?.map((option, idx) => (
-              <div key={idx} className="flex items-center gap-2">
-                <RadioGroupItem value={option} id={`${question.id}_${idx}`} className="border-white" />
-                <Label htmlFor={`${question.id}_${idx}`} className="text-white">{option}</Label>
+              <div key={idx} className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer border border-transparent hover:border-slate-200">
+                <RadioGroupItem value={option} id={`${question.id}_${idx}`} className={isChat ? "border-white" : "border-slate-300"} style={{ accentColor: accent }} />
+                <Label htmlFor={`${question.id}_${idx}`} className={`${labelClass} cursor-pointer font-normal`}>{option}</Label>
               </div>
             ))}
           </RadioGroup>
@@ -258,40 +266,54 @@ const FormView = () => {
       case 'select':
         return (
           <Select value={answers[question.id] || ''} onValueChange={(value) => handleAnswerChange(question.id, value)}>
-            <SelectTrigger className="bg-white/10 border-white/20 text-white"><SelectValue placeholder="Select" /></SelectTrigger>
+            <SelectTrigger className={inputClass} style={!isChat ? { borderColor: `${accent}30` } : {}}><SelectValue placeholder="Select an option" /></SelectTrigger>
             <SelectContent>
               {question.options?.map((option, idx) => (<SelectItem key={idx} value={option}>{option}</SelectItem>))}
             </SelectContent>
           </Select>
         );
       default:
-        return <Input className={inputClass} placeholder="Your answer" />;
+        return <Input className={inputClass} style={!isChat ? { borderColor: `${accent}30` } : {}} placeholder="Your answer" />;
     }
   };
 
+  const progress = form.questions?.length 
+    ? (Object.keys(answers).filter(k => answers[k]).length / form.questions.length) * 100 
+    : 0;
+
   return (
-    <div className={`min-h-screen py-8 px-4 ${isChatView ? 'bg-gradient-to-b from-slate-100 to-slate-200' : 'bg-slate-50'}`}>
-      <div className="max-w-2xl mx-auto">
-        <Card className={isCardView ? 'shadow-xl' : ''}>
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl">{form.title}</CardTitle>
-            {form.description && <CardDescription className="text-base">{form.description}</CardDescription>}
-          </CardHeader>
-          <CardContent>
+    <div className={`min-h-screen py-10 px-4 ${isChatView ? 'bg-gradient-to-b from-slate-100 to-slate-200' : ''}`} style={{ backgroundColor: isChatView ? undefined : '#f1f5f9' }}>
+      <div className="max-w-3xl mx-auto">
+        <Card className={`overflow-hidden ${isCardView ? 'shadow-xl' : 'shadow-lg'}`} style={{ borderRadius: '16px' }}>
+          {/* Header with theme color */}
+          <div className="relative">
+            <div className="h-3 w-full" style={{ backgroundColor: theme.color }}></div>
+            <CardHeader className="text-center pb-2 pt-6">
+              <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ backgroundColor: `${theme.color}15` }}>
+                <svg className="w-8 h-8" style={{ color: theme.color }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <CardTitle className="text-2xl font-bold text-slate-900">{form.title}</CardTitle>
+              {form.description && <CardDescription className="text-base text-slate-600 mt-2">{form.description}</CardDescription>}
+            </CardHeader>
+          </div>
+          
+          <CardContent className="pt-4 px-6 pb-8">
             {form.settings?.showProgressBar && (
-              <div className="mb-6">
-                <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
-                  <div className="h-full transition-all duration-300" style={{ width: `${progress}%`, backgroundColor: theme.color }} />
+              <div className="mb-8">
+                <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-full transition-all duration-300 rounded-full" style={{ width: `${progress}%`, backgroundColor: theme.color }} />
                 </div>
-                <p className="text-sm text-slate-500 mt-1 text-right">{Math.round(progress)}% complete</p>
+                <p className="text-sm text-slate-500 mt-2 text-right">{Math.round(progress)}% complete</p>
               </div>
             )}
 
             <form onSubmit={handleSubmit} className="space-y-6">
               {form.settings?.collectEmail && (
-                <div>
-                  <Label>Email *</Label>
-                  <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Enter your email" required />
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                  <Label className="text-sm font-semibold text-slate-700 block mb-2">Email <span className="text-red-500">*</span></Label>
+                  <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Enter your email" required className="h-11 border-slate-200 focus:border-[#025864]" />
                 </div>
               )}
 
@@ -314,22 +336,24 @@ const FormView = () => {
                   })}
                 </div>
               ) : (
-                form.questions?.map((question, idx) => renderQuestion(question, idx))
+                <div className="space-y-2">
+                  {form.questions?.map((question, idx) => renderQuestion(question, idx))}
+                </div>
               )}
 
               <Button 
                 type="submit" 
-                className="w-full hover:opacity-90"
+                className="w-full h-12 text-base font-semibold rounded-xl hover:opacity-90 transition-opacity shadow-lg"
                 style={{ backgroundColor: theme.color }}
                 disabled={submitting}
               >
-                {submitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
-                Submit
+                {submitting ? <Loader2 className="h-5 w-5 mr-2 animate-spin" /> : <Send className="h-5 w-5 mr-2" />}
+                Submit Response
               </Button>
 
               {theme.showPoweredBy && (
-                <p className="text-center text-xs text-slate-400 mt-4">
-                  Powered by <span style={{ color: theme.color }}>Sokostack</span>
+                <p className="text-center text-sm text-slate-400 mt-4">
+                  Powered by <span className="font-medium" style={{ color: theme.color }}>Sokostack</span>
                 </p>
               )}
             </form>
