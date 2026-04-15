@@ -14,7 +14,7 @@ const Logo = ({
   className, 
   size = 32, 
   showText = true, 
-  text = "Ripplify",
+  text = "Sokostack Forms",
   textColor = "#025864", 
   textClassName,
   iconColor = "#025864"

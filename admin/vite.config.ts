@@ -19,6 +19,7 @@ export default defineConfig({
       '/api/admin/ripplify': { target: 'http://localhost:3010', changeOrigin: true },
       '/api/admin/watchtower': { target: 'http://localhost:3010', changeOrigin: true },
       '/api/admin/shopalize': { target: 'http://localhost:3010', changeOrigin: true },
+      '/api/admin/agent': { target: 'http://localhost:3001', changeOrigin: true },
       '/api': { target: 'http://localhost:3006', changeOrigin: true },
     },
   },

@@ -3,6 +3,7 @@ import http from "http";
 import cors from "cors";
 import helmet from "helmet";
 import dotenv from "dotenv";
+import { WebSocketServer } from "ws";
 import connectDB from "./config/db.js";
 import emailService from "./services/emailService.js";
 import smsService from "./services/smsService.js";
@@ -25,6 +26,7 @@ import paymentRoutes from "./routes/paymentRoutes.js";
 import transferRoutes from "./routes/transferRoutes.js";
 import payoutMethodRoutes from "./routes/payoutMethodRoutes.js";
 import formsRoutes from "./routes/formsRoutes.js";
+import agentRoutes from "./routes/agentRoutes.js";
 
 dotenv.config();
 
@@ -123,6 +125,75 @@ app.use(express.json({ type: ['application/json', 'text/plain'] }));
 
 const server = http.createServer(app);
 
+// WebSocket Server for Agent
+const wss = new WebSocketServer({ server, path: "/ws/agent" });
+
+const agentSessions = new Map();
+
+wss.on("connection", async (ws, req) => {
+  // Get user from auth token
+  const token = req.url?.split("token=")[1]?.split("&")[0];
+  
+  if (!token) {
+    ws.close(1008, "Authentication required");
+    return;
+  }
+
+  // Verify token and get user
+  try {
+    const jwt = await import("jsonwebtoken");
+    const secret = process.env.JWT_SECRET || "your-secret-key";
+    const decoded = jwt.default.verify(token, secret);
+    const userId = decoded.id;
+
+    agentSessions.set(ws, { userId });
+    console.log(`Agent WebSocket connected: user ${userId}`);
+
+    ws.send(JSON.stringify({
+      type: "connected",
+      message: "Connected to Forms AI Agent. How can I help you create a form today?"
+    }));
+
+    ws.on("message", async (message) => {
+      try {
+        const data = JSON.parse(message);
+        
+        if (data.type === "chat") {
+          const { processAgentRequest } = await import("./services/agentService.js");
+          const session = agentSessions.get(ws);
+          
+          ws.send(JSON.stringify({ type: "thinking" }));
+          
+          const result = await processAgentRequest(session.userId, data.message);
+          
+          const lastMessage = result.messages[result.messages.length - 1];
+          
+          ws.send(JSON.stringify({
+            type: "response",
+            message: lastMessage?.text || "No response",
+            messages: result.messages
+          }));
+        }
+      } catch (error) {
+        console.error("WebSocket message error:", error);
+        ws.send(JSON.stringify({
+          type: "error",
+          message: error.message
+        }));
+      }
+    });
+
+    ws.on("close", () => {
+      agentSessions.delete(ws);
+      console.log(`Agent WebSocket disconnected: user ${userId}`);
+    });
+
+  } catch (error) {
+    console.error("WebSocket auth error:", error);
+    ws.close(1008, "Invalid token");
+  }
+});
+
 // Mount Routes
 app.use("/api/watchtower", watchtowerRoutes);
 app.use("/api/auth", authRoutes);
@@ -143,6 +214,7 @@ app.use("/api/user-payout-methods", payoutMethodRoutes);
 app.use("/api/apps", appRoutes);
 app.use("/api/wallets", walletRoutes);
 app.use("/api/forms", formsRoutes);
+app.use("/api/agent", agentRoutes);
 
 // Global Error Handler
 app.use((err, req, res, next) => {

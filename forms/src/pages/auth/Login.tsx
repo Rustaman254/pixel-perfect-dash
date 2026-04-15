@@ -135,7 +135,7 @@ const Login = () => {
           </p>
         </div>
       </div>
-      <p className="mt-8 text-slate-400 text-xs">© 2025 Ripplify Inc. All rights reserved.</p>
+      <p className="mt-8 text-slate-400 text-xs">© 2025 Sokostack Forms. All rights reserved.</p>
     </div>
   );
 };

@@ -18,7 +18,7 @@ const faqs = [
 
 const guides = [
     { title: "Getting Started Guide", desc: "Set up your account and make your first payment link", icon: FileText },
-    { title: "API Documentation", desc: "Integrate Ripplify into your platform", icon: ExternalLink },
+    { title: "API Documentation", desc: "Integrate Sokostack Forms into your platform", icon: ExternalLink },
     { title: "Security Best Practices", desc: "Keep your account and funds secure", icon: HelpCircle },
 ];
 

@@ -18,9 +18,12 @@ import {
   Eye,
   MoreVertical,
   Search,
+  LogOut,
   Loader2,
   QrCode,
-  ExternalLink
+  ExternalLink,
+  List,
+  LayoutGrid
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -29,6 +32,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import AIAssistant from "@/components/ai/AIAssistant";
 
 interface Form {
   id: number;
@@ -37,13 +41,14 @@ interface Form {
   slug: string;
   questions: any[];
   settings: any;
+  theme?: { view: string; color: string };
   responses: number;
   createdAt: string;
   updatedAt: string;
 }
 
 const FormsDashboard = () => {
-  const { userProfile } = useAppContext();
+  const { userProfile, logout } = useAppContext();
   const navigate = useNavigate();
   const [forms, setForms] = useState<Form[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,10 +56,28 @@ const FormsDashboard = () => {
   const [deleteLoading, setDeleteLoading] = useState<number | null>(null);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [selectedForm, setSelectedForm] = useState<Form | null>(null);
+  const [viewMode, setViewMode] = useState<'list' | 'card'>('list');
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const handleFormCreated = (formId: number, formSlug: string) => {
+    setRefreshKey((prev) => prev + 1);
+    fetchForms();
+    setTimeout(() => {
+      navigate(`/forms/edit/${formId}`);
+    }, 500);
+  };
 
   useEffect(() => {
     fetchForms();
-  }, []);
+    
+    // Listen for AI form creation to refresh
+    const handleAIFormCreated = () => {
+      fetchForms();
+      toast.success("Form created by AI assistant");
+    };
+    window.addEventListener('ai-form-created', handleAIFormCreated);
+    return () => window.removeEventListener('ai-form-created', handleAIFormCreated);
+  }, [refreshKey]);
 
   const fetchForms = async () => {
     try {
@@ -144,17 +167,27 @@ const FormsDashboard = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-4">
-              <h1 className="text-xl font-bold text-[#025864]">RippliFy Forms</h1>
+              <h1 className="text-xl font-bold text-[#025864]">Sokostack Forms</h1>
               <span className="text-sm text-slate-500">|</span>
               <span className="text-sm text-slate-600">Welcome, {userProfile?.fullName || userProfile?.email}</span>
             </div>
-            <Button 
-              onClick={() => navigate('/forms/new')}
-              className="bg-[#025864] hover:bg-[#025864]/90"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              New Form
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button 
+                onClick={() => navigate('/forms/new')}
+                className="bg-[#025864] hover:bg-[#025864]/90"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                New Form
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={() => logout()}
+                title="Logout"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -197,8 +230,33 @@ const FormsDashboard = () => {
 
         {/* Forms Grid */}
         {filteredForms.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredForms.map((form) => (
+          viewMode === 'card' ? (
+            <div className="space-y-4">
+              {filteredForms.map((form) => (
+                <Card key={form.id} className="hover:shadow-md transition-shadow">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1 min-w-0" onClick={() => navigate(`/forms/edit/${form.id}`)}>
+                        <h3 className="text-lg font-semibold truncate">{form.title}</h3>
+                        <p className="text-sm text-slate-500 line-clamp-1">{form.description || 'No description'}</p>
+                      </div>
+                      <div className="flex items-center gap-2 ml-4">
+                        <span className="text-sm text-slate-500">{form.responses || 0} responses</span>
+                        <Button variant="outline" size="sm" onClick={() => openShareDialog(form)}>
+                          <QrCode className="h-4 w-4" />
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => navigate(`/forms/edit/${form.id}`)}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredForms.map((form) => (
               <Card key={form.id} className="hover:shadow-md transition-shadow">
                 <CardHeader className="pb-3">
                   <div className="flex justify-between items-start">
@@ -277,7 +335,8 @@ const FormsDashboard = () => {
                 </CardContent>
               </Card>
             ))}
-          </div>
+            </div>
+          )
         )}
       </main>
 
@@ -344,6 +403,8 @@ const FormsDashboard = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AIAssistant service="forms" productName="Forms" />
     </div>
   );
 };

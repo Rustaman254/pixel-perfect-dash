@@ -65,7 +65,7 @@ const Signup = () => {
       login(data.user, data.token);
       toast({
         title: "Account Created!",
-        description: "Welcome to Ripplify. Your seller account is ready.",
+        description: "Welcome to Sokostack Forms. Your seller account is ready.",
       });
       navigate("/");
     } catch (err: unknown) {
@@ -396,7 +396,7 @@ const Signup = () => {
           )}
         </div>
       </div>
-      <p className="mt-8 text-slate-400 text-xs">© 2025 Ripplify Inc. All rights reserved.</p>
+      <p className="mt-8 text-slate-400 text-xs">© 2025 Sokostack Forms. All rights reserved.</p>
     </div>
   );
 };
