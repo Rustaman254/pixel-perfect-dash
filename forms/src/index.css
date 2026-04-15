@@ -103,3 +103,288 @@
     font-family: 'Rebond Grotesque', sans-serif;
   }
 }
+
+/* Form Control Styles for FormView/FormPreview */
+.rFrNMe {
+  @apply relative w-full;
+}
+
+.k3kHxc {
+  @apply relative;
+}
+
+.RdH0ib {
+  @apply block;
+}
+
+.yqQS1 {
+  @apply w-full;
+}
+
+.zKHdkd {
+  @apply relative;
+}
+
+.aCsJod {
+  @apply relative;
+}
+
+.oJeWuf {
+  @apply relative;
+}
+
+.aXBtI {
+  @apply flex items-center w-full rounded-md border border-input bg-muted px-3 py-2;
+}
+
+.aXBtI:focus-within {
+  @apply ring-2 ring-ring ring-offset-2;
+}
+
+.Wic03c {
+  @apply flex flex-col w-full;
+}
+
+.Xb9hP {
+  @apply flex flex-1 items-center;
+}
+
+.whsOnd {
+  @apply flex-1 bg-transparent text-foreground ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50;
+}
+
+.ndJi5d {
+  @apply pointer-events-none absolute left-3 text-muted-foreground text-sm transition-all;
+}
+
+.rFrNMe input:focus + .ndJi5d,
+.rFrNMe input:not(:placeholder-shown) + .ndJi5d,
+.rFrNMe textarea:focus + .F1pObe,
+.rFrNMe textarea:not(:placeholder-shown) + .F1pObe {
+  @apply opacity-0;
+}
+
+.Pc9Gce {
+  @apply flex items-center w-full rounded-md border border-input bg-muted px-3 py-2;
+}
+
+.Pc9Gce:focus-within {
+  @apply ring-2 ring-ring ring-offset-2;
+}
+
+.KHxj8b {
+  @apply flex-1 bg-transparent text-foreground ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 resize-none;
+}
+
+.LXRPh {
+  @apply absolute right-0 top-0;
+}
+
+.ovnfwe {
+  @apply hidden;
+}
+
+.Is7Fhb {
+  @apply hidden;
+}
+
+.F1pObe {
+  @apply pointer-events-none absolute left-3 top-3 text-muted-foreground text-sm transition-all;
+}
+
+.z0oSpf {
+  @apply pointer-events-none absolute inset-0 rounded-md border border-input;
+}
+
+.mIZh1c {
+  @apply pointer-events-none absolute inset-0 rounded-md border border-input transition-all;
+}
+
+.Bfurwb {
+  @apply absolute right-0 top-0 pointer-events-none;
+}
+
+.cXrdqd {
+  @apply hidden;
+}
+
+.OabDMe {
+  @apply hidden;
+}
+
+.i9lrp {
+  @apply pointer-events-none absolute inset-0 rounded-md border border-input;
+}
+
+.jE8NUc {
+  @apply hidden;
+}
+
+.YElZX {
+  @apply hidden;
+}
+
+/* Checkbox and Radio Styles */
+.lLfZXe {
+  @apply space-y-2 mt-3;
+}
+
+.fnxRtf {
+  @apply space-y-1;
+}
+
+.cNDBpf {
+  @apply space-y-1;
+}
+
+.nWQGrd {
+  @apply flex items-center;
+}
+
+.zwllIb {
+  @apply flex items-center;
+}
+
+.docssharedWizToggleLabeledContainer {
+  @apply inline-flex items-center cursor-pointer;
+}
+
+.bzfPab {
+  @apply flex flex-1 items-center;
+}
+
+.wFGF8 {
+  @apply flex items-center;
+}
+
+.d7L4fc {
+  @apply flex items-center justify-center;
+}
+
+.bJNwt {
+  @apply transition-colors;
+}
+
+.FXLARc {
+  @apply cursor-pointer;
+}
+
+.aomaEc {
+  @apply items-center;
+}
+
+.ECvBRb {
+  @apply relative;
+}
+
+.Od2TWd {
+  @apply h-5 w-5 rounded-sm border-2 border-input flex items-center justify-center transition-all;
+}
+
+.Od2TWd:focus {
+  @apply outline-none ring-2 ring-ring ring-offset-2;
+}
+
+.hYsg7c {
+  @apply border-primary;
+}
+
+.x0k1lc {
+  @apply absolute inset-0 rounded-sm;
+}
+
+.uyywbd {
+  @apply pointer-events-none absolute inset-0 rounded-sm;
+}
+
+.vd3tt {
+  @apply flex items-center justify-center;
+}
+
+.AB7Lab {
+  @apply flex items-center justify-center;
+}
+
+.Id5V1 {
+  @apply flex items-center justify-center;
+}
+
+.rseUEf {
+  @apply flex items-center justify-center;
+}
+
+.nQOrEb {
+  @apply text-primary-foreground h-4 w-4;
+}
+
+.YEVVod {
+  @apply ml-3;
+}
+
+.ulDsOb {
+  @apply flex-1;
+}
+
+.aDTYNe {
+  @apply text-sm;
+}
+
+.OvPDhc {
+  @apply text-foreground;
+}
+
+/* Radio inner dot */
+.Od2TWd .rseUEf div {
+  @apply h-2.5 w-2.5 rounded-full bg-primary;
+}
+
+/* Clear selection button */
+.Jwtjdfe {
+  @apply mt-2 ml-8;
+}
+
+.dMALK {
+  @apply flex;
+}
+
+.bQXwDc {
+  @apply flex;
+}
+
+.uArJ5e {
+  @apply inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50;
+}
+
+.UQuaGc {
+  @apply h-10 px-4 py-2;
+}
+
+.kCyAyd {
+  @apply border border-input bg-background hover:bg-accent hover:text-accent-foreground;
+}
+
+.NPEfkd {
+  @apply text-sm;
+}
+
+.RveJvd {
+  @apply text-sm;
+}
+
+/* Select dropdown */
+.oyXaNc {
+  @apply relative w-full mt-3;
+}
+
+.oyXaNc select {
+  @apply w-full rounded-md border border-input bg-muted px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 appearance-none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+}
+
+/* Spacing between question and answer */
+.zKHdkd {
+  @apply mt-3;
+}

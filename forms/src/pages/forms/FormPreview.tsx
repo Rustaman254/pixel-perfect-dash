@@ -2,10 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, X, Link, Check, ChevronDown, ChevronUp, Settings, Eye } from "lucide-react";
+import { Loader2, X, Link, Check, Settings, HelpCircle } from "lucide-react";
 import { toast } from "sonner";
 
 interface Question {
@@ -15,6 +12,7 @@ interface Question {
   required: boolean;
   options?: string[];
   description?: string;
+  imageUrl?: string;
 }
 
 interface Form {
@@ -25,17 +23,26 @@ interface Form {
   settings: any;
   theme: any;
   slug: string;
+  email?: string;
 }
 
-const questionTypeLabels: Record<string, string> = {
-  text: 'Short Answer',
-  textarea: 'Paragraph',
-  number: 'Number',
-  email: 'Email',
-  date: 'Date',
-  checkbox: 'Checkbox',
-  radio: 'Multiple Choice',
-  select: 'Dropdown',
+const hexToRgb = (hex: string) => {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? {
+    r: parseInt(result[1], 16),
+    g: parseInt(result[2], 16),
+    b: parseInt(result[3], 16)
+  } : null;
+};
+
+const lightenColor = (hex: string, percent: number) => {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return '#f5f3ff';
+  const amount = Math.round(2.55 * percent);
+  const r = Math.min(255, rgb.r + amount);
+  const g = Math.min(255, rgb.g + amount);
+  const b = Math.min(255, rgb.b + amount);
+  return `rgb(${r}, ${g}, ${b})`;
 };
 
 const FormPreview = () => {
@@ -47,7 +54,11 @@ const FormPreview = () => {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
-  const [expandedQuestions, setExpandedQuestions] = useState<Set<string>>(new Set());
+
+  const themeColor = form?.theme?.color || '#025864';
+  const logoColor = form?.theme?.color || '#025864';
+  const themeLight = lightenColor(themeColor, 90);
+  const themeBg = lightenColor(themeColor, 96);
 
   useEffect(() => {
     fetchForm();
@@ -62,7 +73,6 @@ const FormPreview = () => {
       if (res.ok) {
         const data = await res.json();
         setForm(data);
-        setExpandedQuestions(new Set(data.questions?.map((q: Question) => q.id) || []));
       } else {
         toast.error('Form not found');
       }
@@ -76,18 +86,6 @@ const FormPreview = () => {
 
   const handleAnswerChange = (questionId: string, value: any) => {
     setAnswers({ ...answers, [questionId]: value });
-  };
-
-  const toggleExpand = (questionId: string) => {
-    setExpandedQuestions(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(questionId)) {
-        newSet.delete(questionId);
-      } else {
-        newSet.add(questionId);
-      }
-      return newSet;
-    });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -104,9 +102,18 @@ const FormPreview = () => {
     setTimeout(() => setLinkCopied(false), 2000);
   };
 
+  const clearForm = () => {
+    setAnswers({});
+    setEmail("");
+  };
+
+  const goBackToEdit = () => {
+    navigate(`/forms/edit/${formId}`);
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
       </div>
     );
@@ -114,8 +121,8 @@ const FormPreview = () => {
 
   if (!form) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="max-w-md w-full p-8 bg-white rounded-lg border border-slate-200 shadow-sm text-center">
           <h2 className="text-xl font-semibold text-slate-900 mb-2">Form not found</h2>
           <Button onClick={() => navigate('/forms')}>Back to Forms</Button>
         </div>
@@ -123,57 +130,375 @@ const FormPreview = () => {
     );
   }
 
-  const theme = form.theme || { color: '#025864', showPoweredBy: true };
+  const hasRequiredQuestion = form.questions?.some(q => q.required);
+  
+  const containerBg = themeBg;
+
+  const renderQuestion = (question: Question, index: number) => {
+    return (
+      <div className="Qr7Oae" role="listitem">
+        <div className="geS5n" style={{ 
+          backgroundColor: '#ffffff', 
+          borderRadius: '8px', 
+          boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+          marginBottom: '16px',
+          padding: '24px'
+        }}>
+          <div className="z12JJ">
+            <div className="M4DNQ">
+              <div id={`q-${question.id}`} className="HoXoMd D1wxyf RjsPE" role="heading" aria-level={3 as any}>
+                <span className="M7eMe">
+                  {question.question || 'Untitled Question'}
+                  {question.required && (
+                    <span className="vnumgf" aria-label="Required question">
+                      {' '}
+                      <span className="text-red-500">*</span>
+                    </span>
+                  )}
+                </span>
+              </div>
+              <div className="gubaDc OIC90c RjsPE" id={`desc-${question.id}`}></div>
+            </div>
+          </div>
+
+          <div className="AgroKb">
+            {question.type === 'text' && (
+              <div className="rFrNMe k3kHxc RdH0ib yqQS1 zKHdkd">
+                <div className="aCsJod oJeWuf">
+                  <div className="aXBtI Wic03c" style={{ backgroundColor: '#f8f9fa', borderRadius: '4px' }}>
+                    <div className="Xb9hP">
+                      <input
+                        type="text"
+                        value={answers[question.id] || ''}
+                        onChange={(e) => handleAnswerChange(question.id, e.target.value)}
+                        className="whsOnd zHQkBf"
+                        
+                        dir="auto"
+                        required={question.required}
+                      />
+                      <div className="ndJi5d snByac">Your answer</div>
+                    </div>
+                    <div className="i9lrp mIZh1c"></div>
+                    <div className="OabDMe cXrdqd"></div>
+                  </div>
+                </div>
+                <div className="LXRPh">
+                  <div className="ovnfwe Is7Fhb"></div>
+                </div>
+              </div>
+            )}
+
+            {question.type === 'textarea' && (
+              <div className="rFrNMe k3kHxc RdH0ib yqQS1 zKHdkd">
+                <div className="aCsJod oJeWuf">
+                  <div className="F1pObe snByac">Your answer</div>
+                  <div className="Pc9Gce Wic03c" style={{ backgroundColor: '#f8f9fa', borderRadius: '4px' }}>
+                    <textarea
+                      value={answers[question.id] || ''}
+                      onChange={(e) => handleAnswerChange(question.id, e.target.value)}
+                      className="KHxj8b tL9Q4c"
+                      
+                      dir="auto"
+                      rows={3}
+                      required={question.required}
+                    />
+                  </div>
+                  <div className="z0oSpf mIZh1c"></div>
+                  <div className="Bfurwb cXrdqd"></div>
+                </div>
+                <div className="jE8NUc">
+                  <div className="YElZX Is7Fhb"></div>
+                </div>
+              </div>
+            )}
+
+            {question.type === 'number' && (
+              <div className="rFrNMe k3kHxc RdH0ib yqQS1 zKHdkd">
+                <div className="aCsJod oJeWuf">
+                  <div className="aXBtI Wic03c" style={{ backgroundColor: '#f8f9fa', borderRadius: '4px' }}>
+                    <div className="Xb9hP">
+                      <input
+                        type="number"
+                        value={answers[question.id] || ''}
+                        onChange={(e) => handleAnswerChange(question.id, e.target.value)}
+                        className="whsOnd zHQkBf"
+                        
+                        dir="auto"
+                        required={question.required}
+                      />
+                      <div className="ndJi5d snByac">Your answer</div>
+                    </div>
+                    <div className="i9lrp mIZh1c"></div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {question.type === 'email' && (
+              <div className="rFrNMe k3kHxc RdH0ib yqQS1 zKHdkd">
+                <div className="aCsJod oJeWuf">
+                  <div className="aXBtI Wic03c" style={{ backgroundColor: '#f8f9fa', borderRadius: '4px' }}>
+                    <div className="Xb9hP">
+                      <input
+                        type="email"
+                        value={answers[question.id] || ''}
+                        onChange={(e) => handleAnswerChange(question.id, e.target.value)}
+                        className="whsOnd zHQkBf"
+                        
+                        dir="auto"
+                        required={question.required}
+                      />
+                      <div className="ndJi5d snByac">your@email.com</div>
+                    </div>
+                    <div className="i9lrp mIZh1c"></div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {question.type === 'date' && (
+              <div className="rFrNMe k3kHxc RdH0ib yqQS1 zKHdkd">
+                <div className="aCsJod oJeWuf">
+                  <div className="aXBtI Wic03c" style={{ backgroundColor: '#f8f9fa', borderRadius: '4px' }}>
+                    <div className="Xb9hP">
+                      <input
+                        type="date"
+                        value={answers[question.id] || ''}
+                        onChange={(e) => handleAnswerChange(question.id, e.target.value)}
+                        className="whsOnd zHQkBf"
+                        
+                        dir="auto"
+                        required={question.required}
+                      />
+                    </div>
+                    <div className="i9lrp mIZh1c"></div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {question.type === 'checkbox' && question.options && (
+              <div className="lLfZXe fnxRtf cNDBpf">
+                {question.options.map((option, optIdx) => {
+                  const isChecked = (answers[question.id] || []).includes(option);
+                  return (
+                    <div key={optIdx} className="nWQGrd zwllIb">
+                      <label className="docssharedWizToggleLabeledContainer ajBQVb">
+                        <div className="bzfPab wFGF8">
+                          <div className="d7L4fc bJNwt FXLARc aomaEc ECvBRb">
+                            <div
+                              className={`Od2TWd hYsg7c ${isChecked ? 'OJUttb' : ''}`}
+                              style={isChecked ? { backgroundColor: themeColor, borderColor: themeColor } : {}}
+                            >
+                              <div className="x0k1lc MbhUzd"></div>
+                              <div className="uyywbd"></div>
+                              <div className="vd3tt">
+                                <div className="AB7Lab Id5V1">
+                                  {isChecked && (
+                                    <div className="rseUEf nQOrEb">
+                                      <svg viewBox="0 0 24 24" className="w-4 h-4 text-white">
+                                        <path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                                      </svg>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="YEVVod">
+                            <div className="ulDsOb">
+                              <span dir="auto" className="aDTYNe snByac OvPDhc OIC90c">{option}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <input
+                          type="checkbox"
+                          className="sr-only"
+                          checked={isChecked}
+                          onChange={(e) => {
+                            const current = answers[question.id] || [];
+                            if (e.target.checked) {
+                              handleAnswerChange(question.id, [...current, option]);
+                            } else {
+                              handleAnswerChange(question.id, current.filter((o: string) => o !== option));
+                            }
+                          }}
+                        />
+                      </label>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {question.type === 'radio' && question.options && (
+              <div className="lLfZXe fnxRtf cNDBpf">
+                {question.options.map((option, optIdx) => {
+                  const isSelected = answers[question.id] === option;
+                  return (
+                    <div key={optIdx} className="nWQGrd zwllIb">
+                      <label className="docssharedWizToggleLabeledContainer ajBQVb">
+                        <div className="bzfPab wFGF8">
+                          <div className="d7L4fc bJNwt FXLARc aomaEc ECvBRb">
+                            <div
+                              className={`Od2TWd hYsg7c`}
+                              style={isSelected ? { borderColor: themeColor } : {}}
+                            >
+                              <div className="x0k1lc MbhUzd"></div>
+                              <div className="uyywbd"></div>
+                              <div className="vd3tt">
+                                <div className="AB7Lab Id5V1">
+                                  {isSelected && (
+                                    <div className="rseUEf nQOrEb">
+                                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: themeColor }} />
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="YEVVod">
+                            <div className="ulDsOb">
+                              <span dir="auto" className="aDTYNe snByac OvPDhc OIC90c">{option}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <input
+                          type="radio"
+                          name={question.id}
+                          className="sr-only"
+                          checked={isSelected}
+                          onChange={() => handleAnswerChange(question.id, option)}
+                        />
+                      </label>
+                    </div>
+                  );
+                })}
+                {answers[question.id] && (
+                  <div className="Jwtjdfe">
+                    <div className="dMALK bQXwDc">
+                      <button
+                        type="button"
+                        onClick={() => handleAnswerChange(question.id, '')}
+                        className="uArJ5e UQuaGc kCyAyd"
+                      >
+                        <span className="NPEfkd RveJvd snByac">Clear selection</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {question.type === 'select' && question.options && (
+              <div className="oyXaNc" style={{ position: 'relative' }}>
+                <select
+                  value={answers[question.id] || ''}
+                  onChange={(e) => handleAnswerChange(question.id, e.target.value)}
+                  className="w-full h-11 px-3 py-2 text-sm appearance-none"
+                  style={{
+                    backgroundColor: '#f8f9fa',
+                    borderRadius: '4px',
+                    border: '1px solid #dadce0',
+                    color: '#202124',
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23555' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'right 12px center',
+                    backgroundSize: '16px'
+                  }}
+                  required={question.required}
+                >
+                  <option value="">Select an option</option>
+                  {question.options.map((option, optIdx) => (
+                    <option key={optIdx} value={option}>{option}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {question.imageUrl && (
+              <div className="y6GzNb mt-2" style={{ width: '284px' }}>
+                <img src={question.imageUrl} className="HxhGpf" style={{ width: '284px' }} alt="" />
+              </div>
+            )}
+          </div>
+
+          <div className="SL4Sz" role="alert"></div>
+        </div>
+      </div>
+    );
+  };
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
-        <div className="max-w-lg w-full text-center">
-          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Check className="h-10 w-10 text-green-600" />
+      <div className="min-h-screen bg-white flex items-center justify-center p-4">
+        <div className="w-full max-w-[640px] mx-auto px-4 py-8">
+          <div className="bg-white rounded-lg shadow-sm text-center p-8">
+            <div className="h-16 w-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: themeLight }}>
+              <Check className="h-8 w-8 text-green-500" />
+            </div>
+            <h2 className="text-xl font-normal text-slate-900 mb-2" dir="auto">Your response has been recorded</h2>
+            <p className="text-base text-slate-600 mb-6" dir="auto">Thank you for submitting the form.</p>
+            <Button 
+              onClick={() => { setSubmitted(false); setAnswers({}); setEmail(""); }}
+              style={{ backgroundColor: themeColor }}
+            >
+              Submit another response
+            </Button>
           </div>
-          <h2 className="text-2xl font-normal text-slate-900 mb-2">Your response has been recorded</h2>
-          <p className="text-slate-600 mb-6">Thank you for submitting the form.</p>
-          <Button 
-            onClick={() => { setSubmitted(false); setAnswers({}); setEmail(""); }}
-            className="bg-slate-900 hover:bg-slate-800 text-white rounded-full px-6"
-          >
-            Submit another response
-          </Button>
+
+          <div className="mt-6 pt-4 border-t border-slate-200">
+            <p className="text-xs text-slate-500">
+              Never submit passwords through Sokostack Forms.
+            </p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50">
-      {/* Top Bar - Google Forms Style */}
-      <div className="bg-white/80 backdrop-blur-sm border-b border-slate-200/50 sticky top-0 z-50 shadow-sm">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
+    <div className="min-h-screen" style={{ backgroundColor: containerBg }}>
+      {/* Top bar */}
+      <div className="bg-white/80 backdrop-blur-sm border-b border-slate-200 sticky top-0 z-50" style={{ backgroundColor: '#ffffff' }}>
+        <div className="w-full max-w-[640px] mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate(`/forms/edit/${formId}`)}
-              className="h-9 w-9 rounded-full hover:bg-slate-100"
+            <button
+              onClick={goBackToEdit}
+              className="uArJ5e cd29Sd UQuaGc YhQJj U1dMdf ctEux"
             >
-              <X className="h-4 w-4 text-slate-600" />
-            </Button>
+              <div className="Fvio9d MbhUzd"></div>
+              <div className="e19J0b CeoRYc"></div>
+              <span className="l4V7wb Fxmcue cd29Sd">
+                <span className="E6FpNe Ce1Y1c">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+                    <path className="PgdKqf" d="M20.41 4.94l-1.35-1.35c-.78-.78-2.05-.78-2.83 0L13.4 6.41 3 16.82V21h4.18l10.46-10.46 2.77-2.77c.79-.78.79-2.05 0-2.83zm-14 14.12L5 19v-1.36l9.82-9.82 1.41 1.41-9.82 9.83z"/>
+                    <path fill="none" d="M0 0h24v24H0V0z"/>
+                  </svg>
+                </span>
+              </span>
+            </button>
             <div className="h-6 w-px bg-slate-200"></div>
             <span className="text-sm font-medium text-slate-600">Preview mode</span>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {form?.slug ? (
-              <Button
-                variant="ghost"
-                size="icon"
+              <button
                 onClick={copyLink}
-                className="h-9 w-9 rounded-full hover:bg-slate-100"
+                className="uArJ5e UQuaGc kCyAyd px-3 py-1.5 text-sm font-medium"
                 title="Copy link"
               >
-                {linkCopied ? <Check className="h-4 w-4 text-green-600" /> : <Link className="h-4 w-4 text-slate-600" />}
-              </Button>
+                {linkCopied ? (
+                  <span className="text-green-600 flex items-center gap-1">
+                    <Check className="w-4 h-4" /> Copied
+                  </span>
+                ) : (
+                  <span className="text-slate-600 flex items-center gap-1">
+                    <Link className="w-4 h-4" /> Copy link
+                  </span>
+                )}
+              </button>
             ) : (
               <div className="px-3 py-1.5 rounded-full bg-amber-100 text-amber-700 text-sm font-medium">
                 Not Published
@@ -183,268 +508,102 @@ const FormPreview = () => {
         </div>
       </div>
 
-      {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="space-y-6">
-          {/* Form Header Card */}
-          <Card className="border-slate-200/50 shadow-sm hover:shadow-md transition-shadow">
-            <CardHeader className="bg-gradient-to-r from-slate-50 to-white border-b border-slate-100 pb-4">
-              <CardTitle className="text-lg font-semibold text-slate-800 flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-[#025864]"></div>
-                Form Details
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6 space-y-5">
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-slate-700">Form Title</Label>
-                <Input
-                  value={form.title}
-                  readOnly
-                  className="h-11 border-slate-200 bg-slate-50"
-                />
+      {/* Form content */}
+      <div className="w-full max-w-[640px] mx-auto px-4 py-8">
+        <form onSubmit={handleSubmit} id="mG61Hd" className="DqBBlb">
+          <div className="mb-6">
+            <div className="N0gd6">
+              <div className="ahS2Le">
+                <div className="F9yp7e ikZYwf LgNcQe" dir="auto" role="heading" aria-level={1 as any}>
+                  <h1 className="text-[1.5rem] font-normal text-slate-900">{form.title}</h1>
+                </div>
+                {form.description && (
+                  <div className="cBGGJ OIC90c text-base text-slate-600 mt-2" dir="auto">
+                    {form.description}
+                  </div>
+                )}
               </div>
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-slate-700">Description (optional)</Label>
-                <Textarea
-                  value={form.description || ''}
-                  readOnly
-                  rows={3}
-                  className="border-slate-200 bg-slate-50 resize-none"
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Questions Section */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-[#025864]"></div>
-                Questions ({form.questions?.length || 0})
-              </h2>
+              <div className="F0H8Yc"></div>
             </div>
 
-            {form.questions?.map((question, index) => {
-              return (
-                <Card 
-                  key={question.id} 
-                  className={`border-slate-200/50 shadow-sm hover:shadow-md transition-all ${expandedQuestions.has(question.id) ? 'ring-1 ring-[#025864]/20' : ''}`}
-                >
-                  <CardContent className="p-0">
-                    {/* Question Header */}
-                    <div 
-                      className="flex items-center gap-4 p-4 cursor-pointer hover:bg-slate-50/50 transition-colors"
-                      onClick={() => toggleExpand(question.id)}
-                    >
-                      <div className="flex-1 flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-[#025864]/10 flex items-center justify-center text-[#025864] font-semibold text-sm">
-                          {index + 1}
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-medium text-slate-800 line-clamp-1">
-                            {question.question || 'Untitled Question'}
-                          </p>
-                          <p className="text-xs text-slate-500">
-                            {questionTypeLabels[question.type] || 'Question'}
-                            {question.required && <span className="text-red-500 ml-1">• Required</span>}
-                          </p>
-                        </div>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-slate-400 hover:text-slate-600"
-                      >
-                        {expandedQuestions.has(question.id) ? (
-                          <ChevronUp className="h-4 w-4" />
-                        ) : (
-                          <ChevronDown className="h-4 w-4" />
-                        )}
-                      </Button>
+            {form.settings?.collectEmail && (
+              <div className="Oh1Vtf mt-4 p-3 bg-white border border-slate-200 rounded">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-sm text-slate-900">
+                    <span className="text-slate-700">{email || 'your@email.com'}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-slate-500">
+                    <div className="w-4 h-4 rounded-full bg-slate-200 flex items-center justify-center">
+                      <div className="w-2 h-2 rounded-full bg-slate-400" />
                     </div>
+                    <span>Not shared</span>
+                  </div>
+                </div>
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter your email"
+                  className="w-full h-11 px-3 py-2 text-sm border border-slate-300 rounded bg-white focus:outline-none focus:border-slate-500"
+                />
+              </div>
+            )}
 
-                    {/* Expanded Content - Answer Input */}
-                    {expandedQuestions.has(question.id) && (
-                      <div className="border-t border-slate-100 p-5 space-y-4 bg-slate-50/30">
-                        {/* Question Text */}
-                        <Input
-                          value={question.question || ''}
-                          readOnly
-                          placeholder="Enter your question"
-                          className="h-10 border-slate-200 font-medium bg-white"
-                        />
-                        
-                        {/* Description */}
-                        <Input
-                          value={question.description || ''}
-                          readOnly
-                          placeholder="Help text (optional)"
-                          className="text-sm border-slate-200 bg-white"
-                        />
-
-                        {/* Answer Input */}
-                        <div className="pt-2">
-                          <Label className="text-sm font-medium text-slate-700 mb-2 block">Answer:</Label>
-                          
-                          {question.type === 'text' && (
-                            <Input
-                              value={answers[question.id] || ''}
-                              onChange={(e) => handleAnswerChange(question.id, e.target.value)}
-                              placeholder="Your answer"
-                              className="h-11 border-slate-200 bg-white"
-                            />
-                          )}
-
-                          {question.type === 'textarea' && (
-                            <Textarea
-                              value={answers[question.id] || ''}
-                              onChange={(e) => handleAnswerChange(question.id, e.target.value)}
-                              placeholder="Your answer"
-                              rows={4}
-                              className="border-slate-200 bg-white"
-                            />
-                          )}
-
-                          {question.type === 'number' && (
-                            <Input
-                              type="number"
-                              value={answers[question.id] || ''}
-                              onChange={(e) => handleAnswerChange(question.id, e.target.value)}
-                              placeholder="Your answer"
-                              className="h-11 border-slate-200 bg-white"
-                            />
-                          )}
-
-                          {question.type === 'email' && (
-                            <Input
-                              type="email"
-                              value={answers[question.id] || ''}
-                              onChange={(e) => handleAnswerChange(question.id, e.target.value)}
-                              placeholder="Your answer"
-                              className="h-11 border-slate-200 bg-white"
-                            />
-                          )}
-
-                          {question.type === 'date' && (
-                            <Input
-                              type="date"
-                              value={answers[question.id] || ''}
-                              onChange={(e) => handleAnswerChange(question.id, e.target.value)}
-                              className="h-11 border-slate-200 bg-white"
-                            />
-                          )}
-
-                          {/* Radio/Checkbox Options */}
-                          {(question.type === 'radio' || question.type === 'checkbox') && question.options && (
-                            <div className="space-y-2">
-                              {question.options.map((option, optIdx) => {
-                                const isSelected = question.type === 'checkbox' 
-                                  ? (answers[question.id] || []).includes(option)
-                                  : answers[question.id] === option;
-                                
-                                return (
-                                  <label
-                                    key={optIdx}
-                                    className={`flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer ${
-                                      isSelected 
-                                        ? 'border-[#025864] bg-[#025864]/5' 
-                                        : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50 bg-white'
-                                    }`}
-                                  >
-                                    {question.type === 'radio' ? (
-                                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                                        isSelected ? 'border-[#025864]' : 'border-slate-300'
-                                      }`}>
-                                        {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-[#025864]" />}
-                                      </div>
-                                    ) : (
-                                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                                        isSelected ? 'bg-[#025864] border-[#025864]' : 'border-slate-300'
-                                      }`}>
-                                        {isSelected && (
-                                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                          </svg>
-                                        )}
-                                      </div>
-                                    )}
-                                    <input
-                                      type={question.type}
-                                      className="sr-only"
-                                      checked={isSelected}
-                                      onChange={(e) => {
-                                        if (question.type === 'checkbox') {
-                                          const current = answers[question.id] || [];
-                                          if (e.target.checked) {
-                                            handleAnswerChange(question.id, [...current, option]);
-                                          } else {
-                                            handleAnswerChange(question.id, current.filter((o: string) => o !== option));
-                                          }
-                                        } else {
-                                          handleAnswerChange(question.id, option);
-                                        }
-                                      }}
-                                    />
-                                    <span className="text-slate-700">{option}</span>
-                                  </label>
-                                );
-                              })}
-                            </div>
-                          )}
-
-                          {/* Select Dropdown */}
-                          {question.type === 'select' && (
-                            <div className="relative">
-                              <select
-                                value={answers[question.id] || ''}
-                                onChange={(e) => handleAnswerChange(question.id, e.target.value)}
-                                className="w-full h-11 rounded-lg border border-slate-200 bg-white px-4 pr-10 text-slate-700 appearance-none"
-                              >
-                                <option value="">Select an option</option>
-                                {question.options?.map((option, optIdx) => (
-                                  <option key={optIdx} value={option}>{option}</option>
-                                ))}
-                              </select>
-                              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 pointer-events-none" />
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })}
+            {hasRequiredQuestion && (
+              <div className="md0UAd text-sm text-slate-500 mt-4" dir="auto">
+                * Indicates required question
+              </div>
+            )}
           </div>
 
-          {/* Submit Button */}
-          <div className="pt-4">
+          <div className="o3Dpx" role="list">
+            {form.questions?.map((question, index) => (
+              <div key={question.id}>
+                {renderQuestion(question, index)}
+              </div>
+            ))}
+          </div>
+
+          <div className="ThHDze pt-6 flex items-center gap-3">
             <Button
               type="submit"
-              form="preview-form"
-              className="h-12 px-8 text-base bg-gradient-to-r from-[#025864] to-[#038a9c] hover:from-[#025864]/90 hover:to-[#038a9c]/90 text-white rounded-full shadow-md"
+              className="uArJ5e UQuaGc Y5sE8d VkkpIf QvWxOd h-10 px-6 text-sm font-medium"
+              style={{ backgroundColor: themeColor }}
             >
-              Submit Response
+              Submit
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={clearForm}
+              className="uArJ5e UQuaGc kCyAyd l3F1ye TFBnVe h-10 px-6 text-sm font-medium"
+            >
+              Clear form
             </Button>
           </div>
 
-          {/* Footer */}
-          <div className="pt-4 border-t border-slate-200">
-            <p className="text-xs text-slate-400">
-              Never submit passwords through RippliFy Forms.
-            </p>
+          <div className="T2dutf text-xs text-slate-500 py-2">
+            Never submit passwords through Sokostack Forms.
           </div>
+        </form>
 
-          {/* Powered by */}
-          {form.theme?.showPoweredBy && (
-            <div className="text-center">
-              <p className="text-xs text-slate-400">
-                Powered by <span style={{ color: theme.color }}>Sokostack</span>
-              </p>
-            </div>
-          )}
+        <div className="I3zNcc yF4pU pt-3 flex items-center gap-1">
+          <span className="text-xs text-slate-500">Powered by</span>
+          <svg width={25} height={18} viewBox="0 0 80 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="relative -top-px">
+<path d="M0 7.5H28.8C31.3202 7.5 32.5804 7.5 33.543 7.99047C34.3897 8.4219 35.0781 9.11031 35.5095 9.95704C36 10.9196 36 12.1798 36 14.7V16.5H7.2C4.67976 16.5 3.41965 16.5 2.45704 16.0095C1.61031 15.5781 0.921901 14.8897 0.490471 14.043C0 13.0804 0 11.8202 0 9.3V7.5Z" fill={logoColor}/>
+              <path d="M0 28.5H28.8C31.3202 28.5 32.5804 28.5 33.543 28.0095C34.3897 27.5781 35.0781 26.8897 35.5095 26.043C36 25.0804 36 23.8202 36 21.3V19.5H7.2C4.67976 19.5 3.41965 19.5 2.45704 19.9905C1.61031 20.4219 0.921901 21.1103 0.490471 21.957C0 22.9196 0 24.1798 0 26.7V28.5Z" fill={logoColor}/>
+              <path d="M14 31.5H28.8C31.3202 31.5 32.5804 31.5 33.543 31.9905C34.3897 32.4219 35.0781 33.1103 35.5095 33.957C36 34.9196 36 36.1798 36 38.7V40.5H21.2C18.6798 40.5 17.4196 40.5 16.457 40.0095C15.6103 39.5781 14.9219 38.8897 14.4905 38.043C14 37.0804 14 35.8202 14 33.3V31.5Z" fill={logoColor}/>
+          </svg>
+          <span className="text-xs font-medium" style={{ color: logoColor }}>Sokostack</span>
         </div>
-      </main>
+      </div>
+
+      {/* Help button */}
+      <div className="fixed bottom-4 right-4">
+        <button className="w-10 h-10 rounded-full bg-white border border-slate-200 shadow-md flex items-center justify-center hover:bg-slate-50">
+          <HelpCircle className="w-5 h-5 text-slate-600" />
+        </button>
+      </div>
     </div>
   );
 };
