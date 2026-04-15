@@ -41,6 +41,21 @@ const AIFormChat: React.FC<AIFormChatProps> = ({ onFormCreated }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  useEffect(() => {
+    if (!isOpen || !ws) return;
+
+    const pollInterval = setInterval(() => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: "ping" }));
+      } else if (ws.readyState === WebSocket.CLOSED) {
+        console.log("WebSocket closed, reconnecting...");
+        connectWebSocket();
+      }
+    }, 3000);
+
+    return () => clearInterval(pollInterval);
+  }, [isOpen, ws]);
+
   const connectWebSocket = () => {
     const token = localStorage.getItem("auth_token");
     if (!token) {

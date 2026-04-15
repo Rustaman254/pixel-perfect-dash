@@ -45,6 +45,16 @@ const AIAssistant: React.FC<AIAssistantProps> = ({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, toolStatus, progressSteps]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const pollInterval = setInterval(() => {
+      console.log("Forms AI Assistant: Connection active");
+    }, 3000);
+
+    return () => clearInterval(pollInterval);
+  }, [isOpen]);
+
   const updateProgress = (step: string, progress: number) => {
     setProgressSteps(prev => {
       if (!prev.includes(step)) {

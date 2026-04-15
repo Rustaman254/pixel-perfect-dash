@@ -18,6 +18,7 @@ import {
   Eye,
   MoreVertical,
   Search,
+  LogOut,
   Loader2,
   QrCode,
   ExternalLink,
@@ -47,7 +48,7 @@ interface Form {
 }
 
 const FormsDashboard = () => {
-  const { userProfile } = useAppContext();
+  const { userProfile, logout } = useAppContext();
   const navigate = useNavigate();
   const [forms, setForms] = useState<Form[]>([]);
   const [loading, setLoading] = useState(true);
@@ -166,24 +167,25 @@ const FormsDashboard = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-4">
-              <h1 className="text-xl font-bold text-[#025864]">RippliFy Forms</h1>
+              <h1 className="text-xl font-bold text-[#025864]">Sokostack Forms</h1>
               <span className="text-sm text-slate-500">|</span>
               <span className="text-sm text-slate-600">Welcome, {userProfile?.fullName || userProfile?.email}</span>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="icon" onClick={() => setViewMode(viewMode === 'list' ? 'card' : 'list')}>
-                {viewMode === 'list' ? (
-                  <LayoutGrid className="h-4 w-4" />
-                ) : (
-                  <List className="h-4 w-4" />
-                )}
-              </Button>
               <Button 
                 onClick={() => navigate('/forms/new')}
                 className="bg-[#025864] hover:bg-[#025864]/90"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 New Form
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={() => logout()}
+                title="Logout"
+              >
+                <LogOut className="h-4 w-4" />
               </Button>
             </div>
           </div>
