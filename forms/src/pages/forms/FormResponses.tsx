@@ -3,9 +3,10 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useAppContext } from "@/contexts/AppContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, Download, ArrowLeft, BarChart3, ChevronDown, ChevronUp, CheckSquare, Circle, List, Type, AlignLeft, Hash, Calendar } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Loader2, Download, ArrowLeft, BarChart3, Filter, CheckSquare, Circle, List, Type, AlignLeft, Hash, Calendar, Mail, User } from "lucide-react";
 import { toast } from "sonner";
 
 interface Response {
@@ -15,26 +16,24 @@ interface Response {
   submittedAt: string;
 }
 
+interface Question {
+  id: string;
+  type: string;
+  question: string;
+  required: boolean;
+  options?: string[];
+  description?: string;
+}
+
 interface Form {
   id: number;
   title: string;
   description: string;
-  questions: any[];
+  questions: Question[];
   settings: any;
   theme: any;
   responses: Response[];
 }
-
-const questionTypeIcons: Record<string, any> = {
-  text: Type,
-  textarea: AlignLeft,
-  number: Hash,
-  email: List,
-  date: Calendar,
-  checkbox: CheckSquare,
-  radio: Circle,
-  select: List,
-};
 
 const questionTypeLabels: Record<string, string> = {
   text: 'Short Answer',
@@ -54,7 +53,9 @@ const FormResponses = () => {
 
   const [form, setForm] = useState<Form | null>(null);
   const [loading, setLoading] = useState(true);
-  const [expandedResponses, setExpandedResponses] = useState<Set<number>>(new Set());
+  const [viewMode, setViewMode] = useState<'summary' | 'responses'>('summary');
+  const [filterEmail, setFilterEmail] = useState<string>('');
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest'>('newest');
 
   useEffect(() => {
     fetchForm();
@@ -69,7 +70,6 @@ const FormResponses = () => {
       if (res.ok) {
         const data = await res.json();
         setForm(data);
-        setExpandedResponses(new Set(data.responses?.map((r: Response) => r.id) || []));
       } else {
         toast.error('Failed to load form');
       }
@@ -81,39 +81,11 @@ const FormResponses = () => {
     }
   };
 
-  const toggleResponseExpand = (responseId: number) => {
-    setExpandedResponses(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(responseId)) {
-        newSet.delete(responseId);
-      } else {
-        newSet.add(responseId);
-      }
-      return newSet;
-    });
-  };
-
-  const formatAnswer = (question: any, answer: any) => {
-    if (answer === undefined || answer === null || answer === '') {
-      return <span className="text-slate-400 italic">No answer</span>;
-    }
-    
-    if (Array.isArray(answer)) {
-      return <span className="text-slate-700">{answer.join(', ')}</span>;
-    }
-    
-    if (question.type === 'date' && answer) {
-      return <span className="text-slate-700">{new Date(answer).toLocaleDateString()}</span>;
-    }
-    
-    return <span className="text-slate-700">{String(answer)}</span>;
-  };
-
   const exportCSV = () => {
     if (!form?.responses?.length) return;
 
     const headers = ['Email', ...form.questions?.map(q => q.question), 'Submitted At'];
-    const rows = form.responses.map(response => [
+    const rows = filteredResponses.map(response => [
       response.email || '',
       ...form.questions?.map(q => {
         const answer = response.answers[q.id];
@@ -131,6 +103,37 @@ const FormResponses = () => {
     a.download = `${form.title.replace(/\s+/g, '_')}_responses.csv`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const filteredResponses = form?.responses?.filter(r => {
+    if (filterEmail && r.email && !r.email.toLowerCase().includes(filterEmail.toLowerCase())) {
+      return false;
+    }
+    return true;
+  }).sort((a, b) => {
+    if (sortBy === 'newest') {
+      return new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime();
+    }
+    return new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime();
+  }) || [];
+
+  const getAnswerStats = (questionId: string) => {
+    const answers = form?.responses?.map(r => r.answers[questionId]).filter(a => a !== undefined && a !== null && a !== '') || [];
+    return answers;
+  };
+
+  const getAnswerCount = (questionId: string, value: string) => {
+    return form?.responses?.filter(r => {
+      const answer = r.answers[questionId];
+      if (Array.isArray(answer)) return answer.includes(value);
+      return answer === value;
+    }).length || 0;
+  };
+
+  const formatAnswer = (answer: any) => {
+    if (answer === undefined || answer === null || answer === '') return '-';
+    if (Array.isArray(answer)) return answer.join(', ');
+    return String(answer);
   };
 
   if (loading) {
@@ -166,15 +169,17 @@ const FormResponses = () => {
                 </div>
               </div>
             </div>
-            <Button 
-              onClick={exportCSV}
-              disabled={totalResponses === 0}
-              variant="outline"
-              className="border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Export CSV
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button 
+                onClick={exportCSV}
+                disabled={totalResponses === 0}
+                variant="outline"
+                className="border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Export CSV
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -192,148 +197,242 @@ const FormResponses = () => {
           </Card>
         ) : (
           <div className="space-y-6">
-            {form?.responses?.map((response, responseIndex) => {
-              const Icon = questionTypeIcons['text'] || Type;
-              
-              return (
-                <Card 
-                  key={response.id} 
-                  className={`border-slate-200/50 shadow-sm hover:shadow-md transition-all ${expandedResponses.has(response.id) ? 'ring-1 ring-[#025864]/20' : ''}`}
-                >
-                  <CardContent className="p-0">
-                    {/* Response Header - Same style as question cards */}
-                    <div 
-                      className="flex items-center gap-4 p-4 cursor-pointer hover:bg-slate-50/50 transition-colors"
-                      onClick={() => toggleResponseExpand(response.id)}
+            {/* View Toggle & Filters */}
+            <Card className="border-slate-200/50 shadow-sm">
+              <CardContent className="p-4">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant={viewMode === 'summary' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setViewMode('summary')}
+                      style={viewMode === 'summary' ? { backgroundColor: theme.color } : {}}
                     >
-                      <div className="flex-1 flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-[#025864]/10 flex items-center justify-center text-[#025864] font-semibold text-sm">
-                          {responseIndex + 1}
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-medium text-slate-800 line-clamp-1">
-                            {response.email || 'Anonymous Response'}
-                          </p>
-                          <p className="text-xs text-slate-500">
-                            <Icon className="inline h-3 w-3 mr-1" />
-                            {new Date(response.submittedAt).toLocaleString()}
-                          </p>
-                        </div>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-slate-400 hover:text-slate-600"
-                      >
-                        {expandedResponses.has(response.id) ? (
-                          <ChevronUp className="h-4 w-4" />
-                        ) : (
-                          <ChevronDown className="h-4 w-4" />
-                        )}
-                      </Button>
+                      <BarChart3 className="h-4 w-4 mr-2" />
+                      Summary
+                    </Button>
+                    <Button
+                      variant={viewMode === 'responses' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setViewMode('responses')}
+                      style={viewMode === 'responses' ? { backgroundColor: theme.color } : {}}
+                    >
+                      <List className="h-4 w-4 mr-2" />
+                      Individual Responses
+                    </Button>
+                  </div>
+                  
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      <Filter className="h-4 w-4 text-slate-400" />
+                      <Input
+                        placeholder="Filter by email..."
+                        value={filterEmail}
+                        onChange={(e) => setFilterEmail(e.target.value)}
+                        className="h-8 w-40 border-slate-200"
+                      />
                     </div>
+                    <Select value={sortBy} onValueChange={(v) => setSortBy(v as 'newest' | 'oldest')}>
+                      <SelectTrigger className="h-8 w-32 border-slate-200">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="newest">Newest first</SelectItem>
+                        <SelectItem value="oldest">Oldest first</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-                    {/* Expanded Questions - Same style as question cards */}
-                    {expandedResponses.has(response.id) && (
-                      <div className="border-t border-slate-100 p-5 space-y-4 bg-slate-50/30">
-                        {form.questions?.map((question, qIndex) => {
-                          const answer = response.answers[question.id];
-                          const answerValue = answer !== undefined && answer !== null && answer !== '' 
-                            ? (Array.isArray(answer) ? answer.join(', ') : String(answer))
-                            : '';
-                          const QIcon = questionTypeIcons[question.type] || Type;
-                          
-                          return (
-                            <div 
-                              key={question.id} 
-                              className="border rounded-lg p-4 space-y-4 bg-white"
-                            >
-                              {/* Question Header - Same style as form builder */}
-                              <div className="flex items-center gap-2">
-                                <Badge variant="outline" className="text-xs">
-                                  {questionTypeLabels[question.type] || 'Question'}
-                                </Badge>
-                                {question.required && <span className="text-xs text-red-500">• Required</span>}
-                              </div>
-                              
-                              {/* Question Text - Read only input */}
-                              <input
-                                readOnly
-                                className="flex w-full rounded-md border bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 md:text-sm h-10 border-slate-200 font-medium text-slate-900"
-                                value={question.question || 'Untitled Question'}
-                              />
-                              
-                              {/* Question Description (if any) */}
-                              {question.description && (
-                                <input
-                                  readOnly
-                                  className="flex h-10 w-full rounded-md border bg-background px-3 py-2 ring-offset-background placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 md:text-sm text-sm border-slate-200 text-slate-500"
-                                  value={question.description}
-                                />
-                              )}
-                              
-                              {/* Answer Input - Where user enters answer in form, show the answer here */}
-                              <div>
-                                <Label className="text-xs text-slate-500 mb-2 block">Answer:</Label>
-                                {question.type === 'textarea' ? (
-                                  <textarea
-                                    readOnly
-                                    className="flex w-full rounded-md border bg-slate-50 px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 md:text-sm min-h-[80px] border-slate-200 text-slate-700"
-                                    value={answerValue}
-                                    placeholder="No answer"
-                                  />
-                                ) : question.type === 'checkbox' ? (
-                                  <div className="space-y-2">
-                                    {question.options?.map((option: string, optIndex: number) => {
-                                      const isChecked = Array.isArray(answer) && answer.includes(option);
-                                      return (
-                                        <div key={optIndex} className="flex items-center gap-3 p-2 rounded bg-slate-50">
-                                          <div className={`w-4 h-4 border-2 rounded-sm flex items-center justify-center ${isChecked ? 'bg-[#025864] border-[#025864]' : 'border-slate-300'}`}>
-                                            {isChecked && <CheckSquare className="h-3 w-3 text-white" />}
-                                          </div>
-                                          <span className={isChecked ? 'text-slate-900 font-medium' : 'text-slate-500'}>{option}</span>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                ) : question.type === 'radio' ? (
-                                  <div className="space-y-2">
-                                    {question.options?.map((option: string, optIndex: number) => {
-                                      const isChecked = answer === option;
-                                      return (
-                                        <div key={optIndex} className="flex items-center gap-3 p-2 rounded bg-slate-50">
-                                          <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${isChecked ? 'border-[#025864]' : 'border-slate-300'}`}>
-                                            {isChecked && <div className="w-2 h-2 rounded-full bg-[#025864]" />}
-                                          </div>
-                                          <span className={isChecked ? 'text-slate-900 font-medium' : 'text-slate-500'}>{option}</span>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                ) : question.type === 'select' ? (
-                                  <div className="flex items-center gap-3 p-3 rounded bg-slate-50 border border-slate-200">
-                                    <List className="h-4 w-4 text-slate-400" />
-                                    <span className="text-slate-700">{answerValue || 'No answer'}</span>
-                                  </div>
-                                ) : (
-                                  <input
-                                    readOnly
-                                    type={question.type === 'date' ? 'date' : question.type === 'email' ? 'email' : question.type === 'number' ? 'number' : 'text'}
-                                    className="flex w-full rounded-md border bg-slate-50 px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 md:text-sm h-10 border-slate-200 text-slate-700"
-                                    value={answerValue}
-                                    placeholder="No answer"
-                                  />
-                                )}
-                              </div>
+            {/* Summary View - Like Google Forms */}
+            {viewMode === 'summary' && (
+              <div className="grid grid-cols-1 gap-6">
+                {form?.questions?.map((question, qIndex) => {
+                  const stats = getAnswerStats(question.id);
+                  const totalAnswers = stats.length;
+                  const answeredCount = totalAnswers;
+                  const unansweredCount = totalResponses - answeredCount;
+                  
+                  return (
+                    <Card key={question.id} className="border-slate-200/50 shadow-sm hover:shadow-md transition-all">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-sm text-slate-500">Question {qIndex + 1}</span>
+                              <Badge variant="outline" className="text-xs">{questionTypeLabels[question.type]}</Badge>
                             </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })}
+                            <CardTitle className="text-base font-medium text-slate-800">{question.question}</CardTitle>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-2xl font-bold" style={{ color: theme.color }}>{answeredCount}</p>
+                            <p className="text-xs text-slate-500">responses</p>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        {/* Bar chart for options */}
+                        {(question.type === 'radio' || question.type === 'select') && question.options && (
+                          <div className="space-y-3">
+                            {question.options.map((option, optIdx) => {
+                              const count = getAnswerCount(question.id, option);
+                              const percentage = totalAnswers > 0 ? Math.round((count / totalAnswers) * 100) : 0;
+                              
+                              return (
+                                <div key={optIdx} className="space-y-1">
+                                  <div className="flex items-center justify-between text-sm">
+                                    <span className="text-slate-700">{option}</span>
+                                    <span className="text-slate-500">{count} ({percentage}%)</span>
+                                  </div>
+                                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                                    <div 
+                                      className="h-full rounded-full transition-all"
+                                      style={{ width: `${percentage}%`, backgroundColor: theme.color }}
+                                    />
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                        
+                        {/* Checkbox stats */}
+                        {question.type === 'checkbox' && question.options && (
+                          <div className="space-y-3">
+                            {question.options.map((option, optIdx) => {
+                              const count = getAnswerCount(question.id, option);
+                              const percentage = totalAnswers > 0 ? Math.round((count / totalAnswers) * 100) : 0;
+                              
+                              return (
+                                <div key={optIdx} className="space-y-1">
+                                  <div className="flex items-center justify-between text-sm">
+                                    <span className="text-slate-700">{option}</span>
+                                    <span className="text-slate-500">{count} ({percentage}%)</span>
+                                  </div>
+                                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                                    <div 
+                                      className="h-full rounded-full transition-all"
+                                      style={{ width: `${percentage}%`, backgroundColor: theme.color }}
+                                    />
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                        
+                        {/* Text/Textarea - Show sample responses */}
+                        {(question.type === 'text' || question.type === 'textarea') && (
+                          <div className="space-y-2">
+                            {stats.slice(0, 5).map((answer, idx) => (
+                              <div key={idx} className="p-3 bg-slate-50 rounded-lg border border-slate-100 text-sm text-slate-700">
+                                {String(answer)}
+                              </div>
+                            ))}
+                            {stats.length > 5 && (
+                              <p className="text-xs text-slate-500 text-center">+ {stats.length - 5} more responses</p>
+                            )}
+                          </div>
+                        )}
+                        
+                        {/* Date/Number - Simple stats */}
+                        {(question.type === 'date' || question.type === 'number' || question.type === 'email') && (
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="p-4 bg-slate-50 rounded-lg text-center">
+                              <p className="text-2xl font-bold" style={{ color: theme.color }}>{answeredCount}</p>
+                              <p className="text-xs text-slate-500">Answered</p>
+                            </div>
+                            <div className="p-4 bg-slate-50 rounded-lg text-center">
+                              <p className="text-2xl font-bold text-slate-400">{unansweredCount}</p>
+                              <p className="text-xs text-slate-500">Skipped</p>
+                            </div>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Individual Responses - Like Google Forms Table */}
+            {viewMode === 'responses' && (
+              <Card className="border-slate-200/50 shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200">
+                        <th className="text-left p-3 font-medium text-slate-600 text-sm w-16">#</th>
+                        {form?.settings?.collectEmail && (
+                          <th className="text-left p-3 font-medium text-slate-600 text-sm">
+                            <div className="flex items-center gap-2">
+                              <Mail className="h-4 w-4" />
+                              Email
+                            </div>
+                          </th>
+                        )}
+                        {form?.questions?.map((q) => (
+                          <th key={q.id} className="text-left p-3 font-medium text-slate-600 text-sm min-w-[200px]">
+                            <div className="flex items-center gap-2">
+                              <span className="truncate">{q.question}</span>
+                            </div>
+                          </th>
+                        ))}
+                        <th className="text-left p-3 font-medium text-slate-600 text-sm w-32">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4" />
+                            Timestamp
+                          </div>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredResponses.map((response, rIndex) => (
+                        <tr key={response.id} className="border-b border-slate-100 hover:bg-slate-50/50">
+                          <td className="p-3 text-sm text-slate-500">{rIndex + 1}</td>
+                          {form?.settings?.collectEmail && (
+                            <td className="p-3 text-sm">
+                              {response.email ? (
+                                <span className="text-[#025864]">{response.email}</span>
+                              ) : (
+                                <span className="text-slate-400 italic">Not specified</span>
+                              )}
+                            </td>
+                          )}
+                          {form?.questions?.map((q) => (
+                            <td key={q.id} className="p-3 text-sm text-slate-700 max-w-[300px]">
+                              {q.type === 'checkbox' ? (
+                                <div className="flex flex-wrap gap-1">
+                                  {Array.isArray(response.answers[q.id]) ? (
+                                    response.answers[q.id].map((v, i) => (
+                                      <Badge key={i} variant="secondary" className="text-xs">{v}</Badge>
+                                    ))
+                                  ) : (
+                                    <span className="text-slate-400">-</span>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="line-clamp-2">{formatAnswer(response.answers[q.id])}</span>
+                              )}
+                            </td>
+                          ))}
+                          <td className="p-3 text-sm text-slate-500">
+                            {new Date(response.submittedAt).toLocaleDateString()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {filteredResponses.length === 0 && (
+                  <div className="p-8 text-center text-slate-500">
+                    No responses match your filters.
+                  </div>
+                )}
+              </Card>
+            )}
           </div>
         )}
       </main>
