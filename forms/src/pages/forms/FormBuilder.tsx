@@ -288,14 +288,12 @@ const FormBuilder = () => {
                 />
               </div>
             </div>
-            <div className="flex gap-3">
-              <Button variant="outline" onClick={previewForm} className="border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300">
-                <Eye className="h-4 w-4 mr-2" />
-                Preview
+            <div className="flex gap-2">
+              <Button variant="ghost" onClick={previewForm} className="h-9 w-9 p-0 text-slate-600 hover:text-[#025864] hover:bg-slate-100">
+                <Eye className="h-4 w-4" />
               </Button>
-              <Button variant="outline" onClick={() => setShowSettingsDialog(true)} className="border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300">
-                <Settings className="h-4 w-4 mr-2" />
-                Settings
+              <Button variant="ghost" onClick={() => setShowSettingsDialog(true)} className="h-9 w-9 p-0 text-slate-600 hover:text-[#025864] hover:bg-slate-100">
+                <Settings className="h-4 w-4" />
               </Button>
               <Button 
                 onClick={saveForm} 
@@ -303,7 +301,7 @@ const FormBuilder = () => {
                 className="bg-gradient-to-r from-[#025864] to-[#038a9c] hover:from-[#025864]/90 hover:to-[#038a9c]/90 text-white shadow-md"
               >
                 {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                Save Form
+                Save
               </Button>
             </div>
           </div>

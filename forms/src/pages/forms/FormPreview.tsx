@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, X, Link, Check, ChevronDown, ChevronUp, Trash2, Plus, List, Circle, CheckSquare, Type, AlignLeft, Hash, Calendar } from "lucide-react";
+import { Loader2, X, Link, Check, ChevronDown, ChevronUp, Settings, Eye } from "lucide-react";
 import { toast } from "sonner";
 
 interface Question {
@@ -27,16 +27,16 @@ interface Form {
   slug: string;
 }
 
-const questionTypes = [
-  { type: 'text', label: 'Short Answer', icon: Type },
-  { type: 'textarea', label: 'Paragraph', icon: AlignLeft },
-  { type: 'number', label: 'Number', icon: Hash },
-  { type: 'email', label: 'Email', icon: List },
-  { type: 'date', label: 'Date', icon: Calendar },
-  { type: 'checkbox', label: 'Checkbox', icon: CheckSquare },
-  { type: 'radio', label: 'Multiple Choice', icon: Circle },
-  { type: 'select', label: 'Dropdown', icon: List },
-];
+const questionTypeLabels: Record<string, string> = {
+  text: 'Short Answer',
+  textarea: 'Paragraph',
+  number: 'Number',
+  email: 'Email',
+  date: 'Date',
+  checkbox: 'Checkbox',
+  radio: 'Multiple Choice',
+  select: 'Dropdown',
+};
 
 const FormPreview = () => {
   const { formId } = useParams();
@@ -164,18 +164,21 @@ const FormPreview = () => {
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="px-3 py-1.5 rounded-full bg-amber-100 text-amber-700 text-sm font-medium">
-              Not Published
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={copyLink}
-              className="h-9 rounded-full px-4 border-slate-300 hover:bg-slate-50"
-            >
-              {linkCopied ? <Check className="h-4 w-4 mr-2" /> : <Link className="h-4 w-4 mr-2" />}
-              {linkCopied ? 'Copied' : 'Copy link'}
-            </Button>
+            {form?.slug ? (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={copyLink}
+                className="h-9 w-9 rounded-full hover:bg-slate-100"
+                title="Copy link"
+              >
+                {linkCopied ? <Check className="h-4 w-4 text-green-600" /> : <Link className="h-4 w-4 text-slate-600" />}
+              </Button>
+            ) : (
+              <div className="px-3 py-1.5 rounded-full bg-amber-100 text-amber-700 text-sm font-medium">
+                Not Published
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -222,8 +225,6 @@ const FormPreview = () => {
             </div>
 
             {form.questions?.map((question, index) => {
-              const Icon = questionTypes.find(t => t.type === question.type)?.icon || Type;
-              
               return (
                 <Card 
                   key={question.id} 
@@ -244,7 +245,7 @@ const FormPreview = () => {
                             {question.question || 'Untitled Question'}
                           </p>
                           <p className="text-xs text-slate-500">
-                            {questionTypes.find(t => t.type === question.type)?.label}
+                            {questionTypeLabels[question.type] || 'Question'}
                             {question.required && <span className="text-red-500 ml-1">• Required</span>}
                           </p>
                         </div>
