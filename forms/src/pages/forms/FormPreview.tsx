@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Loader2, X, Send, Link, Copy, Check, ChevronDown } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Loader2, X, Link, Check, ChevronDown, ChevronUp, Trash2, Plus, List, Circle, CheckSquare, Type, AlignLeft, Hash, Calendar } from "lucide-react";
 import { toast } from "sonner";
 
 interface Question {
@@ -26,6 +27,17 @@ interface Form {
   slug: string;
 }
 
+const questionTypes = [
+  { type: 'text', label: 'Short Answer', icon: Type },
+  { type: 'textarea', label: 'Paragraph', icon: AlignLeft },
+  { type: 'number', label: 'Number', icon: Hash },
+  { type: 'email', label: 'Email', icon: List },
+  { type: 'date', label: 'Date', icon: Calendar },
+  { type: 'checkbox', label: 'Checkbox', icon: CheckSquare },
+  { type: 'radio', label: 'Multiple Choice', icon: Circle },
+  { type: 'select', label: 'Dropdown', icon: List },
+];
+
 const FormPreview = () => {
   const { formId } = useParams();
   const navigate = useNavigate();
@@ -35,6 +47,7 @@ const FormPreview = () => {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [expandedQuestions, setExpandedQuestions] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchForm();
@@ -49,6 +62,7 @@ const FormPreview = () => {
       if (res.ok) {
         const data = await res.json();
         setForm(data);
+        setExpandedQuestions(new Set(data.questions?.map((q: Question) => q.id) || []));
       } else {
         toast.error('Form not found');
       }
@@ -62,6 +76,18 @@ const FormPreview = () => {
 
   const handleAnswerChange = (questionId: string, value: any) => {
     setAnswers({ ...answers, [questionId]: value });
+  };
+
+  const toggleExpand = (questionId: string) => {
+    setExpandedQuestions(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(questionId)) {
+        newSet.delete(questionId);
+      } else {
+        newSet.add(questionId);
+      }
+      return newSet;
+    });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -120,10 +146,10 @@ const FormPreview = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50">
       {/* Top Bar - Google Forms Style */}
-      <div className="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-50">
-        <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
+      <div className="bg-white/80 backdrop-blur-sm border-b border-slate-200/50 sticky top-0 z-50 shadow-sm">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Button
               variant="ghost"
@@ -155,241 +181,269 @@ const FormPreview = () => {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-4xl mx-auto py-8 px-4">
-        <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6 md:p-8">
-          {/* Form Header */}
-          <div className="mb-6">
-            <h1 className="text-2xl font-normal text-slate-900 mb-2">{form.title}</h1>
-            {form.description && (
-              <p className="text-slate-600 whitespace-pre-wrap">{form.description}</p>
-            )}
-          </div>
-
-          {/* Required indicator */}
-          <div className="text-sm text-slate-500 mb-8">
-            <span className="text-red-500">*</span> Indicates required question
-          </div>
-
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Email if collecting */}
-            {form.settings?.collectEmail && (
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="space-y-6">
+          {/* Form Header Card */}
+          <Card className="border-slate-200/50 shadow-sm hover:shadow-md transition-shadow">
+            <CardHeader className="bg-gradient-to-r from-slate-50 to-white border-b border-slate-100 pb-4">
+              <CardTitle className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-[#025864]"></div>
+                Form Details
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6 space-y-5">
               <div className="space-y-2">
-                <div className="flex items-center gap-1">
-                  <Label className="text-base font-normal text-slate-900">
-                    Email <span className="text-red-500">*</span>
-                  </Label>
-                </div>
+                <Label className="text-sm font-medium text-slate-700">Form Title</Label>
                 <Input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Your answer"
-                  required
-                  className="w-full h-12 rounded-lg border border-slate-300 focus:border-slate-500 focus:ring-0 bg-white"
+                  value={form.title}
+                  readOnly
+                  className="h-11 border-slate-200 bg-slate-50"
                 />
               </div>
-            )}
-
-            {/* Questions */}
-            {form.questions?.map((question, index) => (
-              <div key={question.id} className="space-y-2">
-                <div className="flex items-start gap-1">
-                  <Label className="text-base font-normal text-slate-900">
-                    {question.question}
-                    {question.required && <span className="text-red-500 ml-1">*</span>}
-                  </Label>
-                </div>
-                {question.description && (
-                  <p className="text-sm text-slate-500">{question.description}</p>
-                )}
-
-                {/* Short Answer */}
-                {question.type === 'text' && (
-                  <Input
-                    value={answers[question.id] || ''}
-                    onChange={(e) => handleAnswerChange(question.id, e.target.value)}
-                    placeholder="Your answer"
-                    required={question.required}
-                    className="w-full h-12 rounded-lg border border-slate-300 focus:border-slate-500 focus:ring-0 bg-white"
-                  />
-                )}
-
-                {/* Paragraph */}
-                {question.type === 'textarea' && (
-                  <Textarea
-                    value={answers[question.id] || ''}
-                    onChange={(e) => handleAnswerChange(question.id, e.target.value)}
-                    placeholder="Your answer"
-                    required={question.required}
-                    rows={4}
-                    className="w-full rounded-lg border border-slate-300 focus:border-slate-500 focus:ring-0 bg-white resize-none"
-                  />
-                )}
-
-                {/* Number */}
-                {question.type === 'number' && (
-                  <Input
-                    type="number"
-                    value={answers[question.id] || ''}
-                    onChange={(e) => handleAnswerChange(question.id, e.target.value)}
-                    placeholder="Your answer"
-                    required={question.required}
-                    className="w-full h-12 rounded-lg border border-slate-300 focus:border-slate-500 focus:ring-0 bg-white"
-                  />
-                )}
-
-                {/* Email */}
-                {question.type === 'email' && (
-                  <Input
-                    type="email"
-                    value={answers[question.id] || ''}
-                    onChange={(e) => handleAnswerChange(question.id, e.target.value)}
-                    placeholder="Your answer"
-                    required={question.required}
-                    className="w-full h-12 rounded-lg border border-slate-300 focus:border-slate-500 focus:ring-0 bg-white"
-                  />
-                )}
-
-                {/* Date */}
-                {question.type === 'date' && (
-                  <Input
-                    type="date"
-                    value={answers[question.id] || ''}
-                    onChange={(e) => handleAnswerChange(question.id, e.target.value)}
-                    required={question.required}
-                    className="w-full h-12 rounded-lg border border-slate-300 focus:border-slate-500 focus:ring-0 bg-white"
-                  />
-                )}
-
-                {/* Multiple Choice */}
-                {question.type === 'radio' && question.options && (
-                  <div className="space-y-2">
-                    {question.options.map((option, optIdx) => {
-                      const isSelected = answers[question.id] === option;
-                      return (
-                        <label
-                          key={optIdx}
-                          className={`flex items-center gap-3 p-4 rounded-lg border transition-all cursor-pointer ${
-                            isSelected 
-                              ? 'border-slate-500 bg-slate-50' 
-                              : 'border-slate-300 hover:border-slate-400 hover:bg-slate-50'
-                          }`}
-                        >
-                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                            isSelected ? 'border-slate-600' : 'border-slate-400'
-                          }`}>
-                            {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-slate-600" />}
-                          </div>
-                          <input
-                            type="radio"
-                            name={question.id}
-                            value={option}
-                            checked={isSelected}
-                            onChange={() => handleAnswerChange(question.id, option)}
-                            className="sr-only"
-                          />
-                          <span className="text-slate-700">{option}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* Checkbox */}
-                {question.type === 'checkbox' && question.options && (
-                  <div className="space-y-2">
-                    {question.options.map((option, optIdx) => {
-                      const isChecked = (answers[question.id] || []).includes(option);
-                      return (
-                        <label
-                          key={optIdx}
-                          className={`flex items-center gap-3 p-4 rounded-lg border transition-all cursor-pointer ${
-                            isChecked 
-                              ? 'border-slate-500 bg-slate-50' 
-                              : 'border-slate-300 hover:border-slate-400 hover:bg-slate-50'
-                          }`}
-                        >
-                          <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                            isChecked 
-                              ? 'bg-slate-600 border-slate-600' 
-                              : 'border-slate-400'
-                          }`}>
-                            {isChecked && (
-                              <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
-                            )}
-                          </div>
-                          <input
-                            type="checkbox"
-                            value={option}
-                            checked={isChecked}
-                            onChange={(e) => {
-                              const current = answers[question.id] || [];
-                              if (e.target.checked) {
-                                handleAnswerChange(question.id, [...current, option]);
-                              } else {
-                                handleAnswerChange(question.id, current.filter((o: string) => o !== option));
-                              }
-                            }}
-                            className="sr-only"
-                          />
-                          <span className="text-slate-700">{option}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* Dropdown */}
-                {question.type === 'select' && question.options && (
-                  <div className="relative">
-                    <select
-                      value={answers[question.id] || ''}
-                      onChange={(e) => handleAnswerChange(question.id, e.target.value)}
-                      required={question.required}
-                      className="w-full h-12 rounded-lg border border-slate-300 bg-white px-4 pr-10 text-slate-700 appearance-none focus:border-slate-500 focus:ring-0"
-                    >
-                      <option value="">Select an option</option>
-                      {question.options.map((option, optIdx) => (
-                        <option key={optIdx} value={option}>{option}</option>
-                      ))}
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 pointer-events-none" />
-                  </div>
-                )}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-slate-700">Description (optional)</Label>
+                <Textarea
+                  value={form.description || ''}
+                  readOnly
+                  rows={3}
+                  className="border-slate-200 bg-slate-50 resize-none"
+                />
               </div>
-            ))}
+            </CardContent>
+          </Card>
 
-            {/* Submit Button */}
-            <div className="pt-4">
-              <Button
-                type="submit"
-                className="h-10 px-6 text-base bg-slate-900 hover:bg-slate-800 text-white rounded-full"
-              >
-                Submit Response
-              </Button>
+          {/* Questions Section */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-[#025864]"></div>
+                Questions ({form.questions?.length || 0})
+              </h2>
             </div>
-          </form>
+
+            {form.questions?.map((question, index) => {
+              const Icon = questionTypes.find(t => t.type === question.type)?.icon || Type;
+              
+              return (
+                <Card 
+                  key={question.id} 
+                  className={`border-slate-200/50 shadow-sm hover:shadow-md transition-all ${expandedQuestions.has(question.id) ? 'ring-1 ring-[#025864]/20' : ''}`}
+                >
+                  <CardContent className="p-0">
+                    {/* Question Header */}
+                    <div 
+                      className="flex items-center gap-4 p-4 cursor-pointer hover:bg-slate-50/50 transition-colors"
+                      onClick={() => toggleExpand(question.id)}
+                    >
+                      <div className="flex-1 flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-[#025864]/10 flex items-center justify-center text-[#025864] font-semibold text-sm">
+                          {index + 1}
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium text-slate-800 line-clamp-1">
+                            {question.question || 'Untitled Question'}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {questionTypes.find(t => t.type === question.type)?.label}
+                            {question.required && <span className="text-red-500 ml-1">• Required</span>}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-slate-400 hover:text-slate-600"
+                      >
+                        {expandedQuestions.has(question.id) ? (
+                          <ChevronUp className="h-4 w-4" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+
+                    {/* Expanded Content - Answer Input */}
+                    {expandedQuestions.has(question.id) && (
+                      <div className="border-t border-slate-100 p-5 space-y-4 bg-slate-50/30">
+                        {/* Question Text */}
+                        <Input
+                          value={question.question || ''}
+                          readOnly
+                          placeholder="Enter your question"
+                          className="h-10 border-slate-200 font-medium bg-white"
+                        />
+                        
+                        {/* Description */}
+                        <Input
+                          value={question.description || ''}
+                          readOnly
+                          placeholder="Help text (optional)"
+                          className="text-sm border-slate-200 bg-white"
+                        />
+
+                        {/* Answer Input */}
+                        <div className="pt-2">
+                          <Label className="text-sm font-medium text-slate-700 mb-2 block">Answer:</Label>
+                          
+                          {question.type === 'text' && (
+                            <Input
+                              value={answers[question.id] || ''}
+                              onChange={(e) => handleAnswerChange(question.id, e.target.value)}
+                              placeholder="Your answer"
+                              className="h-11 border-slate-200 bg-white"
+                            />
+                          )}
+
+                          {question.type === 'textarea' && (
+                            <Textarea
+                              value={answers[question.id] || ''}
+                              onChange={(e) => handleAnswerChange(question.id, e.target.value)}
+                              placeholder="Your answer"
+                              rows={4}
+                              className="border-slate-200 bg-white"
+                            />
+                          )}
+
+                          {question.type === 'number' && (
+                            <Input
+                              type="number"
+                              value={answers[question.id] || ''}
+                              onChange={(e) => handleAnswerChange(question.id, e.target.value)}
+                              placeholder="Your answer"
+                              className="h-11 border-slate-200 bg-white"
+                            />
+                          )}
+
+                          {question.type === 'email' && (
+                            <Input
+                              type="email"
+                              value={answers[question.id] || ''}
+                              onChange={(e) => handleAnswerChange(question.id, e.target.value)}
+                              placeholder="Your answer"
+                              className="h-11 border-slate-200 bg-white"
+                            />
+                          )}
+
+                          {question.type === 'date' && (
+                            <Input
+                              type="date"
+                              value={answers[question.id] || ''}
+                              onChange={(e) => handleAnswerChange(question.id, e.target.value)}
+                              className="h-11 border-slate-200 bg-white"
+                            />
+                          )}
+
+                          {/* Radio/Checkbox Options */}
+                          {(question.type === 'radio' || question.type === 'checkbox') && question.options && (
+                            <div className="space-y-2">
+                              {question.options.map((option, optIdx) => {
+                                const isSelected = question.type === 'checkbox' 
+                                  ? (answers[question.id] || []).includes(option)
+                                  : answers[question.id] === option;
+                                
+                                return (
+                                  <label
+                                    key={optIdx}
+                                    className={`flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer ${
+                                      isSelected 
+                                        ? 'border-[#025864] bg-[#025864]/5' 
+                                        : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50 bg-white'
+                                    }`}
+                                  >
+                                    {question.type === 'radio' ? (
+                                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                                        isSelected ? 'border-[#025864]' : 'border-slate-300'
+                                      }`}>
+                                        {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-[#025864]" />}
+                                      </div>
+                                    ) : (
+                                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                                        isSelected ? 'bg-[#025864] border-[#025864]' : 'border-slate-300'
+                                      }`}>
+                                        {isSelected && (
+                                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                          </svg>
+                                        )}
+                                      </div>
+                                    )}
+                                    <input
+                                      type={question.type}
+                                      className="sr-only"
+                                      checked={isSelected}
+                                      onChange={(e) => {
+                                        if (question.type === 'checkbox') {
+                                          const current = answers[question.id] || [];
+                                          if (e.target.checked) {
+                                            handleAnswerChange(question.id, [...current, option]);
+                                          } else {
+                                            handleAnswerChange(question.id, current.filter((o: string) => o !== option));
+                                          }
+                                        } else {
+                                          handleAnswerChange(question.id, option);
+                                        }
+                                      }}
+                                    />
+                                    <span className="text-slate-700">{option}</span>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {/* Select Dropdown */}
+                          {question.type === 'select' && (
+                            <div className="relative">
+                              <select
+                                value={answers[question.id] || ''}
+                                onChange={(e) => handleAnswerChange(question.id, e.target.value)}
+                                className="w-full h-11 rounded-lg border border-slate-200 bg-white px-4 pr-10 text-slate-700 appearance-none"
+                              >
+                                <option value="">Select an option</option>
+                                {question.options?.map((option, optIdx) => (
+                                  <option key={optIdx} value={option}>{option}</option>
+                                ))}
+                              </select>
+                              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 pointer-events-none" />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* Submit Button */}
+          <div className="pt-4">
+            <Button
+              type="submit"
+              form="preview-form"
+              className="h-12 px-8 text-base bg-gradient-to-r from-[#025864] to-[#038a9c] hover:from-[#025864]/90 hover:to-[#038a9c]/90 text-white rounded-full shadow-md"
+            >
+              Submit Response
+            </Button>
+          </div>
 
           {/* Footer */}
-          <div className="mt-12 pt-4 border-t border-slate-100">
+          <div className="pt-4 border-t border-slate-200">
             <p className="text-xs text-slate-400">
               Never submit passwords through RippliFy Forms.
             </p>
           </div>
-        </div>
 
-        {/* Powered by */}
-        {form.theme?.showPoweredBy && (
-          <div className="text-center mt-4">
-            <p className="text-xs text-slate-400">
-              Powered by <span style={{ color: theme.color }}>Sokostack</span>
-            </p>
-          </div>
-        )}
-      </div>
+          {/* Powered by */}
+          {form.theme?.showPoweredBy && (
+            <div className="text-center">
+              <p className="text-xs text-slate-400">
+                Powered by <span style={{ color: theme.color }}>Sokostack</span>
+              </p>
+            </div>
+          )}
+        </div>
+      </main>
     </div>
   );
 };
