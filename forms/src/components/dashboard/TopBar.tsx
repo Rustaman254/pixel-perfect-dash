@@ -1,4 +1,4 @@
-import { Search, Calendar, Download, Menu, LogOut, Bell, ExternalLink, Clock } from "lucide-react";
+import { Search, Calendar, Download, Menu, LogOut, Bell, ExternalLink, Clock, ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAppContext } from "@/contexts/AppContext";
 import { useState, useEffect } from "react";
@@ -18,6 +18,7 @@ const TopBar = ({ onMenuToggle }: TopBarProps) => {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   const fetchNotifications = async () => {
     try {
@@ -195,22 +196,41 @@ const TopBar = ({ onMenuToggle }: TopBarProps) => {
             <p className="text-xs font-medium text-foreground">{userProfile?.fullName || userProfile?.businessName || "User"}</p>
             <p className="text-[10px] text-muted-foreground">Seller Account</p>
           </div>
-          <div className="flex items-center gap-2 group relative">
-            {userProfile?.profilePictureUrl ? (
-              <img src={userProfile.profilePictureUrl} alt="Profile" className="w-8 h-8 rounded-full object-cover border border-border cursor-pointer peer" />
-            ) : (
-              <div className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold text-white cursor-pointer peer" style={{ backgroundColor: '#025864' }}>
-                {(userProfile?.fullName || userProfile?.businessName || "U").substring(0, 1).toUpperCase()}
-              </div>
-            )}
-
+          <div className="relative">
             <button
-              onClick={() => logout()}
-              className="absolute right-0 top-full mt-1 bg-white border border-border shadow-lg rounded-lg p-2.5 flex items-center gap-2 text-sm text-red-600 hover:bg-red-50 w-36 opacity-0 invisible group-hover:opacity-100 group-hover:visible peer-hover:opacity-100 peer-hover:visible transition-all z-50 origin-top-right focus:opacity-100 focus:visible"
+              onClick={() => setShowUserMenu(!showUserMenu)}
+              className="flex items-center gap-2 group"
             >
-              <LogOut className="w-4 h-4" />
-              <span className="font-medium">Logout</span>
+              {userProfile?.profilePictureUrl ? (
+                <img src={userProfile.profilePictureUrl} alt="Profile" className="w-8 h-8 rounded-full object-cover border border-border" />
+              ) : (
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold text-white" style={{ backgroundColor: '#025864' }}>
+                  {(userProfile?.fullName || userProfile?.businessName || "U").substring(0, 1).toUpperCase()}
+                </div>
+              )}
+              <ChevronDown className="w-4 h-4 text-muted-foreground" />
             </button>
+
+            {showUserMenu && (
+              <>
+                <div className="fixed inset-0 z-[55]" onClick={() => setShowUserMenu(false)} />
+                <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-border shadow-xl rounded-lg z-[60] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                  <div className="p-3 border-b border-border">
+                    <p className="text-sm font-medium text-slate-900">{userProfile?.fullName || userProfile?.businessName || "User"}</p>
+                    <p className="text-xs text-slate-500">{userProfile?.email}</p>
+                  </div>
+                  <div className="py-1">
+                    <button
+                      onClick={() => logout()}
+                      className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Logout
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
