@@ -46,6 +46,12 @@ interface FormSettings {
   maxResponses?: number;
 }
 
+interface FormTheme {
+  view: 'list' | 'chat' | 'card';
+  color: string;
+  showPoweredBy: boolean;
+}
+
 const questionTypes = [
   { type: 'text', label: 'Short Answer', icon: Type },
   { type: 'textarea', label: 'Paragraph', icon: AlignLeft },
@@ -72,6 +78,11 @@ const FormBuilder = () => {
     shuffleQuestions: false,
     limitResponses: false,
   });
+  const [theme, setTheme] = useState<FormTheme>({
+    view: 'list',
+    color: '#025864',
+    showPoweredBy: true,
+  });
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(isEditing);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -95,6 +106,7 @@ const FormBuilder = () => {
         setDescription(data.description || '');
         setQuestions(data.questions || []);
         setSettings(data.settings || {});
+        setTheme(data.theme || { view: 'list', color: '#025864', showPoweredBy: true });
       }
     } catch (error) {
       console.error('Failed to fetch form:', error);
@@ -158,6 +170,7 @@ const FormBuilder = () => {
           description,
           questions,
           settings,
+          theme,
         }),
       });
 
@@ -389,10 +402,12 @@ const FormBuilder = () => {
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Add Questions */}
+            
+
+            {/* Add Questions Manually */}
             <Card>
               <CardHeader>
-                <CardTitle>Add Question</CardTitle>
+                <CardTitle>Add Question Manually</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 gap-2">
@@ -456,6 +471,59 @@ const FormBuilder = () => {
                     />
                   </div>
                 )}
+              </CardContent>
+            </Card>
+
+            {/* Theme Settings */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Theme</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label className="text-sm mb-2 block">View Style</Label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { value: 'list', label: 'List' },
+                      { value: 'chat', label: 'Chat' },
+                      { value: 'card', label: 'Card' },
+                    ].map((option) => (
+                      <Button
+                        key={option.value}
+                        variant={theme.view === option.value ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setTheme({ ...theme, view: option.value as any })}
+                        style={theme.view === option.value ? { backgroundColor: theme.color } : {}}
+                      >
+                        {option.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-sm mb-2 block">Theme Color</Label>
+                  <div className="flex gap-2 items-center">
+                    <input
+                      type="color"
+                      value={theme.color}
+                      onChange={(e) => setTheme({ ...theme, color: e.target.value })}
+                      className="w-10 h-10 rounded border cursor-pointer"
+                    />
+                    <Input
+                      value={theme.color}
+                      onChange={(e) => setTheme({ ...theme, color: e.target.value })}
+                      className="flex-1"
+                      placeholder="#025864"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label>Show "Powered by"</Label>
+                  <Switch
+                    checked={theme.showPoweredBy}
+                    onCheckedChange={(checked) => setTheme({ ...theme, showPoweredBy: checked })}
+                  />
+                </div>
               </CardContent>
             </Card>
           </div>

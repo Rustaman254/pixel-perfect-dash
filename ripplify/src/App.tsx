@@ -29,6 +29,7 @@ import Signup from "./pages/auth/Signup";
 import ForgotPassword from "./pages/auth/ForgotPassword";
 
 import { AppProvider, useAppContext } from "./contexts/AppContext";
+import AIAssistant from "./components/ai/AIAssistant";
 
 const queryClient = new QueryClient();
 
@@ -54,6 +55,13 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   return <>{children}</>;
 };
+
+const AppWithAI = ({ children }: { children: React.ReactNode }) => (
+  <>
+    {children}
+    <AIAssistant productName="RippliFy" />
+  </>
+);
 
 const AppRoutes = () => {
   return (
@@ -101,6 +109,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <AppRoutes />
+        <AIAssistant service="ripplify" productName="RippliFy" />
       </TooltipProvider>
     </QueryClientProvider>
   </AppProvider>

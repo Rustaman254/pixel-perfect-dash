@@ -12,7 +12,7 @@ const generateSlug = (title) => {
 
 export const createForm = async (req, res) => {
   try {
-    const { title, description, questions, settings } = req.body;
+    const { title, description, questions, settings, theme } = req.body;
     
     if (!title) {
       return res.status(400).json({ message: 'Title is required' });
@@ -21,6 +21,12 @@ export const createForm = async (req, res) => {
     const slug = generateSlug(title);
     const db = getAuthDb();
 
+    const defaultTheme = {
+      view: 'list',
+      color: '#025864',
+      showPoweredBy: true
+    };
+
     const result = await db('forms')
       .insert({
         userId: req.user.id,
@@ -28,6 +34,7 @@ export const createForm = async (req, res) => {
         description: description || '',
         questions: JSON.stringify(questions || []),
         settings: JSON.stringify(settings || {}),
+        theme: JSON.stringify(theme || defaultTheme),
         slug: slug
       })
       .returning(['id', 'slug']);
@@ -53,7 +60,7 @@ export const getForms = async (req, res) => {
       .orderBy('createdAt', 'desc')
       .select('*');
 
-    // Get response counts for each form
+// Get response counts for each form
     for (const form of forms) {
       const responses = await db('form_responses')
         .where('formid', form.id)
@@ -62,12 +69,53 @@ export const getForms = async (req, res) => {
       form.responses = parseInt(responses?.count || 0);
       form.questions = typeof form.questions === 'string' ? JSON.parse(form.questions) : form.questions;
       form.settings = typeof form.settings === 'string' ? JSON.parse(form.settings) : form.settings;
+      form.theme = typeof form.theme === 'string' ? JSON.parse(form.theme) : form.theme;
     }
 
     res.json({ forms });
   } catch (error) {
     console.error('Get forms error:', error);
     res.status(500).json({ message: 'Failed to get forms', error: error.message });
+  }
+};
+
+export const updateForm = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, description, questions, settings, theme } = req.body;
+    const userId = req.user.id;
+    const db = getAuthDb();
+
+    const existing = await db('forms')
+      .where('id', id)
+      .where('userId', userId)
+      .first();
+
+    if (!existing) {
+      return res.status(404).json({ message: 'Form not found' });
+    }
+
+    const defaultTheme = {
+      view: 'list',
+      color: '#025864',
+      showPoweredBy: true
+    };
+
+    await db('forms')
+      .where('id', id)
+      .update({
+        title,
+        description: description || '',
+        questions: JSON.stringify(questions || []),
+        settings: JSON.stringify(settings || {}),
+        theme: JSON.stringify(theme || defaultTheme),
+        updatedAt: new Date()
+      });
+
+    res.json({ message: 'Form updated successfully', id: parseInt(id) });
+  } catch (error) {
+    console.error('Update form error:', error);
+    res.status(500).json({ message: 'Failed to update form', error: error.message });
   }
 };
 
@@ -88,44 +136,12 @@ export const getForm = async (req, res) => {
 
     form.questions = typeof form.questions === 'string' ? JSON.parse(form.questions) : form.questions;
     form.settings = typeof form.settings === 'string' ? JSON.parse(form.settings) : form.settings;
+    form.theme = typeof form.theme === 'string' ? JSON.parse(form.theme) : form.theme;
 
     res.json(form);
   } catch (error) {
     console.error('Get form error:', error);
     res.status(500).json({ message: 'Failed to get form', error: error.message });
-  }
-};
-
-export const updateForm = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { title, description, questions, settings } = req.body;
-    const userId = req.user.id;
-    const db = getAuthDb();
-
-    const existing = await db('forms')
-      .where('id', id)
-      .where('userId', userId)
-      .first();
-
-    if (!existing) {
-      return res.status(404).json({ message: 'Form not found' });
-    }
-
-    await db('forms')
-      .where('id', id)
-      .update({
-        title,
-        description: description || '',
-        questions: JSON.stringify(questions || []),
-        settings: JSON.stringify(settings || {}),
-        updatedAt: new Date()
-      });
-
-    res.json({ message: 'Form updated successfully', id: parseInt(id) });
-  } catch (error) {
-    console.error('Update form error:', error);
-    res.status(500).json({ message: 'Failed to update form', error: error.message });
   }
 };
 
@@ -163,7 +179,7 @@ export const getPublicForm = async (req, res) => {
 
     const form = await db('forms')
       .where('slug', slug)
-      .select('id', 'title', 'description', 'questions', 'settings')
+      .select('id', 'title', 'description', 'questions', 'settings', 'theme')
       .first();
 
     if (!form) {
@@ -172,6 +188,7 @@ export const getPublicForm = async (req, res) => {
 
     form.questions = typeof form.questions === 'string' ? JSON.parse(form.questions) : form.questions;
     form.settings = typeof form.settings === 'string' ? JSON.parse(form.settings) : form.settings;
+    form.theme = typeof form.theme === 'string' ? JSON.parse(form.theme) : form.theme;
 
     res.json(form);
   } catch (error) {

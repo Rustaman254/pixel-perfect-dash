@@ -17,6 +17,7 @@ import FormView from "./pages/forms/FormView";
 import FormResponses from "./pages/forms/FormResponses";
 
 import { AppProvider, useAppContext } from "./contexts/AppContext";
+import AIAssistant from "./components/ai/AIAssistant";
 
 const queryClient = new QueryClient();
 
@@ -75,6 +76,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <AppRoutes />
+        <AIAssistant productName="Forms" />
       </TooltipProvider>
     </QueryClientProvider>
   </AppProvider>
