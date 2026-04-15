@@ -201,7 +201,7 @@ const Sidebar = ({ open, onClose, collapsed, onToggleCollapse }: SidebarProps) =
             </button>
           </div>
 
-          {!collapsed && <p className="text-[10px] px-3 mt-4" style={{ color: '#bbbbbb' }}>© 2025 Ripplify Inc.</p>}
+          {!collapsed && <p className="text-[10px] px-3 mt-4" style={{ color: '#bbbbbb' }}>© 2025 Sokostack Forms</p>}
         </div>
       </aside>
 
