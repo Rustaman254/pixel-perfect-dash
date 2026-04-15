@@ -92,8 +92,6 @@ const FormBuilder = () => {
   });
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(isEditing);
-  const [previewOpen, setPreviewOpen] = useState(false);
-  const [previewAnswers, setPreviewAnswers] = useState<Record<string, any>>({});
   const [expandedQuestions, setExpandedQuestions] = useState<Set<string>>(new Set());
   const [aiTrigger, setAiTrigger] = useState(0);
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
@@ -255,12 +253,7 @@ const FormBuilder = () => {
       toast.error('Add some questions first');
       return;
     }
-    setPreviewAnswers({});
-    setPreviewOpen(true);
-  };
-
-  const handlePreviewAnswerChange = (questionId: string, value: any) => {
-    setPreviewAnswers({ ...previewAnswers, [questionId]: value });
+    navigate(`/forms/preview/${formId || 'new'}`);
   };
 
   if (loading) {
@@ -558,156 +551,6 @@ const FormBuilder = () => {
           </div>
         </div>
       </main>
-
-      {/* Preview Dialog - Google Forms Style */}
-      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className="max-w-3xl w-full p-0 overflow-hidden rounded-xl border-0 shadow-2xl">
-          {/* Preview Header - Google Forms Style */}
-          <div className="bg-gradient-to-r from-slate-50 to-white border-b border-slate-200 p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setPreviewOpen(false)}
-                  className="h-10 w-10 rounded-full hover:bg-slate-100"
-                >
-                  <X className="h-5 w-5 text-slate-600" />
-                </Button>
-                <div className="h-6 w-[1px] bg-slate-200"></div>
-                <div>
-                  <h2 className="text-sm font-medium text-slate-600">Preview mode</h2>
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <div className="px-3 py-1.5 rounded-full bg-amber-100 text-amber-700 text-sm font-medium">
-                  Not Published
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Form Content */}
-          <div className="bg-white p-6 max-h-[70vh] overflow-y-auto">
-            {/* Form Title */}
-            <div className="mb-6">
-              <h1 className="text-2xl font-normal text-slate-900 mb-2">{title || 'Untitled Form'}</h1>
-              {description && <p className="text-slate-600">{description}</p>}
-            </div>
-
-            {/* Required indicator */}
-            <div className="text-xs text-slate-500 mb-6">* Indicates required question</div>
-
-            {/* Questions */}
-            <div className="space-y-6">
-              {settings.collectEmail && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-1">
-                    <Label className="text-base font-normal text-slate-900">
-                      Email <span className="text-red-500">*</span>
-                    </Label>
-                  </div>
-                  <Input 
-                    type="email" 
-                    placeholder="Your answer" 
-                    className="h-12 rounded-lg border-slate-300 focus:border-slate-500 focus:ring-0" 
-                  />
-                </div>
-              )}
-
-              {questions.map((question, index) => (
-                <div key={question.id} className="space-y-2">
-                  <div className="flex items-start gap-1">
-                    <Label className="text-base font-normal text-slate-900">
-                      {question.question || 'Untitled Question'}
-                      {question.required && <span className="text-red-500 ml-1">*</span>}
-                    </Label>
-                  </div>
-                  {question.description && (
-                    <p className="text-sm text-slate-500">{question.description}</p>
-                  )}
-
-                  {question.type === 'text' && (
-                    <Input
-                      placeholder="Your answer"
-                      className="h-12 rounded-lg border-slate-300 focus:border-slate-500 focus:ring-0"
-                    />
-                  )}
-
-                  {question.type === 'textarea' && (
-                    <Textarea
-                      placeholder="Your answer"
-                      rows={3}
-                      className="rounded-lg border-slate-300 focus:border-slate-500 focus:ring-0"
-                    />
-                  )}
-
-                  {question.type === 'number' && (
-                    <Input
-                      type="number"
-                      placeholder="Your answer"
-                      className="h-12 rounded-lg border-slate-300 focus:border-slate-500 focus:ring-0"
-                    />
-                  )}
-
-                  {question.type === 'email' && (
-                    <Input
-                      type="email"
-                      placeholder="Your answer"
-                      className="h-12 rounded-lg border-slate-300 focus:border-slate-500 focus:ring-0"
-                    />
-                  )}
-
-                  {question.type === 'date' && (
-                    <Input
-                      type="date"
-                      className="h-12 rounded-lg border-slate-300 focus:border-slate-500 focus:ring-0"
-                    />
-                  )}
-
-                  {(question.type === 'checkbox' || question.type === 'radio') && (
-                    <div className="space-y-2">
-                      {question.options?.map((option, optIdx) => (
-                        <div key={optIdx} className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all cursor-pointer">
-                          {question.type === 'radio' ? (
-                            <div className="w-5 h-5 rounded-full border-2 border-slate-400"></div>
-                          ) : (
-                            <div className="w-5 h-5 rounded border-2 border-slate-400"></div>
-                          )}
-                          <Label className="cursor-pointer font-normal text-slate-700">{option}</Label>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {question.type === 'select' && (
-                    <div className="p-3 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-between">
-                      <span className="text-slate-400">Select an option</span>
-                      <ChevronDown className="h-4 w-4 text-slate-400" />
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            {/* Submit Button */}
-            <div className="mt-8 pt-4 border-t border-slate-100">
-              <Button 
-                className="h-10 px-6 text-base bg-slate-900 hover:bg-slate-800 text-white rounded-full"
-                onClick={() => toast.info('Forms cannot be submitted in preview mode')}
-              >
-                Submit Response
-              </Button>
-            </div>
-
-            {/* Footer */}
-            <div className="mt-8 pt-4 border-t border-slate-100 text-xs text-slate-400">
-              <p>Never submit passwords through RippliFy Forms.</p>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       <AIAssistant 
         productName="Forms" 

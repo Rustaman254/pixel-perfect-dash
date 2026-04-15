@@ -15,6 +15,7 @@ import FormsDashboard from "./pages/forms/FormsDashboard";
 import FormBuilder from "./pages/forms/FormBuilder";
 import FormView from "./pages/forms/FormView";
 import FormResponses from "./pages/forms/FormResponses";
+import FormPreview from "./pages/forms/FormPreview";
 
 import { AppProvider, useAppContext } from "./contexts/AppContext";
 import AIAssistant from "./components/ai/AIAssistant";
@@ -61,6 +62,7 @@ const AppRoutes = () => {
         <Route path="/forms/new" element={<ProtectedRoute><FormBuilder /></ProtectedRoute>} />
         <Route path="/forms/edit/:formId" element={<ProtectedRoute><FormBuilder /></ProtectedRoute>} />
         <Route path="/forms/responses/:formId" element={<ProtectedRoute><FormResponses /></ProtectedRoute>} />
+        <Route path="/forms/preview/:formId" element={<ProtectedRoute><FormPreview /></ProtectedRoute>} />
 
         {/* Public Form View */}
         <Route path="/f/:slug" element={<FormView />} />
