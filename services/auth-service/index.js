@@ -10,6 +10,7 @@ import jwt from 'jsonwebtoken';
 import authRoutes from './authRoutes.js';
 import { migrate } from './migrate.js';
 import { processAgentRequest, createFormAgent } from './agentService.js';
+import { processUnifiedAgentRequest } from './unifiedAgent.js';
 
 dotenv.config({ path: path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '.env') });
 
@@ -59,6 +60,31 @@ app.use('/api/auth', authRoutes);
 import { createConnection } from '../shared/db.js';
 const authDb = () => createConnection('auth_db');
 
+// Unified agent chat (supports all Sokostack products)
+app.post('/api/agent/unified', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ message: 'No token' });
+    
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const { message } = req.body;
+    if (!message) return res.status(400).json({ message: 'Message required' });
+    
+    const result = await processUnifiedAgentRequest(decoded.id, message);
+    const lastMsg = result.messages[result.messages.length - 1];
+    
+    res.json({ 
+      message: lastMsg?.text || 'No response', 
+      messages: result.messages,
+      toolResults: result.toolResults
+    });
+  } catch (error) {
+    console.error('Unified Agent error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Original form-focused agent chat
 app.post('/api/agent/chat', async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];

@@ -56,7 +56,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({
         return;
       }
 
-      const res = await fetch("/api/agent/chat", {
+      const res = await fetch("/api/agent/unified", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,

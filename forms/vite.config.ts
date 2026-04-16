@@ -26,7 +26,7 @@ export default defineConfig(({ mode }) => ({
         changeOrigin: true,
       },
       "/api/agent": {
-        target: "http://127.0.0.1:3001",
+        target: "http://127.0.0.1:3006",
         changeOrigin: true,
       },
       "/api/": {

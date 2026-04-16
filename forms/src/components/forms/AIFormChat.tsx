@@ -164,7 +164,7 @@ const AIFormChat: React.FC<AIFormChatProps> = ({ onFormCreated }) => {
 
   const sendHttpRequest = async (message: string) => {
     const token = localStorage.getItem("auth_token");
-    const res = await fetch("/api/agent/chat", {
+    const res = await fetch("/api/agent/unified", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
