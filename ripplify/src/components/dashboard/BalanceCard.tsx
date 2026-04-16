@@ -6,15 +6,33 @@ import { useAppContext } from "@/contexts/AppContext";
 const BalanceCard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { links, payouts } = useAppContext();
+  const { links, payouts, wallets } = useAppContext();
 
-  const totalEarnings = links?.reduce((acc, link) => acc + (Number(link.totalEarnedValue) || 0), 0) || 0;
+  // Get actual wallet balance from IntaSend (KES wallet if available)
+  const kesWallet = wallets?.find((w: any) => w.currency_code === 'KES');
+  const walletBalance = kesWallet ? Number(kesWallet.balance) || 0 : 0;
+  const lockedBalance = kesWallet ? Number(kesWallet.locked_balance) || 0 : 0;
   
+  // Use IntaSend available balance if available, fallback to local wallet calculation
+  const intasendBalance = kesWallet?.intasend_balance?.available_balance;
+  const availableFromWallet = intasendBalance != null 
+    ? Number(intasendBalance) 
+    : (walletBalance - lockedBalance);
+  
+  // Fallback to calculated from links/payouts if no wallet
+  const totalEarnings = links?.reduce((acc, link) => acc + (Number(link.totalEarnedValue) || 0), 0) || 0;
   const withdrawnSum = payouts
     ?.filter(p => ["Processing", "Completed"].includes(p.status))
     .reduce((acc, p) => acc + (Number(p.amount) || 0), 0) || 0;
-    
-  const availableBalance = totalEarnings - withdrawnSum;
+  const calculatedBalance = totalEarnings - withdrawnSum;
+  
+  // Use IntaSend if available, then local wallet, then calculated
+  const availableBalance = intasendBalance != null 
+    ? Number(intasendBalance) 
+    : (walletBalance > 0 ? availableFromWallet : calculatedBalance);
+  const totalBalance = intasendBalance != null 
+    ? Number(kesWallet.intasend_balance.current_balance) 
+    : (walletBalance > 0 ? walletBalance : totalEarnings);
 
   const formatAmount = (amount: number) => {
     if (amount == null || isNaN(amount)) return "0.00";
@@ -37,7 +55,15 @@ const BalanceCard = () => {
           <p className="text-sm opacity-80 mb-1">Available for Payout</p>
           <div className="flex items-baseline gap-3">
             <h2 className="text-2xl md:text-3xl font-bold">KES {formatAmount(availableBalance)}</h2>
-            <span className="text-xs font-medium text-emerald-300">Total Revenue: KES {formatAmount(totalEarnings)}</span>
+            {intasendBalance != null && (
+              <span className="text-xs font-medium text-emerald-300">IntaSend</span>
+            )}
+            {intasendBalance == null && walletBalance > 0 && (
+              <span className="text-xs font-medium text-emerald-300">Wallet: KES {formatAmount(totalBalance)}</span>
+            )}
+            {intasendBalance == null && walletBalance === 0 && totalEarnings > 0 && (
+              <span className="text-xs font-medium text-emerald-300">Total Revenue: KES {formatAmount(totalEarnings)}</span>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -56,11 +82,11 @@ const BalanceCard = () => {
             <span className="hidden sm:inline">Withdraw Now</span>
           </button>
           <button
-            onClick={() => handleAction("Request Payment")}
+            onClick={() => navigate("/wallets")}
             className="flex items-center gap-1.5 bg-primary-foreground/10 hover:bg-primary-foreground/20 text-primary-foreground text-sm px-3 md:px-4 py-2 rounded-lg backdrop-blur-sm transition-colors"
           >
             <ArrowDownLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">Request</span>
+            <span className="hidden sm:inline">Wallets</span>
           </button>
           <button
             onClick={() => handleAction("More Options")}

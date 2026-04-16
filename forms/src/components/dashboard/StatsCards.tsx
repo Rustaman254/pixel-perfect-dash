@@ -3,11 +3,15 @@ import { useAppContext } from "@/contexts/AppContext";
 
 const StatsCards = () => {
   const navigate = useNavigate();
-  const { transactions, links } = useAppContext();
+  const { transactions, links, walletStats } = useAppContext();
 
-  const mpesaPayments = transactions.filter(t => t.type === 'Payment' && t.status === 'Completed').length;
-  const mpesaVolume = transactions.filter(t => t.type === 'Payment' && t.status === 'Completed')
+  // Use IntaSend wallet stats if available, fallback to local transactions
+  const mpesaVolume = walletStats?.mpesaVolume ?? transactions
+    .filter(t => t.type === 'Payment' && t.status === 'Completed')
     .reduce((acc, t) => acc + t.amount, 0);
+    
+  const mpesaPayments = walletStats?.mpesaPayments ?? transactions
+    .filter(t => t.type === 'Payment' && t.status === 'Completed').length;
 
   const activeLinks = links.filter(l => l.status === 'Active').length;
   const totalClicks = links.reduce((acc, l) => acc + l.clicks, 0);

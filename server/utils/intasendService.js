@@ -263,6 +263,57 @@ const checkPayoutStatus = async (trackingId) => {
     }
 };
 
+/**
+ * Get all wallets from IntaSend
+ */
+const getWallets = async () => {
+    try {
+        const intasend = getClient();
+        const wallets = intasend.wallets();
+
+        const response = await wallets.list();
+        console.log('IntaSend Wallets Response:', JSON.stringify(response, null, 2));
+        return response;
+    } catch (error) {
+        console.error('IntaSend Get Wallets Error:', error);
+        throw new Error(error?.message || 'Get wallets failed');
+    }
+};
+
+/**
+ * Get wallet details by ID
+ */
+const getWalletDetails = async (walletId) => {
+    try {
+        const intasend = getClient();
+        const wallets = intasend.wallets();
+
+        const response = await wallets.details(walletId);
+        console.log('IntaSend Wallet Details Response:', JSON.stringify(response, null, 2));
+        return response;
+    } catch (error) {
+        console.error('IntaSend Get Wallet Details Error:', error);
+        throw new Error(error?.message || 'Get wallet details failed');
+    }
+};
+
+/**
+ * Get wallet transactions (for M-Pesa volume)
+ */
+const getWalletTransactions = async (walletId, period = 'month') => {
+    try {
+        const intasend = getClient();
+        const wallets = intasend.wallets();
+
+        const response = await wallets.transactions(walletId, period);
+        console.log('IntaSend Wallet Transactions Response:', JSON.stringify(response, null, 2));
+        return response;
+    } catch (error) {
+        console.error('IntaSend Get Wallet Transactions Error:', error);
+        throw new Error(error?.message || 'Get wallet transactions failed');
+    }
+};
+
 export default {
     mpesaStkPush,
     checkoutCharge,
@@ -271,4 +322,7 @@ export default {
     bankPayout,
     intasendTransfer,
     checkPayoutStatus,
+    getWallets,
+    getWalletDetails,
+    getWalletTransactions,
 };

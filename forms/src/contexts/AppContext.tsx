@@ -111,6 +111,8 @@ interface AppContextType {
     setPayouts: React.Dispatch<React.SetStateAction<Payout[]>>;
     wallets: Wallet[];
     setWallets: React.Dispatch<React.SetStateAction<Wallet[]>>;
+    walletStats: { mpesaVolume: number; mpesaPayments: number; wallet: any } | null;
+    setWalletStats: React.Dispatch<React.SetStateAction<{ mpesaVolume: number; mpesaPayments: number; wallet: any } | null>>;
     transactions: Transaction[];
     setTransactions: React.Dispatch<React.SetStateAction<Transaction[]>>;
     isAuthenticated: boolean;
@@ -129,6 +131,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [payouts, setPayouts] = useState<Payout[]>([]);
     const [wallets, setWallets] = useState<Wallet[]>([]);
+    const [walletStats, setWalletStats] = useState<{ mpesaVolume: number; mpesaPayments: number; wallet: any } | null>(null);
     const [userProfile, setUserProfile] = useState<UserProfile | null>(() => {
         const saved = localStorage.getItem('ripplify_profile');
         return saved ? JSON.parse(saved) : null;
@@ -136,7 +139,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
     const [featureFlags, setFeatureFlags] = useState<Record<string, boolean>>({});
 
-    const validateToken = async (): Promise<{ valid: boolean; user?: Partial<UserProfile> }> => {
+    const validateToken = async (): Promise<{ valid: boolean; user?: Partial<UserProfile>; features?: Record<string, boolean> }> => {
         const token = localStorage.getItem('auth_token');
         if (!token) return { valid: false };
         
@@ -154,7 +157,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
             }
             
             const data = await res.json();
-            return { valid: true, user: data.user || data };
+            const user = data.user || data;
+            const features = data.features;
+            return { valid: true, user, features };
         } catch {
             return { valid: false };
         }
@@ -171,6 +176,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
             const validation = await validateToken();
             if (validation.valid && validation.user) {
                 setUserProfile(validation.user as UserProfile);
+                if (validation.features) {
+                    setFeatureFlags(validation.features);
+                }
                 setIsAuthenticated(true);
             } else {
                 setIsAuthenticated(false);
@@ -212,12 +220,13 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     const refreshData = async () => {
         if (!isAuthenticated) return;
         try {
-            const [linksData, transactionsData, payoutsData, walletsData, profileData] = await Promise.allSettled([
+            const [linksData, transactionsData, payoutsData, walletsData, profileData, walletStatsData] = await Promise.allSettled([
                 fetchWithAuth('/links/my'),
                 fetchWithAuth('/transactions/my'),
                 fetchWithAuth('/payouts/my'),
                 fetchWithAuth('/wallets'),
-                fetchWithAuth('/auth/me')
+                fetchWithAuth('/auth/me'),
+                fetchWithAuth('/wallets/stats')
             ]);
 
             const linksResult = linksData.status === 'fulfilled' ? linksData.value : [];
@@ -225,6 +234,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
             const payoutsResult = payoutsData.status === 'fulfilled' ? payoutsData.value : [];
             const walletsResult = walletsData.status === 'fulfilled' ? walletsData.value : [];
             const profileResult = profileData.status === 'fulfilled' ? profileData.value : null;
+            const walletStatsResult = walletStatsData.status === 'fulfilled' ? walletStatsData.value : null;
 
             const formattedLinks = linksResult.map((l: any) => ({
                 ...l,
@@ -239,10 +249,13 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
             setTransactions(transactionsResult);
             setPayouts(payoutsResult);
             setWallets(walletsResult);
-            if (profileResult && profileResult.user) {
-                setUserProfile(profileResult.user);
-            } else if (profileResult) {
-                setUserProfile(profileResult);
+            setWalletStats(walletStatsResult);
+            if (profileResult) {
+                const user = profileResult;
+                setUserProfile(user);
+                if (profileResult.features) {
+                    setFeatureFlags(profileResult.features);
+                }
             }
         } catch (error) {
             console.error("Error refreshing data:", error);
@@ -270,6 +283,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
             setTransactions([]);
             setPayouts([]);
             setWallets([]);
+            setWalletStats(null);
             setFeatureFlags({});
         }
     }, [isAuthenticated]);
@@ -298,6 +312,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         setTransactions([]);
         setPayouts([]);
         setWallets([]);
+        setWalletStats(null);
         localStorage.removeItem('auth_token');
         localStorage.removeItem('ripplify_profile');
         syncToSSO(null, null);
@@ -309,6 +324,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
             transactions, setTransactions,
             payouts, setPayouts,
             wallets, setWallets,
+            walletStats, setWalletStats,
             userProfile, setUserProfile,
             isAuthenticated, setIsAuthenticated,
             login, logout, refreshData,
