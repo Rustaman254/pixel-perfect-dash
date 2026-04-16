@@ -78,15 +78,15 @@ export const ripplifyService = {
     userToken: authHeader?.replace('Bearer ', ''),
   }),
   getPaymentLink: (linkId) => callService('ripplify', `/api/payment-links/${linkId}`),
-  getPaymentLinkStatus: (linkId) => callService('ripplify', `/api/payment-links/${linkId}/status`),
-  createShopalizeCheckout: (checkoutData, authHeader) => callService('ripplify', '/api/ripplify/shopalize/checkout/shopalize', {
-    method: 'POST',
-    body: checkoutData,
-    userToken: authHeader?.replace('Bearer ', ''),
-  }),
-  getEnabledPaymentMethods: (userId, authHeader) => callService('ripplify', `/api/ripplify/payment-methods?userId=${userId}`, {
-    userToken: authHeader?.replace('Bearer ', ''),
-  }),
+};
+
+export const adminService = {
+  getFeatureFlags: () => callService('admin', '/api/admin/feature-flags'),
+  getFeatureFlag: (key) => callService('admin', `/api/admin/feature-flags?key=${key}`),
+  toggleFeatureFlag: (id) => callService('admin', `/api/admin/feature-flags/${id}/toggle`, { method: 'PATCH' }),
+  createFeatureFlag: (data) => callService('admin', '/api/admin/feature-flags', { method: 'POST', body: data }),
+  updateFeatureFlag: (id, data) => callService('admin', `/api/admin/feature-flags/${id}`, { method: 'PUT', body: data }),
+  deleteFeatureFlag: (id) => callService('admin', `/api/admin/feature-flags/${id}`, { method: 'DELETE' }),
 };
 
 export const watchtowerService = {

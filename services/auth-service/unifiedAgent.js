@@ -29,89 +29,231 @@ const generateSlug = (title) => {
   return title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") + "-" + Math.random().toString(36).substr(2, 6);
 };
 
+const generateQuestionId = () => `q_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
 const generateQuestionsFromPrompt = (userPrompt) => {
   const titleLower = userPrompt.toLowerCase();
   const questions = [];
   
+  // Check if user provided actual questions in their prompt (formatted list)
+  // This handles cases where user pastes a full form with questions and options
+  const lines = userPrompt.split('\n').filter(line => line.trim());
+  const hasStructuredQuestions = lines.some(line => 
+    line.includes('?') || 
+    line.includes('Select all') || 
+    line.includes('Select') ||
+    /^[A-Z]/.test(line.trim()) // Starts with uppercase - likely a question
+  );
+  
+  if (hasStructuredQuestions) {
+    // Parse the user's provided questions
+    let currentQuestion = null;
+    let currentOptions = [];
+    let currentRequired = true;
+    let isCollectingOptions = false;
+    
+    for (const line of lines) {
+      const trimmed = line.trim();
+      
+      // Skip section headers and empty lines
+      if (!trimmed || trimmed.length < 2) continue;
+      if (trimmed.endsWith(':') && !trimmed.includes('?')) continue;
+      if (trimmed.length > 100 && !trimmed.includes('?')) continue; // Skip long non-question lines
+      
+      // Check if this is a new question (contains ?)
+      if (trimmed.includes('?')) {
+        // Save previous question if exists
+        if (currentQuestion && currentQuestion.length > 0) {
+          questions.push({
+            id: generateQuestionId(),
+            type: currentOptions.length > 0 ? (currentOptions.length > 3 ? 'checkbox' : 'radio') : 'text',
+            question: currentQuestion,
+            required: currentRequired,
+            options: currentOptions.length > 0 ? currentOptions : undefined
+          });
+        }
+        
+        // Start new question
+        currentQuestion = trimmed;
+        currentOptions = [];
+        currentRequired = true;
+        isCollectingOptions = true;
+      } else if (isCollectingOptions && currentQuestion) {
+        // This is an option for the current question
+        // Options can be: with/without dash, or short lines after the question
+        const option = trimmed.replace(/^[-\d.)]+\.?\s*/, '').replace(/^[•]\s*/, '');
+        
+        // Skip if it's a new section header (ends with :)
+        if (trimmed.endsWith(':') || trimmed.length > 60) {
+          isCollectingOptions = false;
+          continue;
+        }
+        
+        // If it's a valid option (short, not a question)
+        if (option.length > 0 && option.length < 60) {
+          currentOptions.push(option);
+        }
+      }
+    }
+    
+    // Don't forget the last question
+    if (currentQuestion) {
+      questions.push({
+        id: `q_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        type: currentOptions.length > 0 ? (currentOptions.length > 3 ? 'checkbox' : 'radio') : 'text',
+        question: currentQuestion,
+        required: currentRequired,
+        options: currentOptions.length > 0 ? currentOptions : undefined
+      });
+    }
+    
+    // If we successfully parsed questions, return them
+    if (questions.length > 3) {
+      return questions;
+    }
+  }
+  
+  // Fallback to keyword-based generation for simple prompts
   if (titleLower.includes("register") || titleLower.includes("signup") || titleLower.includes("application")) {
     questions.push(
-      { id: uuidv4().substr(0, 8), type: "text", question: "Full Name", required: true },
-      { id: uuidv4().substr(0, 8), type: "email", question: "Email Address", required: true },
-      { id: uuidv4().substr(0, 8), type: "text", question: "Phone Number", required: true }
+      { id: generateQuestionId(), type: "text", question: "Full Name", required: true },
+      { id: generateQuestionId(), type: "email", question: "Email Address", required: true },
+      { id: generateQuestionId(), type: "text", question: "Phone Number", required: true }
     );
   } else if (titleLower.includes("contact") || titleLower.includes("inquiry")) {
     questions.push(
-      { id: uuidv4().substr(0, 8), type: "text", question: "Your Full Name", required: true },
-      { id: uuidv4().substr(0, 8), type: "email", question: "Your Email Address", required: true },
-      { id: uuidv4().substr(0, 8), type: "text", question: "Subject / Topic", required: true }
+      { id: generateQuestionId(), type: "text", question: "Your Full Name", required: true },
+      { id: generateQuestionId(), type: "email", question: "Your Email Address", required: true },
+      { id: generateQuestionId(), type: "text", question: "Subject / Topic", required: true }
     );
   } else {
     questions.push(
-      { id: uuidv4().substr(0, 8), type: "text", question: "Your Name", required: true },
-      { id: uuidv4().substr(0, 8), type: "email", question: "Your Email", required: true }
+      { id: generateQuestionId(), type: "text", question: "Your Name", required: true },
+      { id: generateQuestionId(), type: "email", question: "Your Email", required: true }
     );
   }
   
   if (titleLower.includes("feedback") || titleLower.includes("review") || titleLower.includes("rate")) {
     questions.push(
-      { id: uuidv4().substr(0, 8), type: "radio", question: "How would you rate your experience?", required: true, options: ["Excellent", "Good", "Average", "Poor"] },
-      { id: uuidv4().substr(0, 8), type: "textarea", question: "What did you like most?", required: false },
-      { id: uuidv4().substr(0, 8), type: "textarea", question: "What areas could we improve?", required: false }
+      { id: generateQuestionId(), type: "radio", question: "How would you rate your experience?", required: true, options: ["Excellent", "Good", "Average", "Poor"] },
+      { id: generateQuestionId(), type: "textarea", question: "What did you like most?", required: false },
+      { id: generateQuestionId(), type: "textarea", question: "What areas could we improve?", required: false }
     );
   }
   
   if (titleLower.includes("order") || titleLower.includes("purchase") || titleLower.includes("buy") || titleLower.includes("shop")) {
     questions.push(
-      { id: uuidv4().substr(0, 8), type: "select", question: "What would you like to order?", required: true, options: ["Product A", "Product B", "Product C", "Other"] },
-      { id: uuidv4().substr(0, 8), type: "number", question: "Quantity", required: true },
-      { id: uuidv4().substr(0, 8), type: "text", question: "Delivery Address", required: true }
+      { id: generateQuestionId(), type: "select", question: "What would you like to order?", required: true, options: ["Product A", "Product B", "Product C", "Other"] },
+      { id: generateQuestionId(), type: "number", question: "Quantity", required: true },
+      { id: generateQuestionId(), type: "text", question: "Delivery Address", required: true }
     );
   }
   
   if (titleLower.includes("event") || titleLower.includes("rsvp") || titleLower.includes("party") || titleLower.includes("meeting")) {
     questions.push(
-      { id: uuidv4().substr(0, 8), type: "radio", question: "Will you attend?", required: true, options: ["Yes, I'll attend", "No, I can't attend", "Maybe"] },
-      { id: uuidv4().substr(0, 8), type: "number", question: "Number of guests", required: false },
-      { id: uuidv4().substr(0, 8), type: "textarea", question: "Any special requirements?", required: false }
+      { id: generateQuestionId(), type: "radio", question: "Will you attend?", required: true, options: ["Yes, I'll attend", "No, I can't attend", "Maybe"] },
+      { id: generateQuestionId(), type: "number", question: "Number of guests", required: false },
+      { id: generateQuestionId(), type: "textarea", question: "Any special requirements?", required: false }
     );
   }
   
-  if (titleLower.includes("survey") || titleLower.includes("poll")) {
+  if (titleLower.includes("survey") || titleLower.includes("poll") || titleLower.includes("questionnaire")) {
     questions.push(
-      { id: uuidv4().substr(0, 8), type: "radio", question: "How often do you use our service?", required: true, options: ["Daily", "Weekly", "Monthly", "Rarely"] },
-      { id: uuidv4().substr(0, 8), type: "checkbox", question: "Which features do you use most?", required: false, options: ["Feature 1", "Feature 2", "Feature 3", "Feature 4"] },
-      { id: uuidv4().substr(0, 8), type: "number", question: "On a scale of 1-10, how likely are you to recommend us?", required: true }
+      { id: generateQuestionId(), type: "radio", question: "How often do you use our service?", required: true, options: ["Daily", "Weekly", "Monthly", "Rarely"] },
+      { id: generateQuestionId(), type: "checkbox", question: "Which features do you use most?", required: false, options: ["Feature 1", "Feature 2", "Feature 3", "Feature 4"] },
+      { id: generateQuestionId(), type: "number", question: "On a scale of 1-10, how likely are you to recommend us?", required: true },
+      { id: generateQuestionId(), type: "select", question: "What is your primary goal?", required: false, options: ["Personal", "Business", "Education", "Other"] },
+      { id: generateQuestionId(), type: "textarea", question: "What improvements would you like to see?", required: false },
+      { id: generateQuestionId(), type: "textarea", question: "Any additional comments?", required: false }
     );
   }
   
   if (titleLower.includes("job") || titleLower.includes("career") || titleLower.includes("apply") || titleLower.includes("position")) {
     questions.push(
-      { id: uuidv4().substr(0, 8), type: "text", question: "Current Position / Job Title", required: true },
-      { id: uuidv4().substr(0, 8), type: "number", question: "Years of Experience", required: true },
-      { id: uuidv4().substr(0, 8), type: "textarea", question: "Why are you interested in this position?", required: true },
-      { id: uuidv4().substr(0, 8), type: "text", question: "LinkedIn Profile URL", required: false }
+      { id: generateQuestionId(), type: "text", question: "Current Position / Job Title", required: true },
+      { id: generateQuestionId(), type: "number", question: "Years of Experience", required: true },
+      { id: generateQuestionId(), type: "textarea", question: "Why are you interested in this position?", required: true },
+      { id: generateQuestionId(), type: "text", question: "LinkedIn Profile URL", required: false }
     );
   }
   
   if (titleLower.includes("booking") || titleLower.includes("reservation") || titleLower.includes("schedule")) {
     questions.push(
-      { id: uuidv4().substr(0, 8), type: "date", question: "Preferred Date", required: true },
-      { id: uuidv4().substr(0, 8), type: "select", question: "Preferred Time", required: true, options: ["Morning (9am-12pm)", "Afternoon (12pm-4pm)", "Evening (4pm-6pm)"] },
-      { id: uuidv4().substr(0, 8), type: "number", question: "Number of People", required: false }
+      { id: generateQuestionId(), type: "date", question: "Preferred Date", required: true },
+      { id: generateQuestionId(), type: "select", question: "Preferred Time", required: true, options: ["Morning (9am-12pm)", "Afternoon (12pm-4pm)", "Evening (4pm-6pm)"] },
+      { id: generateQuestionId(), type: "number", question: "Number of People", required: false }
+    );
+  }
+  
+  if (titleLower.includes("restaurant") || titleLower.includes("food") || titleLower.includes("meal") || titleLower.includes("dining")) {
+    questions.push(
+      { id: generateQuestionId(), type: "select", question: "How was the food quality?", required: true, options: ["Excellent", "Good", "Average", "Poor"] },
+      { id: generateQuestionId(), type: "select", question: "How was the service?", required: true, options: ["Excellent", "Good", "Average", "Poor"] },
+      { id: generateQuestionId(), type: "radio", question: "Would you recommend us to a friend?", required: true, options: ["Definitely", "Probably", "Unlikely"] },
+      { id: generateQuestionId(), type: "textarea", question: "Any specific feedback on your meal?", required: false }
+    );
+  }
+  
+  if (titleLower.includes("hotel") || titleLower.includes("accommodation") || titleLower.includes("stay")) {
+    questions.push(
+      { id: generateQuestionId(), type: "date", question: "Check-in Date", required: true },
+      { id: generateQuestionId(), type: "date", question: "Check-out Date", required: true },
+      { id: generateQuestionId(), type: "number", question: "Number of Guests", required: true },
+      { id: generateQuestionId(), type: "select", question: "Room Type", required: true, options: ["Standard", "Deluxe", "Suite", "Family"] },
+      { id: generateQuestionId(), type: "textarea", question: "Special Requests", required: false }
+    );
+  }
+  
+  if (titleLower.includes("quiz") || titleLower.includes("test") || titleLower.includes("exam")) {
+    questions.push(
+      { id: generateQuestionId(), type: "text", question: "Your Full Name", required: true },
+      { id: generateQuestionId(), type: "email", question: "Email Address", required: true },
+      { id: generateQuestionId(), type: "radio", question: "Question 1: [Add your question here]", required: true, options: ["Option A", "Option B", "Option C", "Option D"] }
+    );
+  }
+  
+  if (titleLower.includes("support") || titleLower.includes("help") || titleLower.includes("ticket")) {
+    questions.push(
+      { id: generateQuestionId(), type: "text", question: "Your Name", required: true },
+      { id: generateQuestionId(), type: "email", question: "Email Address", required: true },
+      { id: generateQuestionId(), type: "select", question: "Issue Category", required: true, options: ["Technical", "Billing", "General Inquiry", "Feature Request"] },
+      { id: generateQuestionId(), type: "textarea", question: "Describe your issue in detail", required: true },
+      { id: generateQuestionId(), type: "text", question: "Order/Reference Number (if applicable)", required: false }
+    );
+  }
+  
+  if (titleLower.includes("lead") || titleLower.includes("contact") || titleLower.includes("get in touch")) {
+    questions.push(
+      { id: generateQuestionId(), type: "text", question: "Full Name", required: true },
+      { id: generateQuestionId(), type: "email", question: "Email Address", required: true },
+      { id: generateQuestionId(), type: "text", question: "Company Name", required: false },
+      { id: generateQuestionId(), type: "text", question: "Phone Number", required: false },
+      { id: generateQuestionId(), type: "textarea", question: "How can we help you?", required: true }
+    );
+  }
+  
+  if (titleLower.includes("product") && (titleLower.includes("review") || titleLower.includes("rating"))) {
+    questions.push(
+      { id: generateQuestionId(), type: "text", question: "Your Name", required: true },
+      { id: generateQuestionId(), type: "email", question: "Email Address", required: true },
+      { id: generateQuestionId(), type: "select", question: "Overall Rating", required: true, options: ["5 Stars", "4 Stars", "3 Stars", "2 Stars", "1 Star"] },
+      { id: generateQuestionId(), type: "textarea", question: "What did you like about the product?", required: false },
+      { id: generateQuestionId(), type: "textarea", question: "What could be improved?", required: false }
     );
   }
   
   if (questions.length < 3) {
     questions.push(
-      { id: uuidv4().substr(0, 8), type: "textarea", question: "Any additional information or comments?", required: false }
+      { id: generateQuestionId(), type: "textarea", question: "Any additional information or comments?", required: false }
     );
   }
   
   return questions.filter((q, index, self) => index === self.findIndex((t) => t.question === q.question));
 };
 
-export const createUnifiedAgent = (userId) => {
+export const createUnifiedAgent = (userId, context = {}) => {
   const store = new PostgresStore(userId);
+  const { formId, currentForm } = context;
 
   const model = createAdapter({
     provider: "openrouter",
@@ -139,6 +281,17 @@ IMPORTANT SECURITY RULES:
 - NEVER show data from other users - always filter by userId
 - When listing items, use userId=${userId} to filter
 - Never reveal information about other users
+
+IMPORTANT: When users ask to create a form, YOU MUST generate questions that are RELEVANT to what the user is requesting. Do NOT use generic template questions.
+
+Example of what to do:
+- If user says "Create a customer feedback form", generate questions like: "How would you rate your experience?", "What did you like most?", "What can we improve?"
+- If user says "Create an event registration form", generate questions like: "What is your name?", "Which event are you attending?", "What is your email?"
+- If user says "Create a job application form", generate questions like: "What is your full name?", "What is your email?", "What is your phone number?", "What is your LinkedIn profile?", "Describe your experience"
+
+NEVER use generic questions like "What is your full name?" for a feedback form. Always generate questions that make sense for the specific form type.
+
+When users ask to create a form, YOU MUST use the create_form tool with the user's original request in the 'userPrompt' field so contextual questions are generated automatically. Do NOT ask users to manually create questions - the tool generates them automatically.
 
 AVAILABLE TOOLS BY PRODUCT:
 
@@ -195,24 +348,45 @@ AVAILABLE TOOLS BY PRODUCT:
 
 When responding:
 - Be conversational and helpful
+- If the user provides a form description or content (like questions in a list), use it to generate questions - copy the exact question text from their input
+- ALWAYS use formId to update an existing form when provided - use update_form tool, not create_form
 - Summarize key information for the user
 - When creating items, confirm what was created
 - Always use the correct userId when querying data
 
-User: userId=${userId}`,
+Context: userId=${userId}`,
     compaction_config: { compaction_instructions: "Quick summary of user request and actions taken." },
   })
 
   // === FORMS ===
   .fold({
     name: "create_form",
-    description: "Create a new form with contextual questions based on user needs",
+    description: "Create a new form with contextual questions based on user needs. IMPORTANT: If formId is provided in context, use update_form instead to edit the existing form! Pass userPrompt for contextual questions.",
     inputSchema: z.object({ 
       title: z.string(), 
       description: z.string().optional(),
-      userPrompt: z.string().optional()
+      userPrompt: z.string().describe("The original user request - this is CRITICAL for generating relevant questions")
     }),
     async do(input) {
+      // If formId exists in context, use update_form instead
+      if (formId && currentForm) {
+        const userPrompt = input.userPrompt || input.title;
+        const questions = generateQuestionsFromPrompt(userPrompt);
+        
+        const authDb = getAuthDb();
+        const existing = await authDb("forms").where("id", formId).where("userId", userId).first();
+        if (existing) {
+          await authDb("forms").where("id", formId).update({
+            title: input.title,
+            description: input.description || "",
+            questions: JSON.stringify(questions),
+            updatedAt: new Date()
+          });
+          
+          return { status: "success", data: { id: formId, slug: existing.slug, title: input.title, questions, questionsCount: questions.length, type: "form", action: "updated" } };
+        }
+      }
+      
       const userPrompt = input.userPrompt || input.title;
       const questions = generateQuestionsFromPrompt(userPrompt);
       
@@ -228,7 +402,7 @@ User: userId=${userId}`,
         slug
       }).returning(["id", "slug", "title"]);
       
-      return { status: "success", data: { ...result[0], questionsCount: questions.length, type: "form" } };
+      return { status: "success", data: { ...result[0], questions, questionsCount: questions.length, type: "form", action: "created" } };
     },
   })
 
@@ -864,7 +1038,7 @@ User: userId=${userId}`,
 };
 
 export const processUnifiedAgentRequest = async (userId, message, context = {}) => {
-  const agent = createUnifiedAgent(userId);
+  const agent = createUnifiedAgent(userId, context);
   return agent.processRequest(message);
 };
 
