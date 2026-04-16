@@ -9,6 +9,13 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { 
   Plus, 
   Trash2, 
@@ -157,8 +164,9 @@ const FormBuilder = () => {
   };
 
   const addQuestion = (type: QuestionType) => {
+    const newId = `q_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const newQuestion: Question = {
-      id: `q_${Date.now()}`,
+      id: newId,
       type,
       question: '',
       required: false,
@@ -410,10 +418,27 @@ const FormBuilder = () => {
                           <p className="font-medium text-slate-800 line-clamp-1">
                             {question.question || 'Untitled Question'}
                           </p>
-                          <p className="text-xs text-slate-500">
-                            {questionTypes.find(t => t.type === question.type)?.label}
-                            {question.required && <span className="text-red-500 ml-1">• Required</span>}
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <Select
+                              value={question.type}
+                              onValueChange={(value: QuestionType) => updateQuestion(question.id, { type: value })}
+                            >
+                              <SelectTrigger className="h-6 w-auto px-2 py-0 text-xs text-slate-500 border-none bg-transparent hover:bg-slate-100 rounded font-normal">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {questionTypes.map((qt) => (
+                                  <SelectItem key={qt.type} value={qt.type} className="text-sm">
+                                    <div className="flex items-center gap-2">
+                                      <qt.icon className="h-4 w-4" />
+                                      {qt.label}
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            {question.required && <span className="text-red-500 text-xs">• Required</span>}
+                          </div>
                         </div>
                       </div>
 

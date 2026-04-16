@@ -10,6 +10,7 @@ import jwt from 'jsonwebtoken';
 import authRoutes from './authRoutes.js';
 import { migrate } from './migrate.js';
 import { processAgentRequest, createFormAgent } from './agentService.js';
+import { processUnifiedAgentRequest } from './unifiedAgent.js';
 
 dotenv.config({ path: path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '.env') });
 
@@ -57,8 +58,90 @@ app.use('/api/auth', authRoutes);
 
 // Agent routes
 import { createConnection } from '../shared/db.js';
+import { adminService } from '../shared/serviceClient.js';
 const authDb = () => createConnection('auth_db');
 
+// Check if feature flag is enabled
+const isFeatureEnabled = async (key) => {
+  try {
+    const flags = await adminService.getFeatureFlags();
+    const flag = flags.find(f => f.key === key);
+    return flag?.isEnabled ?? true;
+  } catch (e) {
+    console.error('Feature flag check failed:', e.message);
+    return true;
+  }
+};
+
+// Unified agent chat (supports all Sokostack products)
+app.post('/api/agent/unified', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ message: 'No token' });
+    
+    // Check feature flag
+    const isEnabled = await isFeatureEnabled('unified_agent');
+    if (!isEnabled) {
+      return res.status(403).json({ message: 'Unified AI Agent is currently disabled' });
+    }
+    
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const { message, formId, currentForm } = req.body;
+    if (!message) return res.status(400).json({ message: 'Message required' });
+    
+    const context = { formId, currentForm };
+    const result = await processUnifiedAgentRequest(decoded.id, message, context);
+    const lastMsg = result.messages[result.messages.length - 1];
+    
+    // Extract progress information from messages (for form creation)
+    const progress = {};
+    const progressMessages = [];
+    
+    for (const msg of result.messages) {
+      if (msg.text?.includes('Setting title:')) {
+        const match = msg.text.match(/Setting title: "([^"]+)"/);
+        if (match) progress.title = match[1];
+        progressMessages.push({ type: 'title', value: match[1] });
+      }
+      if (msg.text?.includes('Adding description:')) {
+        const match = msg.text.match(/Adding description: "([^"]+)"/);
+        if (match) progress.description = match[1];
+        progressMessages.push({ type: 'description', value: match[1] });
+      }
+      if (msg.text?.includes('Adding question')) {
+        const match = msg.text.match(/Adding question \d+: "([^"]+)" \(([^)]+)\)/);
+        if (match) {
+          if (!progress.questions) progress.questions = [];
+          progress.questions.push({ question: match[1], type: match[2] });
+          progressMessages.push({ type: 'question', value: match[1], qtype: match[2] });
+        }
+      }
+      if (msg.text?.includes('Form created') || msg.text?.includes('Form updated')) {
+        progressMessages.push({ type: 'complete', value: msg.text });
+      }
+    }
+    
+    // If form was created/updated, include the form data
+    if (result.toolResults?.create_form || result.toolResults?.update_form) {
+      const formResult = result.toolResults?.update_form || result.toolResults?.create_form;
+      if (formResult?.data) {
+        progress.form = formResult.data;
+      }
+    }
+    
+    res.json({ 
+      message: lastMsg?.text || 'No response', 
+      messages: result.messages,
+      toolResults: result.toolResults,
+      progress: Object.keys(progress).length > 0 ? progress : null
+    });
+  } catch (error) {
+    console.error('Unified Agent error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Original form-focused agent chat
 app.post('/api/agent/chat', async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];

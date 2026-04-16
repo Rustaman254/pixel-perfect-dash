@@ -58,6 +58,31 @@ export async function migrate() {
     console.log('Admin settings seeded.');
   }
 
+  // Feature flags table
+  await createIfNotExists('feature_flags', (t) => {
+    t.increments('id').primary();
+    t.string('key').unique().notNullable();
+    t.string('name').notNullable();
+    t.text('description');
+    t.boolean('isEnabled').defaultTo(true);
+    t.string('category').defaultTo('general');
+    t.timestamp('createdAt').defaultTo(db.fn.now());
+    t.timestamp('updatedAt').defaultTo(db.fn.now());
+  });
+
+  // Seed default feature flags including unified agent
+  const flagsCount = await db('feature_flags').count('id as count').first();
+  if (parseInt(flagsCount.count) === 0) {
+    await db('feature_flags').insert([
+      { key: 'unified_agent', name: 'Unified AI Agent', description: 'Enable unified AI agent across all services', isEnabled: true, category: 'ai' },
+      { key: 'ai_forms', name: 'AI Form Builder', description: 'AI-powered form creation', isEnabled: true, category: 'ai' },
+      { key: 'watchtower_analytics', name: 'Watchtower Analytics', description: 'Visitor analytics and session tracking', isEnabled: true, category: 'analytics' },
+      { key: 'shopalize_stores', name: 'Shopalize E-commerce', description: 'E-commerce store functionality', isEnabled: true, category: 'ecommerce' },
+      { key: 'payment_links', name: 'Payment Links', description: 'Create and manage payment links', isEnabled: true, category: 'payments' },
+    ]);
+    console.log('Feature flags seeded.');
+  }
+
   console.log('admin_db migrations complete.');
 }
 
