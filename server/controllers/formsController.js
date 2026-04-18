@@ -257,7 +257,7 @@ export const getFormResponses = async (req, res) => {
 
     const responses = await db('form_responses')
       .where('formid', id)
-      .orderBy('createdAt', 'desc')
+      .orderBy('submittedAt', 'desc')
       .select('*');
 
     // Parse answers (handle both string and JSONB object)
@@ -266,7 +266,7 @@ export const getFormResponses = async (req, res) => {
         try { response.answers = JSON.parse(response.answers); } 
         catch { response.answers = {}; }
       }
-      response.submittedAt = response.createdAt;
+      response.submittedAt = response.submittedAt;
     }
 
     form.questions = typeof form.questions === 'string' ? JSON.parse(form.questions) : form.questions;
