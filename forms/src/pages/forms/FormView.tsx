@@ -67,6 +67,19 @@ const FormView = () => {
       if (res.ok) {
         const data = await res.json();
         setForm(data);
+        
+        // Update meta tags for social sharing
+        if (data.title) {
+          document.title = `${data.title} - RippliFy Forms`;
+          const metaTitle = document.querySelector('meta[property="og:title"]');
+          const metaDesc = document.querySelector('meta[property="og:description"]');
+          const twitterTitle = document.querySelector('meta[name="twitter:title"]');
+          const twitterDesc = document.querySelector('meta[name="twitter:description"]');
+          if (metaTitle) metaTitle.setAttribute('content', data.title);
+          if (metaDesc) metaDesc.setAttribute('content', data.description || 'Fill out this form on RippliFy Forms');
+          if (twitterTitle) twitterTitle.setAttribute('content', data.title);
+          if (twitterDesc) twitterDesc.setAttribute('content', data.description || 'Fill out this form on RippliFy Forms');
+        }
       } else {
         toast.error('Form not found');
       }
