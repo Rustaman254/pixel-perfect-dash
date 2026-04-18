@@ -14,11 +14,11 @@ export const createForm = async (req, res) => {
   try {
     const { title, description, questions, settings, theme } = req.body;
     
-    if (!title) {
+    if (!title || !title.trim()) {
       return res.status(400).json({ message: 'Title is required' });
     }
 
-    const slug = generateSlug(title);
+    const slug = generateSlug(title.trim());
     const db = getAuthDb();
 
     const defaultTheme = {
@@ -29,7 +29,7 @@ export const createForm = async (req, res) => {
 
     const result = await db('forms')
       .insert({
-        userId: req.user.id,
+        userid: req.user.id,
         title: title,
         description: description || '',
         questions: JSON.stringify(questions || []),
@@ -46,17 +46,18 @@ export const createForm = async (req, res) => {
     });
   } catch (error) {
     console.error('Create form error:', error);
+    console.error('Stack:', error.stack);
     res.status(500).json({ message: 'Failed to create form', error: error.message });
   }
 };
 
 export const getForms = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userid = req.user.id;
     const db = getAuthDb();
 
     const forms = await db('forms')
-      .where('userId', userId)
+      .where('userid', userid)
       .orderBy('createdAt', 'desc')
       .select('*');
 
@@ -83,12 +84,17 @@ export const updateForm = async (req, res) => {
   try {
     const { id } = req.params;
     const { title, description, questions, settings, theme } = req.body;
-    const userId = req.user.id;
+    
+    if (!title || !title.trim()) {
+      return res.status(400).json({ message: 'Title is required' });
+    }
+    
+    const userid = req.user.id;
     const db = getAuthDb();
 
     const existing = await db('forms')
       .where('id', id)
-      .where('userId', userId)
+      .where('userid', userid)
       .first();
 
     if (!existing) {
@@ -122,12 +128,12 @@ export const updateForm = async (req, res) => {
 export const getForm = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user.id;
+    const userid = req.user.id;
     const db = getAuthDb();
 
     const form = await db('forms')
       .where('id', id)
-      .where('userId', userId)
+      .where('userid', userid)
       .first();
 
     if (!form) {
@@ -148,12 +154,12 @@ export const getForm = async (req, res) => {
 export const deleteForm = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user.id;
+    const userid = req.user.id;
     const db = getAuthDb();
 
     const existing = await db('forms')
       .where('id', id)
-      .where('userId', userId)
+      .where('userid', userid)
       .first();
 
     if (!existing) {
@@ -237,12 +243,12 @@ export const submitResponse = async (req, res) => {
 export const getFormResponses = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user.id;
+    const userid = req.user.id;
     const db = getAuthDb();
 
     const form = await db('forms')
       .where('id', id)
-      .where('userId', userId)
+      .where('userid', userid)
       .first();
 
     if (!form) {
@@ -254,9 +260,12 @@ export const getFormResponses = async (req, res) => {
       .orderBy('createdAt', 'desc')
       .select('*');
 
-    // Parse answers
+    // Parse answers (handle both string and JSONB object)
     for (const response of responses) {
-      response.answers = typeof response.answers === 'string' ? JSON.parse(response.answers) : response.answers;
+      if (typeof response.answers === 'string') {
+        try { response.answers = JSON.parse(response.answers); } 
+        catch { response.answers = {}; }
+      }
       response.submittedAt = response.createdAt;
     }
 
