@@ -1,7 +1,16 @@
 import jwt from 'jsonwebtoken';
 
-const getJwtSecret = () => process.env.JWT_SECRET || 'super_secret_ripplify_key_2025';
-const getInternalApiKey = () => process.env.INTERNAL_API_KEY || 'local-internal-api-key';
+const getJwtSecret = () => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) throw new Error('[AUTH] JWT_SECRET environment variable is not set');
+  return secret;
+};
+
+const getInternalApiKey = () => {
+  const key = process.env.INTERNAL_API_KEY;
+  if (!key) throw new Error('[AUTH] INTERNAL_API_KEY environment variable is not set');
+  return key;
+};
 
 // JWT authentication middleware - used by ALL services
 export const protect = (getDb) => async (req, res, next) => {

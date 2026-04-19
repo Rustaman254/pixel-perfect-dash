@@ -84,6 +84,8 @@ export async function migrate() {
     t.decimal('balance', 18, 8).defaultTo(0);
     t.decimal('locked_balance', 18, 8).defaultTo(0);
     t.string('address');
+    t.string('intasend_wallet_id');
+    t.string('intasend_label');
     t.timestamp('createdAt').defaultTo(db.fn.now());
     t.timestamp('updatedAt').defaultTo(db.fn.now());
     t.unique(['userId', 'currency_code', 'network']);
@@ -201,6 +203,20 @@ export async function migrate() {
     console.log('  Fixed users table columns.');
   } catch (e) {
     // Columns may already exist or be renamed
+  }
+
+  // Add missing columns to wallets table
+  try {
+    const hasWalletId = await db.schema.hasColumn('wallets', 'intasend_wallet_id');
+    if (!hasWalletId) {
+      await db.schema.table('wallets', (t) => {
+        t.string('intasend_wallet_id');
+        t.string('intasend_label');
+      });
+      console.log('  Added IntaSend columns to wallets table.');
+    }
+  } catch (e) {
+    console.error('  Error adding columns to wallets table:', e.message);
   }
 
   console.log('ripplify_db migrations complete.');

@@ -73,6 +73,8 @@ export interface Wallet {
     balance: number;
     locked_balance: number;
     address: string | null;
+    intasend_wallet_id?: string | null;
+    intasend_label?: string | null;
     createdAt: string;
     updatedAt: string;
 }
@@ -148,7 +150,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             
-            console.log('/auth/me response status:', res.status);
+
             
             if (!res.ok) {
                 if (res.status === 401) {
@@ -159,11 +161,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
             }
             
             const data = await res.json();
-            console.log('/auth/me response data keys:', Object.keys(data));
-            console.log('/auth/me response data:', data);
             const user = data.user || data;
             const features = data.features;
-            console.log('Features extracted from /auth/me:', features);
             return { valid: true, user, features };
         } catch (e) {
             console.error('validateToken error:', e);
@@ -206,11 +205,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     };
 
     const isFeatureEnabled = (key: string): boolean => {
-        // Admins always have access
         if (userProfile?.role === 'admin') return true;
-        const enabled = featureFlags[key] !== false;
-        console.log(`isFeatureEnabled(${key}):`, enabled, 'featureFlags:', featureFlags);
-        return enabled;
+        return featureFlags[key] !== false;
     };
 
     const { setAuth: syncToSSO } = useSSOSync((token, profile) => {
@@ -251,7 +247,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
                 created: new Date(l.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
             }));
 
-            console.log("Formatted links:", formattedLinks);
+
 
             setLinks(formattedLinks);
             setTransactions(transactionsResult);
@@ -266,10 +262,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
                 }
             }
         } catch (error) {
-            console.error("Error refreshing data:", error);
-            if (String(error).includes('401')) {
+            // Don't log out on transient network errors during background polling
+            const errorStr = String(error);
+            if (errorStr.includes('401')) {
                 logout();
             }
+            // Silently swallow other errors during polling
         }
     };
 
@@ -283,7 +281,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
             const interval = setInterval(() => {
                 refreshData();
                 loadFeatureFlags();
-            }, 30000);
+            }, 10000); // Tighter 10s polling for real-time payment/payout feedback
 
             return () => clearInterval(interval);
         } else {

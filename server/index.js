@@ -121,7 +121,7 @@ app.use(helmet({
 }));
 
 app.use(express.static("public"));
-app.use(express.json({ type: ['application/json', 'text/plain'] }));
+app.use(express.json({ limit: '1mb' }));
 
 
 const server = http.createServer(app);
@@ -218,6 +218,18 @@ app.use("/api/forms", formsRoutes);
 app.use("/api/agent", agentRoutes);
 app.use("/sso", ssoRoutes);
 
+// Health check
+app.get('/health', (req, res) => res.json({ status: 'ok', service: 'gateway', uptime: process.uptime() }));
+
+// 404 catch-all for unmatched API routes
+app.use((req, res, next) => {
+  if (req.originalUrl.startsWith('/api/')) {
+    res.status(404).json({ message: `Route not found: ${req.method} ${req.originalUrl}` });
+  } else {
+    next();
+  }
+});
+
 // Global Error Handler
 app.use((err, req, res, next) => {
   console.error(`[ERROR] ${new Date().toISOString()} - ${req.method} ${req.url} - ${err.stack}`);
@@ -231,3 +243,19 @@ const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
   console.log(`Realtime Server API is running on port ${PORT}`);
 });
+
+// Graceful shutdown
+const gracefulShutdown = (signal) => {
+  console.log(`[Gateway] ${signal} received. Shutting down gracefully...`);
+  server.close(() => {
+    console.log('[Gateway] HTTP server closed.');
+    process.exit(0);
+  });
+  // Force exit after 10s if connections linger
+  setTimeout(() => {
+    console.error('[Gateway] Forced shutdown after timeout.');
+    process.exit(1);
+  }, 10000);
+};
+process.once('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.once('SIGINT', () => gracefulShutdown('SIGINT'));

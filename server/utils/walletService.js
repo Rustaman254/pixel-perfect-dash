@@ -1,4 +1,4 @@
-import { getDb } from '../config/db.js';
+import { getRipplifyDb } from '../config/db.js';
 import crypto from 'crypto';
 
 /**
@@ -7,13 +7,13 @@ import crypto from 'crypto';
 const walletService = {
     // Get all wallet balances for a user
     async getBalances(userId) {
-        const db = getDb();
+        const db = getRipplifyDb();
         return await db.all(`SELECT * FROM "wallets" WHERE "userId" = ?`, [userId]);
     },
 
     // Get specific currency balance for a user
     async getBalance(userId, currency, network) {
-        const db = getDb();
+        const db = getRipplifyDb();
         let wallet = await db.get(
             `SELECT * FROM "wallets" WHERE "userId" = ? AND "currency_code" = ? AND "network" = ?`,
             [userId, currency, network]
@@ -34,7 +34,7 @@ const walletService = {
         if (amount <= 0) throw new Error("Amount must be greater than zero");
         if (senderId === receiverId) throw new Error("Sender and receiver cannot be the same");
 
-        const db = getDb();
+        const db = getRipplifyDb();
         
         // Using raw SQL for transaction handling
         await db.run('BEGIN TRANSACTION');
@@ -79,7 +79,7 @@ const walletService = {
     async deposit(userId, currency, network, amount, txHash = null, paymentMethod = 'external') {
         if (amount <= 0) throw new Error("Deposit amount must be positive");
         
-        const db = getDb();
+        const db = getRipplifyDb();
         await db.run('BEGIN TRANSACTION');
         
         try {
@@ -109,7 +109,7 @@ const walletService = {
     async withdraw(userId, currency, network, amount, destination) {
         if (amount <= 0) throw new Error("Withdrawal amount must be positive");
         
-        const db = getDb();
+        const db = getRipplifyDb();
         await db.run('BEGIN TRANSACTION');
         
         try {

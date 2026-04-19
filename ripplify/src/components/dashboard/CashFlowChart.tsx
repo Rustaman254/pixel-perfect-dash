@@ -12,7 +12,7 @@ const CashFlowChart = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await fetchWithAuth('/transactions/stats');
+      const response = await fetchWithAuth('/transactions/daily-stats');
       const statsArray = response.stats || [];
       const formattedData = statsArray.map((s: any) => ({
         name: s.date,
