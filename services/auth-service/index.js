@@ -21,9 +21,28 @@ await migrate();
 
 const app = express();
 
-// CORS
+const allowedOrigins = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(',')
+  : [
+      'https://ripplify.sokostack.xyz',
+      'https://shopalize.sokostack.xyz',
+      'https://admin.sokostack.xyz',
+      'https://watchtower.sokostack.xyz',
+      'https://sokostack.ddns.net',
+      'http://localhost:8080',
+      'http://localhost:8081',
+      'http://localhost:8082',
+      'http://localhost:8083',
+      'http://localhost:5173',
+      'http://localhost:5175',
+    ];
+
 app.use(cors({
-  origin: true,
+  origin: (origin, cb) => {
+    if (!origin) return cb(null, true);
+    if (allowedOrigins.includes(origin)) return cb(null, true);
+    cb(null, false);
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-app-name', 'x-internal-api-key', 'Accept', 'Origin'],
@@ -46,7 +65,7 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 
 // Health check (FIRST - before anything else)
 app.get('/health', (req, res) => {
@@ -277,7 +296,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Global error handler
 app.use((err, req, res, next) => {
-  console.error(`[ERROR] ${err.message}`);
+  console.error(`[AUTH ERROR] ${err.message}`);
   res.status(500).json({ message: 'Internal Server Error' });
 });
 
@@ -285,3 +304,18 @@ const PORT = process.env.AUTH_PORT || process.env.PORT || 3006;
 server.listen(PORT, () => {
   console.log(`Auth service running on port ${PORT}`);
 });
+
+// Graceful shutdown
+const gracefulShutdown = (signal) => {
+  console.log(`[Auth] ${signal} received. Shutting down gracefully...`);
+  server.close(() => {
+    console.log('[Auth] HTTP server closed.');
+    process.exit(0);
+  });
+  setTimeout(() => {
+    console.error('[Auth] Forced shutdown after timeout.');
+    process.exit(1);
+  }, 10000);
+};
+process.once('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.once('SIGINT', () => gracefulShutdown('SIGINT'));

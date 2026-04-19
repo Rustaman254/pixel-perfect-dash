@@ -8,6 +8,7 @@ const router = Router();
 // Protected routes
 router.get('/my', protectJwt, ctrl.getMyTransactions);
 router.get('/stats', protectJwt, ctrl.getTransactionStats);
+router.get('/daily-stats', protectJwt, ctrl.getTransactionDailyStats);
 router.post('/', protectJwt, ctrl.createTransaction);
 router.put('/:id/status', protectJwt, ctrl.updateTransactionStatus);
 

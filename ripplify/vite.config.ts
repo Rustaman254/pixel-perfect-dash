@@ -46,6 +46,16 @@ export default defineConfig(({ mode }) => ({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/wallets/, '/api/wallets'),
       },
+      "/transfers": {
+        target: "http://127.0.0.1:3001",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/transfers/, '/api/transfers'),
+      },
+      "/payment-methods": {
+        target: "http://127.0.0.1:3001",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/payment-methods/, '/api/payment-methods'),
+      },
       "/auth": {
         target: "http://127.0.0.1:3006",
         changeOrigin: true,
@@ -63,6 +73,9 @@ export default defineConfig(({ mode }) => ({
     },
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
+  build: {
+    sourcemap: false,
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

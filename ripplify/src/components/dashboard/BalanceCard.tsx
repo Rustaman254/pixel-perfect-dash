@@ -8,35 +8,28 @@ const BalanceCard = () => {
   const { toast } = useToast();
   const { links, payouts, wallets } = useAppContext();
 
-  // Get actual wallet balance from IntaSend (KES wallet if available)
+  // KES wallet holds the single source of truth since backend syncs it with IntaSend directly.
   const kesWallet = wallets?.find((w: any) => w.currency_code === 'KES');
+  const isIntaSendLinked = !!kesWallet?.intasend_wallet_id;
   const walletBalance = kesWallet ? Number(kesWallet.balance) || 0 : 0;
-  const lockedBalance = kesWallet ? Number(kesWallet.locked_balance) || 0 : 0;
   
-  // Use IntaSend available balance if available, fallback to local wallet calculation
-  const intasendBalance = kesWallet?.intasend_balance?.available_balance;
-  const availableFromWallet = intasendBalance != null 
-    ? Number(intasendBalance) 
-    : (walletBalance - lockedBalance);
-  
-  // Fallback to calculated from links/payouts if no wallet
+  // Fallback calculated if no wallet established yet
   const totalEarnings = links?.reduce((acc, link) => acc + (Number(link.totalEarnedValue) || 0), 0) || 0;
   const withdrawnSum = payouts
     ?.filter(p => ["Processing", "Completed"].includes(p.status))
     .reduce((acc, p) => acc + (Number(p.amount) || 0), 0) || 0;
   const calculatedBalance = totalEarnings - withdrawnSum;
   
-  // Use IntaSend if available, then local wallet, then calculated
-  const availableBalance = intasendBalance != null 
-    ? Number(intasendBalance) 
-    : (walletBalance > 0 ? availableFromWallet : calculatedBalance);
-  const totalBalance = intasendBalance != null 
-    ? Number(kesWallet.intasend_balance.current_balance) 
-    : (walletBalance > 0 ? walletBalance : totalEarnings);
+  const availableBalance = kesWallet ? walletBalance : calculatedBalance;
+  const totalBalance = kesWallet ? walletBalance : totalEarnings;
 
   const formatAmount = (amount: number) => {
     if (amount == null || isNaN(amount)) return "0.00";
-    return amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return new Intl.NumberFormat('en-KE', { 
+        style: 'decimal', 
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }).format(amount);
   };
 
   const handleAction = (label: string) => {
@@ -55,15 +48,15 @@ const BalanceCard = () => {
           <p className="text-sm opacity-80 mb-1">Available for Payout</p>
           <div className="flex items-baseline gap-3">
             <h2 className="text-2xl md:text-3xl font-bold">KES {formatAmount(availableBalance)}</h2>
-            {intasendBalance != null && (
-              <span className="text-xs font-medium text-emerald-300">IntaSend</span>
-            )}
-            {intasendBalance == null && walletBalance > 0 && (
-              <span className="text-xs font-medium text-emerald-300">Wallet: KES {formatAmount(totalBalance)}</span>
-            )}
-            {intasendBalance == null && walletBalance === 0 && totalEarnings > 0 && (
-              <span className="text-xs font-medium text-emerald-300">Total Revenue: KES {formatAmount(totalEarnings)}</span>
-            )}
+            {isIntaSendLinked ? (
+              <span className="text-xs font-medium text-emerald-300 bg-emerald-900/40 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                IntaSend Live
+              </span>
+            ) : kesWallet ? (
+              <span className="text-xs font-medium text-emerald-200">Local Wallet</span>
+            ) : totalEarnings > 0 ? (
+              <span className="text-xs font-medium text-emerald-300">Calculated</span>
+            ) : null}
           </div>
         </div>
         <div className="flex items-center gap-2">

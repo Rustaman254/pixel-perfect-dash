@@ -70,11 +70,16 @@ export const createPublicTransaction = async (req, res) => {
     const email = buyerEmail || 'customer@ripplify.io';
     const phone = normalizePhone(req.body.phone || buyerPhone);
 
+    // Fetch the user's IntaSend wallet for the given currency
+    const userWallet = await db()('wallets')
+        .where({ userId: link.userId, currency_code: finalCurrency, network: 'fiat' })
+        .first();
+    
+    const walletId = userWallet?.intasend_wallet_id || null;
+
     // Crypto
     if (paymentMethod === 'crypto') {
         const fetch = (await import('node-fetch')).default;
-        // Mock deposit info or import cryptoService. Since crypto isn't heavily requested, 
-        // fallback to returning generic tracking token if no cryptoService is found
         return res.status(201).json({
             ...newTransaction,
             cryptoDepositInfo: {
@@ -99,6 +104,7 @@ export const createPublicTransaction = async (req, res) => {
             lastName,
             apiRef: txRef,
             host: process.env.BASE_URL || 'https://ripplify.io',
+            walletId,
         });
 
         const invoiceId = stkResponse?.invoice?.invoice_id || stkResponse?.invoice?.id || null;
@@ -140,6 +146,7 @@ export const createPublicTransaction = async (req, res) => {
             redirectUrl,
             method: intasendMethod,
             host: process.env.BASE_URL || 'https://ripplify.io',
+            walletId,
         });
 
         const invoiceId = checkoutResponse?.invoice?.invoice_id || checkoutResponse?.invoice?.id || checkoutResponse?.id || null;

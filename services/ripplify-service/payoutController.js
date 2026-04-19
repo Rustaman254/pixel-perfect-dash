@@ -1,4 +1,5 @@
 import { createConnection } from '../shared/db.js';
+import intasendService from './utils/intasendService.js';
 
 const db = () => createConnection('ripplify_db');
 
@@ -6,12 +7,35 @@ export const requestPayout = async (req, res) => {
   try {
     const { amount, payoutMethodId, method, details, currency } = req.body;
     const userId = req.user.id;
+    const finalCurrency = currency || 'KES';
 
     if (!amount || parseFloat(amount) <= 0) {
       return res.status(400).json({ message: 'Valid amount is required' });
     }
 
     const numericAmount = parseFloat(amount);
+
+    // Get the user's fiat wallet
+    const wallet = await db()('wallets')
+      .where({ userId, currency_code: finalCurrency, network: 'fiat' })
+      .first();
+    
+    if (!wallet) return res.status(400).json({ message: `No ${finalCurrency} wallet found.` });
+
+    // Sync balance from IntaSend
+    let available = parseFloat(wallet.balance);
+    if (wallet.intasend_wallet_id) {
+        try {
+            const details = await intasendService.getIntaSendWallet(wallet.intasend_wallet_id);
+            available = parseFloat(details.available_balance);
+        } catch (e) {
+            console.error('Failed to sync wallet balance before payout:', e.message);
+        }
+    }
+
+    if (numericAmount > available) {
+      return res.status(400).json({ message: `Insufficient balance. Available: ${available.toFixed(2)}` });
+    }
 
     // Resolve payout method
     let payoutMethod = null;
@@ -32,40 +56,55 @@ export const requestPayout = async (req, res) => {
     }
 
     payoutDetails = payoutMethod.details;
+    const fee = numericAmount * 0.01; // 1% fee (adjust as needed)
 
-    // Calculate available balance from payment links
-    const links = await db()('payment_links').where({ userId });
-    const totalEarned = links.reduce((acc, l) => acc + (parseFloat(l.totalEarnedValue) || 0), 0);
-
-    const payouts = await db()('payouts').where({ userId }).whereIn('status', ['Processing', 'Completed']);
-    const withdrawn = payouts.reduce((acc, p) => acc + parseFloat(p.amount || 0) + parseFloat(p.fee || 0), 0);
-
-    const transfersResult = await db()('transfers')
-      .where({ senderId: userId })
-      .whereIn('status', ['Processing', 'Completed'])
-      .sum(db().raw('amount + fee'));
-    const transferSpent = parseFloat(transfersResult[0]?.sum || 0);
-
-    const available = totalEarned - withdrawn - transferSpent;
-
-    if (numericAmount > available) {
-      return res.status(400).json({ message: `Insufficient balance. Available: ${available.toFixed(2)}` });
+    // Trigger IntaSend Payout
+    let trackingId = null;
+    if (wallet.intasend_wallet_id) {
+        try {
+            let resp;
+            if (payoutMethod.method === 'mpesa') {
+                resp = await intasendService.mpesaB2c({
+                    name: req.user.fullName || 'User',
+                    account: payoutDetails,
+                    amount: numericAmount,
+                    narrative: `Payout for ${req.user.fullName || userId}`,
+                    walletId: wallet.intasend_wallet_id
+                });
+            } else {
+                // Bank payout (simplified, might need more details)
+                resp = await intasendService.bankPayout({
+                    name: req.user.fullName || 'User',
+                    account: payoutDetails,
+                    bankCode: payoutMethod.bankCode || '01',
+                    amount: numericAmount,
+                    narrative: `Payout for ${req.user.fullName || userId}`,
+                    walletId: wallet.intasend_wallet_id
+                });
+            }
+            trackingId = resp.tracking_id || (resp.payouts && resp.payouts[0] ? resp.payouts[0].tracking_id : null);
+        } catch (e) {
+            return res.status(500).json({ message: `IntaSend Payout failed: ${e.message}` });
+        }
     }
-
-    const fee = numericAmount * 0.01;
-    const detailsDisplay = payoutDetails;
 
     const [newPayout] = await db()('payouts')
       .insert({
         userId,
         amount: numericAmount,
         fee,
-        currency: currency || 'KES',
+        currency: finalCurrency,
         method: payoutMethod.method,
-        details: detailsDisplay,
+        details: trackingId || payoutDetails,
         status: 'Processing',
       })
       .returning('*');
+
+    // Update local balance
+    await db()('wallets')
+        .where({ id: wallet.id })
+        .decrement('balance', numericAmount + fee)
+        .update({ updatedAt: db().fn.now() });
 
     res.status(201).json(newPayout);
   } catch (error) {

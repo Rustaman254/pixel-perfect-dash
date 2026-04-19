@@ -17,6 +17,7 @@ import currencyRoutes from './currencyRoutes.js';
 import payoutMethodRoutes from './payoutMethodRoutes.js';
 import checkoutRoutes from './checkoutRoutes.js';
 import shopalizeRoutes from './shopalizeRoutes.js';
+import intasendWebhookRoutes from './intasendWebhookRoutes.js';
 
 import { internalAuth } from '../shared/auth.js';
 import * as transCtrl from './transactionController.js';
@@ -79,7 +80,7 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 
 // Routes
 app.use('/api/ripplify/links', linkRoutes);
@@ -94,6 +95,7 @@ app.use('/api/ripplify/currencies', currencyRoutes);
 app.use('/api/ripplify/payout-methods', payoutMethodRoutes);
 app.use('/api/ripplify/checkout', checkoutRoutes);
 app.use('/api/ripplify/shopalize', shopalizeRoutes);
+app.use('/api/ripplify/webhooks', intasendWebhookRoutes);
 
 // Legacy/frontend compatible routes (no /ripplify prefix)
 app.use('/api/links', linkRoutes);
@@ -115,13 +117,37 @@ app.get('/internal/payouts', internalAuth, payoutCtrl.internalGetPayouts);
 // Health check
 app.get('/health', (req, res) => res.json({ status: 'ok', service: 'ripplify' }));
 
+// 404 for unmatched API routes
+app.use((req, res, next) => {
+  if (req.originalUrl.startsWith('/api/')) {
+    res.status(404).json({ message: `Route not found: ${req.method} ${req.originalUrl}` });
+  } else {
+    next();
+  }
+});
+
 // Error handler
 app.use((err, req, res, next) => {
-  console.error(`[ERROR] ${err.stack}`);
+  console.error(`[RIPPLIFY ERROR] ${err.stack}`);
   res.status(500).json({ message: process.env.NODE_ENV === 'production' ? 'Internal Server Error' : err.message });
 });
 
 const PORT = process.env.RIPPLIFY_PORT || 3002;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Ripplify service running on port ${PORT}`);
 });
+
+// Graceful shutdown
+const gracefulShutdown = (signal) => {
+  console.log(`[Ripplify] ${signal} received. Shutting down gracefully...`);
+  server.close(() => {
+    console.log('[Ripplify] HTTP server closed.');
+    process.exit(0);
+  });
+  setTimeout(() => {
+    console.error('[Ripplify] Forced shutdown after timeout.');
+    process.exit(1);
+  }, 10000);
+};
+process.once('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.once('SIGINT', () => gracefulShutdown('SIGINT'));

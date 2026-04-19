@@ -3,6 +3,7 @@ import {
     createTransaction, 
     getMyTransactions, 
     getStats, 
+    getDailyStats,
     getTransactionByTrackingToken, 
     handleIntaSendWebhook,
     checkIntaSendPaymentStatus,
@@ -16,6 +17,7 @@ const router = express.Router();
 // Private routes
 router.get('/my', protect, requireFeature('transactions'), getMyTransactions);
 router.get('/stats', protect, requireFeature('analytics'), getStats);
+router.get('/daily-stats', protect, requireFeature('analytics'), getDailyStats);
 router.put('/:id/status', protect, requireFeature('transactions'), updateTransactionStatus);
 
 // Public tracking route BEFORE the wildcard slug route

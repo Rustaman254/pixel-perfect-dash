@@ -1,7 +1,7 @@
 import Transaction from '../models/Transaction.js';
 import PaymentLink from '../models/PaymentLink.js';
 import Notification from '../models/Notification.js';
-import { getDb } from '../config/db.js';
+import { getRipplifyDb } from '../config/db.js';
 import intasendService from '../utils/intasendService.js';
 import crypto from 'crypto';
 import emailService from '../services/emailService.js';
@@ -79,7 +79,7 @@ export const createTransaction = async (req, res) => {
         }
 
         // Get platform fee
-        const db = getDb();
+        const db = getRipplifyDb();
         const settings = await db.get("SELECT value FROM system_settings WHERE key = 'platform_fee'");
         const platformFeePercent = settings ? parseFloat(settings.value) : 2.5;
         const fee = (numericAmount * platformFeePercent) / 100;
@@ -255,7 +255,7 @@ export const handleIntaSendWebhook = async (req, res) => {
             }
             if (!transaction) {
                 // Try by externalRef (invoiceId)
-                const db = getDb();
+                const db = getRipplifyDb();
                 const row = await db.get('SELECT * FROM "transactions" WHERE "externalRef" = ?', [invoiceId]);
                 if (row) {
                     transaction = row;
@@ -354,7 +354,7 @@ export const checkIntaSendPaymentStatus = async (req, res) => {
                 transaction = await Transaction.findByTransactionId(apiRef);
             }
             if (!transaction) {
-                const db = getDb();
+                const db = getRipplifyDb();
                 const row = await db.get('SELECT * FROM "transactions" WHERE "externalRef" = ?', [invoiceId]);
                 if (row) transaction = row;
             }
@@ -379,7 +379,7 @@ export const checkIntaSendPaymentStatus = async (req, res) => {
 
                 // Send SMS to seller
                 try {
-                    const db = getDb();
+                    const db = getRipplifyDb();
                     const seller = await db.get(`SELECT phone, fullName, businessName FROM "users" WHERE "id" = ?`, transaction.userId);
                     if (seller?.phone) {
                         await smsService.sendTransactionSMS(seller.phone, {
@@ -441,6 +441,24 @@ export const getStats = async (req, res) => {
             Transaction.findPaymentMethodStats(req.user.id)
         ]);
         res.json({ stats, methodStats });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const getDailyStats = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const db = getRipplifyDb();
+        const stats = await db.all(
+            `SELECT TO_CHAR("createdAt", 'YYYY-MM-DD') as date, SUM(amount) as revenue 
+             FROM "transactions" 
+             WHERE "userId" = ? AND status = 'Completed' 
+             GROUP BY TO_CHAR("createdAt", 'YYYY-MM-DD') 
+             ORDER BY date ASC LIMIT 30`,
+            [userId]
+        );
+        res.json({ stats: stats.map(s => ({ ...s, revenue: parseFloat(s.revenue || 0) })) });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

@@ -272,8 +272,27 @@ export const internalGetAllTransactions = async (req, res) => {
   }
 };
 
+export const getTransactionDailyStats = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    // Group by date and sum amount for completed transactions
+    const stats = await db()('transactions')
+      .where({ userId, status: 'Completed' })
+      .select(db().raw("TO_CHAR(\"createdAt\", 'YYYY-MM-DD') as date"))
+      .sum('amount as revenue')
+      .groupByRaw("TO_CHAR(\"createdAt\", 'YYYY-MM-DD')")
+      .orderBy('date', 'asc')
+      .limit(30);
+
+    res.json({ stats: stats.map(s => ({ ...s, revenue: parseFloat(s.revenue || 0) })) });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 export default {
   getMyTransactions, getTransactionStats, getTransactionByToken,
   createTransaction, updateTransactionStatus,
   internalGetTransactions, internalGetAllTransactions, internalGetTransactionStats,
+  getTransactionDailyStats,
 };

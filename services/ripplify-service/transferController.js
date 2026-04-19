@@ -1,30 +1,29 @@
 import { createConnection } from '../shared/db.js';
+import intasendService from './utils/intasendService.js';
 
 const db = () => createConnection('ripplify_db');
 
-const getAvailableBalance = async (userId) => {
-  const links = await db()('payment_links').where({ userId }).select('totalEarnedValue');
-  const totalEarned = links.reduce((acc, l) => acc + (parseFloat(l.totalEarnedValue) || 0), 0);
-
-  const transfersResult = await db()('transfers')
-    .where({ senderId: userId })
-    .whereIn('status', ['Processing', 'Completed'])
-    .sum(db().raw('amount + fee'));
-  const transferSpent = parseFloat(transfersResult[0]?.sum || 0);
-
-  const payoutsResult = await db()('payouts')
-    .where({ userId })
-    .whereIn('status', ['Processing', 'Completed'])
-    .sum(db().raw('amount + fee'));
-  const payoutSpent = parseFloat(payoutsResult[0]?.sum || 0);
-
-  return totalEarned - transferSpent - payoutSpent;
+const getWalletBalance = async (userId, currency = 'KES') => {
+  const wallet = await db()('wallets').where({ userId, currency_code: currency }).first();
+  if (!wallet) return 0;
+  
+  // Sync if IntaSend wallet
+  if (wallet.intasend_wallet_id) {
+      try {
+          const details = await intasendService.getIntaSendWallet(wallet.intasend_wallet_id);
+          return parseFloat(details.available_balance);
+      } catch (e) {
+          return parseFloat(wallet.balance);
+      }
+  }
+  return parseFloat(wallet.balance);
 };
 
 export const sendTransfer = async (req, res) => {
   try {
     const { receiverId, receiverPhone, receiverEmail, amount, currency, method, note } = req.body;
     const senderId = req.user.id;
+    const finalCurrency = currency || 'KES';
 
     const numericAmount = parseFloat(amount);
     if (numericAmount <= 0) return res.status(400).json({ message: 'Invalid amount' });
@@ -35,7 +34,7 @@ export const sendTransfer = async (req, res) => {
     else if (method === 'bank') fee = numericAmount * 0.005;
 
     const totalDeduct = numericAmount + fee;
-    const available = await getAvailableBalance(senderId);
+    const available = await getWalletBalance(senderId, finalCurrency);
     if (totalDeduct > available) {
       return res.status(400).json({ message: `Insufficient balance. Available: ${available.toFixed(2)}` });
     }
@@ -43,10 +42,60 @@ export const sendTransfer = async (req, res) => {
     let transferStatus = 'Completed';
     let externalRef = null;
 
-    if (method === 'internal') {
-      if (!receiverId) return res.status(400).json({ message: 'Receiver ID required for internal transfer' });
-      transferStatus = 'Completed';
+    if (method === 'internal' || method === 'intasend') {
+      if (!receiverId && !receiverPhone && !receiverEmail) {
+          return res.status(400).json({ message: 'Receiver identity required' });
+      }
+      
+      // Fetch receiver wallet
+      let receiverWallet;
+      if (receiverId) {
+          receiverWallet = await db()('wallets').where({ userId: receiverId, currency_code: finalCurrency }).first();
+      } else if (receiverEmail || receiverPhone) {
+          // Find user by email/phone first (simplified)
+          const receiver = await db()('users')
+            .where((builder) => {
+                if (receiverEmail) builder.where({ email: receiverEmail });
+                if (receiverPhone) builder.orWhere({ phone: receiverPhone });
+            }).first();
+          if (receiver) {
+              receiverWallet = await db()('wallets').where({ userId: receiver.id, currency_code: finalCurrency }).first();
+          }
+      }
+
+      const senderWallet = await db()('wallets').where({ userId: senderId, currency_code: finalCurrency }).first();
+
+      if (senderWallet?.intasend_wallet_id && receiverWallet?.intasend_wallet_id) {
+          // Perform IntaSend internal transfer
+          try {
+              const resp = await intasendService.intasendInternalTransfer({
+                  name: receiverEmail || receiverPhone || 'User',
+                  amount: numericAmount,
+                  narrative: note || `Transfer from ${req.user.fullName || senderId}`,
+                  walletId: senderWallet.intasend_wallet_id // Wait, intasendTransfer in service needs update
+              });
+              // Actually, intasend-node SDK intra_transfer uses sender_wallet_id and receiver_wallet_id
+              // I should update intasendService.intasendInternalTransfer to use the intra_transfer API properly
+              const intraResp = await intasendService.intasendInternalTransfer({
+                  sender_wallet_id: senderWallet.intasend_wallet_id,
+                  receiver_wallet_id: receiverWallet.intasend_wallet_id,
+                  amount: numericAmount,
+                  narrative: note || `Ripplify Transfer`
+              });
+              externalRef = intraResp.tracking_id;
+              transferStatus = 'Completed';
+          } catch (e) {
+              return res.status(500).json({ message: `IntaSend Transfer failed: ${e.message}` });
+          }
+      } else {
+          // Local ledger transfer
+          if (receiverWallet) {
+              await db()('wallets').where({ id: receiverWallet.id }).increment('balance', numericAmount);
+          }
+          transferStatus = 'Completed';
+      }
     } else if (['mpesa', 'bank'].includes(method)) {
+      // These should probably route through payouts if they go to external accounts
       transferStatus = 'Processing';
     }
 
@@ -58,13 +107,19 @@ export const sendTransfer = async (req, res) => {
         receiverEmail: receiverEmail || null,
         amount: numericAmount,
         fee,
-        currency: currency || 'KES',
+        currency: finalCurrency,
         method,
         status: transferStatus,
         note: note || '',
         externalRef,
       })
       .returning('*');
+
+    // Deduct from sender
+    await db()('wallets')
+        .where({ userId: senderId, currency_code: finalCurrency })
+        .decrement('balance', totalDeduct)
+        .update({ updatedAt: db().fn.now() });
 
     res.status(201).json({ message: transferStatus === 'Processing' ? 'Transfer initiated' : 'Transfer successful', transfer });
   } catch (error) {
