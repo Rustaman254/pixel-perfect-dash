@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
-export type ProjectId = "ripplify" | "watchtower" | "shopalize";
+export type ProjectId = "ripplify" | "watchtower" | "shopalize" | "forms";
 
 export interface Project {
   id: ProjectId;
@@ -14,6 +14,7 @@ export const PROJECTS: Project[] = [
   { id: "ripplify", name: "Ripplify", color: "text-emerald-400", bgColor: "bg-emerald-500", icon: "⚡" },
   { id: "shopalize", name: "Shopalize", color: "text-blue-400", bgColor: "bg-blue-500", icon: "🛒" },
   { id: "watchtower", name: "Watchtower", color: "text-purple-400", bgColor: "bg-purple-500", icon: "👁" },
+  { id: "forms", name: "Forms", color: "text-orange-400", bgColor: "bg-orange-500", icon: "📝" },
 ];
 
 interface ProjectContextType {

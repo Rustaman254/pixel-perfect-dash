@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import {
   LayoutDashboard, Link2, ArrowLeftRight, CreditCard,
   BarChart3, Globe, Wallet, Settings, HelpCircle,
-  ChevronDown, X, Users, LogOut, TerminalSquare, Plus, Send, Lock,
+  ChevronDown, X, Users, LogOut, TerminalSquare, Plus, Send,
   Home, MoreHorizontal, ChevronUp
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -70,26 +70,6 @@ const Sidebar = ({ open, onClose, collapsed, onToggleCollapse }: SidebarProps) =
   };
 
   const renderNavItem = (item: { icon: any; label: string; to: string; featureKey: string | null }, showLabel = true) => {
-    const isDisabled = item.featureKey && !isFeatureEnabled(item.featureKey);
-    if (isDisabled) {
-      return (
-        <div
-          key={item.label}
-          className={cn(
-            "flex items-center w-full rounded-lg text-sm opacity-40 cursor-not-allowed",
-            collapsed && !showLabel ? "justify-center px-2 py-2.5" : "justify-between px-3 py-2.5"
-          )}
-          style={{ color: '#999999' }}
-          title={collapsed ? item.label : `${item.label} is disabled`}
-        >
-          <div className={cn("flex items-center", collapsed && !showLabel ? "" : "gap-3")}>
-            <item.icon className="w-4 h-4" />
-            {(!collapsed || showLabel) && <span>{item.label}</span>}
-          </div>
-          {(!collapsed || showLabel) && <Lock className="w-3 h-3" />}
-        </div>
-      );
-    }
     return (
       <NavLink
         key={item.label}
@@ -142,13 +122,13 @@ const Sidebar = ({ open, onClose, collapsed, onToggleCollapse }: SidebarProps) =
         <div className={cn("flex-1 overflow-y-auto", collapsed ? "px-2" : "px-4")}>
           {!collapsed && <p className="text-[11px] font-medium uppercase tracking-wider px-2 mb-2" style={{ color: '#999999' }}>General</p>}
           <nav className="space-y-0.5">
-            {generalItems.map(item => renderNavItem(item))}
+            {generalItems.filter(item => !item.featureKey || isFeatureEnabled(item.featureKey)).map(item => renderNavItem(item))}
           </nav>
 
           {!collapsed && <p className="text-[11px] font-medium uppercase tracking-wider px-2 mb-2 mt-6" style={{ color: '#999999' }}>Manage</p>}
           {collapsed && <div className="my-3 mx-2 border-t border-slate-200" />}
           <nav className="space-y-0.5">
-            {manageItems.map(item => renderNavItem(item))}
+            {manageItems.filter(item => !item.featureKey || isFeatureEnabled(item.featureKey)).map(item => renderNavItem(item))}
           </nav>
         </div>
 
@@ -208,8 +188,7 @@ const Sidebar = ({ open, onClose, collapsed, onToggleCollapse }: SidebarProps) =
       {/* Mobile Bottom Navigation */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-200 safe-area-bottom">
         <div className="flex items-center justify-around py-2 px-1">
-          {mobileBottomItems.map((item) => {
-            const isDisabled = item.featureKey && !isFeatureEnabled(item.featureKey);
+          {mobileBottomItems.filter(item => !item.featureKey || isFeatureEnabled(item.featureKey)).map((item) => {
             return (
               <NavLink
                 key={item.label}
@@ -217,7 +196,6 @@ const Sidebar = ({ open, onClose, collapsed, onToggleCollapse }: SidebarProps) =
                 className={({ isActive }) =>
                   cn(
                     "flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg transition-colors min-w-[56px]",
-                    isDisabled ? "opacity-30 pointer-events-none" : "",
                     isActive ? "text-[#025864]" : "text-slate-400"
                   )
                 }
@@ -248,17 +226,18 @@ const Sidebar = ({ open, onClose, collapsed, onToggleCollapse }: SidebarProps) =
                 <div className="fixed inset-0 z-40" onClick={() => setShowMoreMenu(false)} />
                 <div className="absolute bottom-full right-0 mb-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden z-50">
                   <div className="py-2">
-                    {moreMenuItems.map((item) => {
-                      const isDisabled = item.featureKey && !isFeatureEnabled(item.featureKey);
+                    {moreMenuItems.filter(item => !item.featureKey || isFeatureEnabled(item.featureKey)).map((item) => {
                       return (
                         <NavLink
                           key={item.label}
                           to={item.to}
                           onClick={() => setShowMoreMenu(false)}
-                          className={cn(
-                            "flex items-center gap-3 px-4 py-2.5 text-sm transition-colors",
-                            isDisabled ? "opacity-30 pointer-events-none text-slate-400" : "text-slate-700 hover:bg-slate-50"
-                          )}
+                          className={({ isActive }) =>
+                            cn(
+                              "flex items-center gap-3 px-4 py-2.5 text-sm transition-colors",
+                              isActive ? "bg-slate-50 text-[#025864]" : "text-slate-700 hover:bg-slate-50"
+                            )
+                          }
                         >
                           <item.icon className="w-4 h-4" />
                           <span>{item.label}</span>

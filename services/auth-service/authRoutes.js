@@ -60,4 +60,9 @@ router.post('/internal/stores', internalAuth, auth.internalCreateStore);
 router.put('/internal/stores/:id', internalAuth, auth.internalUpdateStore);
 router.delete('/internal/stores/:id', internalAuth, auth.internalDeleteStore);
 
+// Apps
+router.get('/internal/apps', internalAuth, auth.internalGetApps);
+router.post('/internal/apps', internalAuth, auth.internalCreateApp);
+router.put('/internal/apps/:id', internalAuth, auth.internalUpdateApp);
+
 export default router;

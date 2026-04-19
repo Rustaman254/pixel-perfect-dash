@@ -317,6 +317,7 @@ async function seedData(db) {
       { name: 'Shopalize', slug: 'shopalize', icon: 'ShoppingBag', url: 'https://shopalize.sokostack.xyz', isActive: true },
       { name: 'Watchtower', slug: 'watchtower', icon: 'BarChart', url: 'https://watchtower.sokostack.xyz', isActive: true },
       { name: 'Admin', slug: 'admin', icon: 'Shield', url: 'https://admin.sokostack.xyz', isActive: true },
+      { name: 'Forms', slug: 'forms', icon: 'FileText', url: 'https://forms.sokostack.xyz', isActive: true },
     ]);
     console.log('Apps seeded.');
   }
@@ -325,6 +326,8 @@ async function seedData(db) {
   const featureCount = await db('feature_flags').count('id as count').first();
   if (parseInt(featureCount.count) === 0) {
     const features = [
+      { key: 'unified_agent', name: 'Unified AI Agent', description: 'Enable unified AI agent across all services', category: 'ai' },
+      { key: 'unified_agent_ripplify', name: 'Ripplify Unified Agent', description: 'Enable unified AI agent for Ripplify', category: 'ai' },
       { key: 'payment_links', name: 'Payment Links', description: 'Create and manage payment links', category: 'payments' },
       { key: 'transactions', name: 'Transactions', description: 'View and manage transactions', category: 'payments' },
       { key: 'payouts', name: 'Payouts', description: 'Request and receive payouts', category: 'payments' },

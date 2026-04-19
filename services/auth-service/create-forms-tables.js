@@ -39,6 +39,14 @@ async function createFormsTables() {
     await db.raw(`CREATE INDEX IF NOT EXISTS idx_form_responses_formid ON form_responses(formid)`);
     console.log('Indexes created');
 
+    // Add missing columns if they don't exist
+    try {
+      await db.raw(`ALTER TABLE form_responses ADD COLUMN IF NOT EXISTS email VARCHAR(255)`);
+      console.log('Added email column to form_responses');
+    } catch (e) {
+      // Column might already exist
+    }
+
     console.log('Forms tables created successfully!');
   } catch (error) {
     console.error('Error creating tables:', error.message);

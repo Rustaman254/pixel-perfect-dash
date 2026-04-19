@@ -257,7 +257,7 @@ export const getFormResponses = async (req, res) => {
 
     const responses = await db('form_responses')
       .where('formid', id)
-      .orderBy('submittedAt', 'desc')
+      .orderBy('id', 'desc')
       .select('*');
 
     // Parse answers (handle both string and JSONB object)

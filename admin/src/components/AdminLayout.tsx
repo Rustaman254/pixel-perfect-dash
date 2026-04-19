@@ -4,7 +4,7 @@ import {
   Settings, LogOut, ShieldCheck, Menu, X, CreditCard, Bell, Ticket, AppWindow, Shield,
   ChevronDown, Key, LifeBuoy, Wallet, Globe, Flag, Receipt,
   ArrowLeftRight, LayoutGrid, ExternalLink, Eye, ShoppingCart, Activity,
-  Package, Store, DollarSign, TrendingUp, Sliders
+  Package, Store, DollarSign, TrendingUp, Sliders, FileText
 } from "lucide-react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useAppContext } from "@/contexts/AppContext";
@@ -131,24 +131,47 @@ const projectNavMap: Record<ProjectId, NavGroup[]> = {
   ripplify: ripplifyNavGroups,
   watchtower: watchtowerNavGroups,
   shopalize: shopalizeNavGroups,
+  forms: [
+    {
+      label: "Overview",
+      icon: LayoutDashboard,
+      items: [
+        { icon: LayoutDashboard, label: "Dashboard", to: "/forms" },
+        { icon: BarChart3, label: "Analytics", to: "/forms/analytics" },
+      ],
+      projects: ["forms"],
+    },
+    {
+      label: "Configuration",
+      icon: Sliders,
+      items: [
+        { icon: Flag, label: "Feature Flags", to: "/forms/features" },
+        { icon: Settings, label: "Settings", to: "/forms/settings" },
+      ],
+      projects: ["forms"],
+    },
+  ],
 };
 
 const projectIcons: Record<string, React.ElementType> = {
   ripplify: LayoutGrid,
   shopalize: ShoppingCart,
   watchtower: Activity,
+  forms: FileText,
 };
 
 const projectRoutes: Record<ProjectId, string> = {
   ripplify: "/",
   watchtower: "/watchtower",
   shopalize: "/shopalize",
+  forms: "/forms",
 };
 
 const projectLinks = [
   { name: "Ripplify", id: "ripplify" as ProjectId, icon: LayoutGrid, color: "bg-emerald-500" },
   { name: "Shopalize", id: "shopalize" as ProjectId, icon: ShoppingCart, color: "bg-blue-500" },
   { name: "Watchtower", id: "watchtower" as ProjectId, icon: Activity, color: "bg-purple-500" },
+  { name: "Forms", id: "forms" as ProjectId, icon: FileText, color: "bg-orange-500" },
 ];
 
 export default function AdminLayout({ children }: { children: ReactNode }) {

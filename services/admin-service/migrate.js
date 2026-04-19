@@ -75,10 +75,12 @@ export async function migrate() {
   if (parseInt(flagsCount.count) === 0) {
     await db('feature_flags').insert([
       { key: 'unified_agent', name: 'Unified AI Agent', description: 'Enable unified AI agent across all services', isEnabled: true, category: 'ai' },
+      { key: 'unified_agent_ripplify', name: 'Ripplify Unified Agent', description: 'Enable unified AI agent for Ripplify', isEnabled: true, category: 'ai' },
       { key: 'ai_forms', name: 'AI Form Builder', description: 'AI-powered form creation', isEnabled: true, category: 'ai' },
       { key: 'watchtower_analytics', name: 'Watchtower Analytics', description: 'Visitor analytics and session tracking', isEnabled: true, category: 'analytics' },
       { key: 'shopalize_stores', name: 'Shopalize E-commerce', description: 'E-commerce store functionality', isEnabled: true, category: 'ecommerce' },
       { key: 'payment_links', name: 'Payment Links', description: 'Create and manage payment links', isEnabled: true, category: 'payments' },
+      { key: 'forms', name: 'Forms App', description: 'Enable the Forms application', isEnabled: true, category: 'apps' },
     ]);
     console.log('Feature flags seeded.');
   }
