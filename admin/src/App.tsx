@@ -29,6 +29,7 @@ import CustomerManagement from "@/pages/CustomerManagement";
 import ShopalizeAnalytics from "@/pages/ShopalizeAnalytics";
 import ShopalizeFeatureFlags from "@/pages/ShopalizeFeatureFlags";
 import ShopalizeSettings from "@/pages/ShopalizeSettings";
+import FormsFeatureFlags from "@/pages/FormsFeatureFlags";
 
 const queryClient = new QueryClient();
 
@@ -58,6 +59,7 @@ const AppRoutes = () => (
       <Route path="/support" element={<ProtectedRoute><ManageSupport /></ProtectedRoute>} />
       <Route path="/notifications" element={<ProtectedRoute><AdminNotificationsPage /></ProtectedRoute>} />
       <Route path="/watchtower" element={<ProtectedRoute><WatchtowerDashboard /></ProtectedRoute>} />
+      <Route path="/forms" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       {/* Shopalize Admin Routes */}
       <Route path="/shopalize" element={<ProtectedRoute><ShopalizeDashboard /></ProtectedRoute>} />
       <Route path="/shopalize/stores" element={<ProtectedRoute><StoreManagement /></ProtectedRoute>} />
@@ -67,6 +69,8 @@ const AppRoutes = () => (
       <Route path="/shopalize/analytics" element={<ProtectedRoute><ShopalizeAnalytics /></ProtectedRoute>} />
       <Route path="/shopalize/features" element={<ProtectedRoute><ShopalizeFeatureFlags /></ProtectedRoute>} />
       <Route path="/shopalize/settings" element={<ProtectedRoute><ShopalizeSettings /></ProtectedRoute>} />
+      <Route path="/forms/features" element={<ProtectedRoute><FormsFeatureFlags /></ProtectedRoute>} />
+      <Route path="/forms/settings" element={<ProtectedRoute><SystemSettings /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   </BrowserRouter>

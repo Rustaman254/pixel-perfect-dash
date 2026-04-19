@@ -27,6 +27,7 @@ import transferRoutes from "./routes/transferRoutes.js";
 import payoutMethodRoutes from "./routes/payoutMethodRoutes.js";
 import formsRoutes from "./routes/formsRoutes.js";
 import agentRoutes from "./routes/agentRoutes.js";
+import ssoRoutes from "./routes/ssoRoutes.js";
 
 dotenv.config();
 
@@ -215,6 +216,7 @@ app.use("/api/apps", appRoutes);
 app.use("/api/wallets", walletRoutes);
 app.use("/api/forms", formsRoutes);
 app.use("/api/agent", agentRoutes);
+app.use("/sso", ssoRoutes);
 
 // Health check
 app.get('/health', (req, res) => res.json({ status: 'ok', service: 'gateway', uptime: process.uptime() }));

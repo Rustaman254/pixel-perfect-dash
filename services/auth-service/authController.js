@@ -827,6 +827,41 @@ export const internalDeleteStore = async (req, res) => {
   }
 };
 
+// INTERNAL: GET /internal/apps
+export const internalGetApps = async (req, res) => {
+  try {
+    const apps = await db()('apps').select('*').orderBy('name');
+    res.json(apps);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to get apps' });
+  }
+};
+
+// INTERNAL: POST /internal/apps
+export const internalCreateApp = async (req, res) => {
+  try {
+    const { name, slug, icon, url } = req.body;
+    const [id] = await db()('apps').insert({ name, slug, icon, url, isActive: true });
+    const app = await db()('apps').where({ id }).first();
+    res.status(201).json(app);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to create app' });
+  }
+};
+
+// INTERNAL: PUT /internal/apps/:id
+export const internalUpdateApp = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+    await db()('apps').where({ id }).update(updates);
+    const app = await db()('apps').where({ id }).first();
+    res.json(app);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to update app' });
+  }
+};
+
 export default {
   register, login, getMe, updateProfile,
   sendOTP, verifyOTP, forgotPassword, resetPassword,
@@ -838,4 +873,5 @@ export default {
   internalDeleteUser, internalUpdateUserStatus, internalGetRoles, internalCreateRole, internalAssignRole, internalGetPermissions,
   internalGetApiKeys, internalCreateApiKey, internalDeleteApiKey,
   internalGetStores, internalCreateStore, internalUpdateStore, internalDeleteStore,
+  internalGetApps, internalCreateApp, internalUpdateApp,
 };

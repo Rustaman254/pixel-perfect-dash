@@ -13,6 +13,9 @@ interface Question {
   options?: string[];
   description?: string;
   imageUrl?: string;
+  scaleMax?: number;
+  scaleLabels?: { low?: string; high?: string };
+  ratingItems?: string[];
 }
 
 interface Form {
@@ -64,6 +67,19 @@ const FormView = () => {
       if (res.ok) {
         const data = await res.json();
         setForm(data);
+        
+        // Update meta tags for social sharing
+        if (data.title) {
+          document.title = `${data.title} - RippliFy Forms`;
+          const metaTitle = document.querySelector('meta[property="og:title"]');
+          const metaDesc = document.querySelector('meta[property="og:description"]');
+          const twitterTitle = document.querySelector('meta[name="twitter:title"]');
+          const twitterDesc = document.querySelector('meta[name="twitter:description"]');
+          if (metaTitle) metaTitle.setAttribute('content', data.title);
+          if (metaDesc) metaDesc.setAttribute('content', data.description || 'Fill out this form on RippliFy Forms');
+          if (twitterTitle) twitterTitle.setAttribute('content', data.title);
+          if (twitterDesc) twitterDesc.setAttribute('content', data.description || 'Fill out this form on RippliFy Forms');
+        }
       } else {
         toast.error('Form not found');
       }
@@ -163,9 +179,19 @@ const FormView = () => {
     }
 
     for (const question of form?.questions || []) {
-      if (question.required && !answers[question.id] && question.type !== 'checkbox') {
-        toast.error(`Please answer: ${question.question}`);
-        return;
+      if (question.required) {
+        if (question.type === 'checkbox') continue;
+        if (question.type === 'rating') {
+          const itemAnswers = answers[question.id] || {};
+          const items = question.ratingItems || [];
+          if (Object.keys(itemAnswers).length < items.length) {
+            toast.error(`Please answer all items: ${question.question}`);
+            return;
+          }
+        } else if (!answers[question.id]) {
+          toast.error(`Please answer: ${question.question}`);
+          return;
+        }
       }
     }
 
@@ -521,6 +547,80 @@ const FormView = () => {
                         </button>
                       );
                     })}
+                  </div>
+                )}
+
+                {/* Rating Scale - Matrix/Likert Style (Clean Modern Survey) */}
+                {currentQ?.type === 'rating' && (currentQ.ratingItems || []).length > 0 && (
+                  <div className="max-w-4xl w-full">
+                    <div className="border-2 border-dashed border-blue-200 rounded-2xl p-6 md:p-8 bg-white">
+                      {(currentQ.ratingItems || []).length > 0 && (
+                        <div className="overflow-x-auto">
+                          <table className="w-full border-collapse">
+                            <thead>
+                              <tr>
+                                <th className="text-left text-sm font-medium text-slate-600 p-2 md:p-3 min-w-[180px] md:min-w-[240px]"></th>
+                                {Array.from({ length: currentQ.scaleMax || 5 }, (_, i) => i + 1).map((v) => {
+                                  const hasLabels = currentQ.scaleLabels?.low && currentQ.scaleLabels?.high;
+                                  const displayLabel = hasLabels 
+                                    ? v === 1 
+                                      ? currentQ.scaleLabels.low 
+                                      : v === (currentQ.scaleMax || 5) 
+                                        ? currentQ.scaleLabels.high 
+                                        : v
+                                    : v;
+                                  return (
+                                    <th key={v} className="text-center text-xs md:text-sm font-medium text-slate-600 p-2 md:p-3 min-w-[60px] md:min-w-[80px]">
+                                      <span className="block text-xs md:text-sm">{displayLabel}</span>
+                                    </th>
+                                  );
+                                })}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {(currentQ.ratingItems || []).map((item, itemIdx) => (
+                                <tr key={itemIdx}>
+                                  <td className="text-left text-sm text-slate-700 p-2 md:p-3 font-medium border-b border-slate-100 align-middle">{item}</td>
+                                  {Array.from({ length: currentQ.scaleMax || 5 }, (_, v) => v + 1).map((value) => {
+                                    const itemAnswers = (answers[currentQ.id] || {})[itemIdx] || {};
+                                    const isSelected = itemAnswers === value;
+                                    return (
+                                      <td key={value} className="text-center p-1 md:p-2 border-b border-slate-100 align-middle">
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const allAnswers = answers[currentQ.id] || {};
+                                            const newAnswers = { ...allAnswers, [itemIdx]: value };
+                                            handleAnswerChange(currentQ.id, newAnswers);
+                                          }}
+                                          className={`w-8 h-8 md:w-10 md:h-10 rounded-full border-2 transition-all duration-200 ${
+                                            isSelected
+                                              ? 'border-transparent'
+                                              : 'border-slate-300 hover:border-slate-400 bg-white'
+                                          }`}
+                                          style={isSelected ? { backgroundColor: themeColor } : {}}
+                                        >
+                                          {isSelected && (
+                                            <svg className="w-4 h-4 md:w-5 md:h-5 mx-auto text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                                            </svg>
+                                          )}
+                                        </button>
+                                      </td>
+                                    );
+                                  })}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                      <input
+                        type="hidden"
+                        name={currentQ.id}
+                        value={JSON.stringify(answers[currentQ.id] || {})}
+                      />
+                    </div>
                   </div>
                 )}
 

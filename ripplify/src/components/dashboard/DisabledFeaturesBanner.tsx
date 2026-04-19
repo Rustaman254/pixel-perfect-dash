@@ -8,8 +8,11 @@ import { useNavigate } from "react-router-dom";
  */
 const DisabledFeaturesBanner = () => {
     const disabled = useDisabledFeatures();
-    const { userProfile } = useAppContext();
+    const { userProfile, isFeatureEnabled } = useAppContext();
     const navigate = useNavigate();
+
+    // Check if banner is enabled
+    if (!isFeatureEnabled('feature_restriction_banner')) return null;
 
     if (!userProfile || userProfile.role === 'admin') return null;
     if (disabled.length === 0) return null;

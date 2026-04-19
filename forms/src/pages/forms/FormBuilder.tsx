@@ -36,12 +36,13 @@ import {
   X,
   Pencil,
   Link,
-  Send
+  Send,
+  Star
 } from "lucide-react";
 import { toast } from "sonner";
 import AIAssistant from "@/components/ai/AIAssistant";
 
-type QuestionType = 'text' | 'textarea' | 'number' | 'email' | 'date' | 'checkbox' | 'radio' | 'select';
+type QuestionType = 'text' | 'textarea' | 'number' | 'email' | 'date' | 'checkbox' | 'radio' | 'select' | 'rating';
 
 interface Question {
   id: string;
@@ -50,6 +51,9 @@ interface Question {
   required: boolean;
   options?: string[];
   description?: string;
+  scaleMax?: number;
+  scaleLabels?: { low?: string; high?: string };
+  ratingItems?: string[];
 }
 
 interface FormSettings {
@@ -75,6 +79,7 @@ const questionTypes = [
   { type: 'checkbox', label: 'Checkbox', icon: CheckSquare, desc: 'Multiple selections' },
   { type: 'radio', label: 'Multiple Choice', icon: Circle, desc: 'Single selection' },
   { type: 'select', label: 'Dropdown', icon: List, desc: 'Dropdown selection' },
+  { type: 'rating', label: 'Rating Scale', icon: Star, desc: 'Linear scale (1-N)' },
 ];
 
 const FormBuilder = () => {
@@ -171,6 +176,9 @@ const FormBuilder = () => {
       question: '',
       required: false,
       options: type === 'checkbox' || type === 'radio' || type === 'select' ? ['Option 1', 'Option 2'] : undefined,
+      scaleMax: type === 'rating' ? 5 : undefined,
+      scaleLabels: type === 'rating' ? { low: '1', high: '5' } : undefined,
+      ratingItems: type === 'rating' ? ['Item 1', 'Item 2'] : undefined,
     };
     setQuestions([...questions, newQuestion]);
     setExpandedQuestions(prev => new Set([...prev, newQuestion.id]));
@@ -528,6 +536,88 @@ const FormBuilder = () => {
                               <Plus className="h-4 w-4 mr-1" />
                               Add Option
                             </Button>
+                          </div>
+                        )}
+
+                        {question.type === 'rating' && (
+                          <div className="space-y-4 pt-2">
+                            <div className="flex items-center gap-4">
+                              <Label className="text-sm font-medium text-slate-700">Scale Options</Label>
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm text-slate-500">1 to</span>
+                                <Input
+                                  type="number"
+                                  min={3}
+                                  max={10}
+                                  value={question.scaleMax || 5}
+                                  onChange={(e) => updateQuestion(question.id, { scaleMax: parseInt(e.target.value) || 5 })}
+                                  className="w-16 h-8 text-center"
+                                />
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <Label className="text-xs text-slate-500">Low (1)</Label>
+                                <Input
+                                  value={question.scaleLabels?.low || ''}
+                                  onChange={(e) => updateQuestion(question.id, { scaleLabels: { ...question.scaleLabels, low: e.target.value } })}
+                                  placeholder="Very Dissatisfied"
+                                  className="text-sm"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-xs text-slate-500">High (max)</Label>
+                                <Input
+                                  value={question.scaleLabels?.high || ''}
+                                  onChange={(e) => updateQuestion(question.id, { scaleLabels: { ...question.scaleLabels, high: e.target.value } })}
+                                  placeholder="Very Satisfied"
+                                  className="text-sm"
+                                />
+                              </div>
+                            </div>
+                            <div className="pt-3 border-t border-slate-100">
+                              <Label className="text-sm font-medium text-slate-700 block mb-2">Matrix Rows</Label>
+                              <div className="space-y-2">
+                                {(question.ratingItems || []).map((item, idx) => (
+                                  <div key={idx} className="flex items-center gap-2">
+                                    <Input
+                                      value={item}
+                                      onChange={(e) => {
+                                        const newItems = [...(question.ratingItems || [])];
+                                        newItems[idx] = e.target.value;
+                                        updateQuestion(question.id, { ratingItems: newItems });
+                                      }}
+                                      placeholder={`Row ${idx + 1}`}
+                                      className="flex-1"
+                                    />
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-slate-400 hover:text-red-500"
+                                      onClick={() => {
+                                        const newItems = question.ratingItems?.filter((_, i) => i !== idx);
+                                        updateQuestion(question.id, { ratingItems: newItems });
+                                      }}
+                                      disabled={(question.ratingItems?.length || 0) <= 1}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="mt-2 text-[#025864] border-[#025864]/30 hover:bg-[#025864]/5"
+                                onClick={() => {
+                                  const newItems = [...(question.ratingItems || []), `Row ${(question.ratingItems?.length || 0) + 1}`];
+                                  updateQuestion(question.id, { ratingItems: newItems });
+                                }}
+                              >
+                                <Plus className="h-4 w-4 mr-1" />
+                                Add Row
+                              </Button>
+                            </div>
                           </div>
                         )}
                       </div>

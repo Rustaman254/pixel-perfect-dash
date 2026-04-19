@@ -10,6 +10,6 @@ router.use(requireFeature('payouts'));
 
 router.post('/', enforceUserStatus, requestPayout);
 router.get('/', getPayouts);
-router.get('/my', getPayouts); // Alias for frontend compatibility
+router.get('/my', getPayouts);
 
 export default router;

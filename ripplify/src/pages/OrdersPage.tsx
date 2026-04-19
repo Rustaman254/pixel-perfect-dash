@@ -1,7 +1,7 @@
 import { useState } from "react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import FeatureGuard from "@/components/FeatureGuard";
-import { Search, Download, ChevronLeft, ChevronRight, ExternalLink, CheckCircle2, AlertTriangle, Link as LinkIcon, MapPin } from "lucide-react";
+import { Search, Download, ChevronLeft, ChevronRight, ExternalLink, CheckCircle2, AlertTriangle, Link as LinkIcon, MapPin, Wallet } from "lucide-react";
 import { useAppContext } from "@/contexts/AppContext";
 import { useToast } from "@/hooks/use-toast";
 import { fetchWithAuth } from "@/lib/api";
@@ -11,11 +11,17 @@ type StatusType = "All" | "Confirmed" | "Success" | "Shipped" | "Pending" | "Fai
 
 const OrdersPage = () => {
     usePageTitle("Orders");
-    const { transactions, refreshData } = useAppContext();
+    const { transactions, refreshData, wallets } = useAppContext();
     const { toast } = useToast();
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState<StatusType>("All");
     const [page, setPage] = useState(1);
+
+    // Get user's wallet balance
+    const kesWallet = wallets?.find((w: any) => w.currency_code === 'KES');
+    const walletBalance = kesWallet ? Number(kesWallet.balance) || 0 : 0;
+    const lockedBalance = kesWallet ? Number(kesWallet.locked_balance) || 0 : 0;
+    const availableBalance = walletBalance - lockedBalance;
 
     const mappedTransactions = transactions.map(t => ({
         id: `ORD-${t.id.toString().padStart(3, '0')}`,
@@ -125,7 +131,15 @@ const OrdersPage = () => {
             </div>
 
             {/* Summary */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+                <div className="bg-card rounded-2xl p-5 border border-border">
+                    <div className="flex items-center gap-2 mb-1">
+                        <Wallet className="w-4 h-4 text-emerald-500" />
+                        <p className="text-sm text-muted-foreground">Available</p>
+                    </div>
+                    <h3 className="text-xl font-bold text-emerald-600">KES {availableBalance.toLocaleString()}</h3>
+                    <p className="text-xs text-muted-foreground">of {walletBalance.toLocaleString()} total</p>
+                </div>
                 <div className="bg-card rounded-2xl p-5 border border-border">
                     <p className="text-sm text-muted-foreground mb-1">Total Volume</p>
                     <h3 className="text-xl font-bold text-foreground">KES {totalVolume.toLocaleString()}</h3>

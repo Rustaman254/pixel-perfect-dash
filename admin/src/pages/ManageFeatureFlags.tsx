@@ -287,10 +287,12 @@ const ManageFeatureFlags = () => {
                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="general">General</SelectItem>
+                                    <SelectItem value="ai">AI</SelectItem>
                                     <SelectItem value="payments">Payments</SelectItem>
                                     <SelectItem value="developer">Developer</SelectItem>
                                     <SelectItem value="insights">Insights</SelectItem>
                                     <SelectItem value="system">System</SelectItem>
+                                    <SelectItem value="apps">Apps</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>

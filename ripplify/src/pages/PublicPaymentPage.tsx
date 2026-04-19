@@ -36,6 +36,33 @@ const PublicPaymentPage = () => {
     const [intasendStep, setIntasendStep] = useState<string | null>(null); // 'stk_waiting', 'checkout_redirect'
     const [mpesaNumber, setMpesaNumber] = useState("");
 
+    // Auto-check payment status every 3 seconds when waiting for STK
+    useEffect(() => {
+        if (intasendStep !== 'stk_waiting' || !intasendInvoiceId) return;
+
+        const checkPaymentStatus = async () => {
+            try {
+                const res = await publicFetch(`/transactions/intasend/status/${intasendInvoiceId}`);
+                // Handle different response formats: res.state, res.invoice.state, or res.invoice?.state
+                const state = res?.state || res?.invoice?.state || null;
+                
+                if (state === 'COMPLETE') {
+                    localStorage.setItem(`buyer_info_${slug}`, JSON.stringify(buyerInfo));
+                    setStep(4);
+                    toast({ title: "Payment Confirmed!", description: "Your M-Pesa payment was successful." });
+                } else if (state === 'FAILED') {
+                    toast({ title: "Payment Failed", description: "The payment was not completed. Please try again.", variant: "destructive" });
+                    setIntasendStep(null);
+                }
+            } catch (err) {
+                // Silent fail on polling - user can still click button
+            }
+        };
+
+        const interval = setInterval(checkPaymentStatus, 3000);
+        return () => clearInterval(interval);
+    }, [intasendStep, intasendInvoiceId, slug, buyerInfo]);
+
     useEffect(() => {
         const searchParams = new URLSearchParams(window.location.search);
         const orderTrackingId = searchParams.get('OrderTrackingId');
