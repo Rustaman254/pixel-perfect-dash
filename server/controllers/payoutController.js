@@ -3,9 +3,11 @@ import User from '../models/User.js';
 import PaymentLink from '../models/PaymentLink.js';
 import Notification from '../models/Notification.js';
 import { getDb } from '../config/db.js';
-import intasendService from '../utils/intasendService.js';
+import getPaymentProvider from '../utils/paymentProviderFactory.js';
 import { getPlatformRevenue } from './adminController.js';
 import smsService from '../services/smsService.js';
+
+const provider = getPaymentProvider();
 
 
 export const requestPayout = async (req, res) => {
@@ -105,7 +107,7 @@ export const requestPayout = async (req, res) => {
             detailsDisplay = phone;
 
             try {
-                intasendResponse = await intasendService.mpesaB2c({
+                intasendResponse = await provider.mpesaB2c({
                     name: user.fullName || 'Customer',
                     account: phone,
                     amount: netAmount,
@@ -129,7 +131,7 @@ export const requestPayout = async (req, res) => {
             detailsDisplay = `${bankData.bankCode} - ${bankData.account}`;
 
             try {
-                intasendResponse = await intasendService.bankPayout({
+                intasendResponse = await provider.bankPayout({
                     name: user.fullName || 'Customer',
                     account: bankData.account,
                     bankCode: bankData.bankCode,

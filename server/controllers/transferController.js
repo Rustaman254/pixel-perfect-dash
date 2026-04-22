@@ -1,7 +1,9 @@
 import { getDb } from '../config/db.js';
-import intasendService from '../utils/intasendService.js';
+import getPaymentProvider from '../utils/paymentProviderFactory.js';
 import Notification from '../models/Notification.js';
 import smsService from '../services/smsService.js';
+
+const provider = getPaymentProvider();
 
 const normalizePhone = (phone) => {
     if (!phone) return '';
@@ -76,7 +78,7 @@ export const sendTransfer = async (req, res) => {
 
             // Use IntaSend internal transfer for real money movement
             try {
-                const response = await intasendService.intasendTransfer({
+                const response = await provider.intasendTransfer({
                     name: receiver.fullName || receiver.businessName || 'Ripplify User',
                     amount: numericAmount,
                     narrative: note || `Transfer to ${receiver.fullName || receiver.email}`
@@ -96,7 +98,7 @@ export const sendTransfer = async (req, res) => {
             receiverPhoneNorm = phone;
 
             try {
-                const response = await intasendService.mpesaB2c({
+                const response = await provider.mpesaB2c({
                     name: sender.fullName || 'Ripplify User',
                     account: phone,
                     amount: numericAmount,
@@ -133,7 +135,7 @@ export const sendTransfer = async (req, res) => {
             receiverPhoneNorm = bankDetails.account;
 
             try {
-                const response = await intasendService.bankPayout({
+                const response = await provider.bankPayout({
                     name: receiver?.fullName || 'Ripplify User',
                     account: bankDetails.account,
                     bankCode: bankDetails.bankCode,
@@ -258,7 +260,7 @@ export const sendBatchTransfer = async (req, res) => {
                     receiverPhoneNorm = phone;
 
                     // Send via IntaSend M-Pesa B2C
-                    const response = await intasendService.mpesaB2c({
+                    const response = await provider.mpesaB2c({
                         name: sender.fullName || 'Ripplify User',
                         account: phone,
                         amount: amt,
@@ -277,7 +279,7 @@ export const sendBatchTransfer = async (req, res) => {
                         continue;
                     }
 
-                    const response = await intasendService.intasendTransfer({
+                    const response = await provider.intasendTransfer({
                         name: receiver.fullName || receiver.businessName || 'User',
                         amount: amt,
                         narrative: note || `Batch transfer to ${receiver.fullName || receiver.email}`
@@ -379,7 +381,7 @@ export const checkTransferStatus = async (req, res) => {
 
         // Check with IntaSend
         try {
-            const intasendStatus = await intasendService.checkPayoutStatus(transfer.externalRef);
+            const intasendStatus = await provider.checkPayoutStatus(transfer.externalRef);
             const payoutState = intasendStatus?.state || intasendStatus?.payout?.state || null;
 
             // Map IntaSend states to our states

@@ -1,15 +1,17 @@
 import walletService from '../utils/walletService.js';
 import cryptoService from '../utils/cryptoService.js';
-import intasendService from '../utils/intasendService.js';
+import getPaymentProvider from '../utils/paymentProviderFactory.js';
+
+const provider = getPaymentProvider();
 
 export const getWallets = async (req, res) => {
     try {
         const balances = await walletService.getBalances(req.user.id);
         
-        // Also fetch IntaSend wallet data
+        // Also fetch provider wallet data
         let intasendWallets = [];
         try {
-            intasendWallets = await intasendService.getWallets();
+            intasendWallets = await provider.getWallets();
         } catch (err) {
             console.error('Failed to fetch IntaSend wallets:', err.message);
         }
@@ -42,7 +44,7 @@ export const getWalletStats = async (req, res) => {
         // Get IntaSend wallets to find KES wallet
         let intasendWallets = [];
         try {
-            intasendWallets = await intasendService.getWallets();
+            intasendWallets = await provider.getWallets();
         } catch (err) {
             console.error('Failed to fetch IntaSend wallets:', err.message);
         }
@@ -56,7 +58,7 @@ export const getWalletStats = async (req, res) => {
 
         if (kesWallet?.wallet_id) {
             try {
-                const transactions = await intasendService.getWalletTransactions(kesWallet.wallet_id, 'month');
+                const transactions = await provider.getWalletTransactions(kesWallet.wallet_id, 'month');
                 
                 // Filter for incoming payments (M-Pesa deposits)
                 if (Array.isArray(transactions)) {

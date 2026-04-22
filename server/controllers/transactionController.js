@@ -1,14 +1,14 @@
 import Transaction from '../models/Transaction.js';
 import PaymentLink from '../models/PaymentLink.js';
 import Notification from '../models/Notification.js';
-import { getRipplifyDb } from '../config/db.js';
-import intasendService from '../utils/intasendService.js';
+import { getRipplifyDb, getAuthDb } from '../config/db.js';
+import getPaymentProvider from '../utils/paymentProviderFactory.js';
 import crypto from 'crypto';
 import emailService from '../services/emailService.js';
 import smsService from '../services/smsService.js';
 
 /**
- * Normalize Kenyan phone numbers to 254XXXXXXXXX format (no + prefix — IntaSend requirement)
+ * Normalize Kenyan phone numbers to 254XXXXXXXXX format (no + prefix)
  */
 const normalizePhone = (phone) => {
     if (!phone) return '';
@@ -19,7 +19,6 @@ const normalizePhone = (phone) => {
     } else if (p.length === 9) {
         p = '254' + p;
     }
-    // Already starts with 254 and is 12 digits — fine as-is
     return p;
 };
 
@@ -38,7 +37,7 @@ const splitName = (fullName) => {
 export const createTransaction = async (req, res) => {
     console.log('Create Transaction Request:', { params: req.params, body: req.body });
     try {
-        const { linkId, buyerName, buyerEmail, buyerPhone, amount, currency, type } = req.body;
+        const { linkId, buyerName, buyerEmail, buyerPhone, amount, currency, type, items } = req.body;
         const slug = req.params.slug;
 
         // Find the link to get the seller's userId
@@ -56,10 +55,15 @@ export const createTransaction = async (req, res) => {
             return res.status(400).json({ message: "Invalid transaction amount" });
         }
 
-        // Security: Validate amount against link price
+        // Security: Validate amount against link price (single item or items sum + shipping)
         if (link) {
             if (link.linkType !== 'donation') {
                 let expectedAmount = parseFloat(link.price) || 0;
+                
+                if (items && Array.isArray(items) && items.length > 0) {
+                    expectedAmount = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+                }
+                
                 if (link.category === 'product') {
                     expectedAmount += (parseFloat(link.shippingFee) || 0);
                 }
@@ -79,12 +83,14 @@ export const createTransaction = async (req, res) => {
         }
 
         // Get platform fee
-        const db = getRipplifyDb();
+        const db = getAuthDb();
         const settings = await db.get("SELECT value FROM system_settings WHERE key = 'platform_fee'");
         const platformFeePercent = settings ? parseFloat(settings.value) : 2.5;
         const fee = (numericAmount * platformFeePercent) / 100;
 
         const tx_ref = "TXN-" + Math.random().toString(36).substring(2, 10).toUpperCase();
+
+        const itemsJson = items && Array.isArray(items) ? JSON.stringify(items) : null;
 
         // 1. Create pending transaction in our DB
         const newTransaction = await Transaction.create({
@@ -98,7 +104,8 @@ export const createTransaction = async (req, res) => {
             currency: currency || 'KES',
             status: 'Pending',
             transactionId: tx_ref,
-            type
+            type,
+            itemsJson
         });
 
         // Crypto Handling
@@ -107,7 +114,8 @@ export const createTransaction = async (req, res) => {
             const { default: cryptoService } = await import('../utils/cryptoService.js');
             const depositInfo = await cryptoService.getDepositAddress(userId, network);
             
-            await db.run(
+            const ripplifyDb = getRipplifyDb();
+            await ripplifyDb.run(
                 `UPDATE "transactions" SET "paymentMethod" = ?, "network" = ? WHERE "id" = ?`,
                 ['crypto', network, newTransaction.id]
             );
@@ -118,20 +126,19 @@ export const createTransaction = async (req, res) => {
             });
         }
 
-        const { firstName, lastName } = splitName(buyerName);
+const { firstName, lastName } = splitName(buyerName);
         const email = buyerEmail || 'customer@ripplify.io';
         const phone = normalizePhone(req.body.phone || buyerPhone);
 
-        // IntaSend M-Pesa STK Push
         if (req.body.paymentMethod === 'mpesa') {
-            console.log('Triggering IntaSend M-Pesa STK Push');
+            console.log('Triggering M-Pesa STK Push');
             const mpesaPhone = normalizePhone(req.body.mpesaPhone || req.body.phone || buyerPhone);
 
             if (!mpesaPhone || mpesaPhone.length < 12) {
                 return res.status(400).json({ message: "Valid Kenyan phone number is required for M-Pesa" });
             }
 
-            const stkResponse = await intasendService.mpesaStkPush({
+            const stkResponse = await provider.mpesaStkPush({
                 phone: mpesaPhone,
                 email,
                 amount: numericAmount,
@@ -141,10 +148,10 @@ export const createTransaction = async (req, res) => {
                 host: process.env.BASE_URL || 'https://ripplify.io',
             });
 
-            // Store the IntaSend invoice_id for status tracking
             const invoiceId = stkResponse?.invoice?.invoice_id || stkResponse?.invoice?.id || null;
             if (invoiceId) {
-                await db.run(
+                const ripplifyDb = getRipplifyDb();
+                await ripplifyDb.run(
                     `UPDATE "transactions" SET "paymentMethod" = ?, "externalRef" = ? WHERE "id" = ?`,
                     ['mpesa', invoiceId, newTransaction.id]
                 );
@@ -152,32 +159,26 @@ export const createTransaction = async (req, res) => {
 
             return res.status(201).json({
                 ...newTransaction,
-                intasendResponse: stkResponse,
+                providerResponse: stkResponse,
                 invoiceId,
                 paymentType: 'mpesa_stk',
             });
         }
 
-        // IntaSend Checkout (Card / Bank / General)
         if (['card', 'bank', 'checkout'].includes(req.body.paymentMethod)) {
-            console.log('Generating IntaSend Checkout Link for:', req.body.paymentMethod);
+            console.log('Generating Checkout Link for:', req.body.paymentMethod);
 
-            // Determine redirect URL — back to the payment page
-            // IntaSend requires HTTPS URLs, so we ensure we use a valid HTTPS frontend URL
             const frontendUrl = process.env.FRONTEND_URL && process.env.FRONTEND_URL.startsWith('https://') 
                 ? process.env.FRONTEND_URL 
                 : 'https://ripplify.io';
-            // Include intasend_complete parameter so frontend can detect the callback
             const redirectUrl = `${frontendUrl}/pay/${slug}?intasend_complete=true`;
 
-            // Map payment method to IntaSend method identifier
             let intasendMethod = null;
             if (req.body.paymentMethod === 'card') {
                 intasendMethod = 'CARD-PAYMENT';
             }
-            // bank and checkout use the default (all methods) checkout
 
-            const checkoutResponse = await intasendService.checkoutCharge({
+            const checkoutResponse = await provider.checkoutCharge({
                 email,
                 firstName,
                 lastName,
@@ -194,7 +195,8 @@ export const createTransaction = async (req, res) => {
             const checkoutUrl = checkoutResponse?.url || null;
 
             if (invoiceId) {
-                await db.run(
+                const ripplifyDb = getRipplifyDb();
+                await ripplifyDb.run(
                     `UPDATE "transactions" SET "paymentMethod" = ?, "externalRef" = ? WHERE "id" = ?`,
                     [req.body.paymentMethod, invoiceId, newTransaction.id]
                 );
@@ -202,7 +204,7 @@ export const createTransaction = async (req, res) => {
 
             return res.status(201).json({
                 ...newTransaction,
-                intasendResponse: checkoutResponse,
+                providerResponse: checkoutResponse,
                 invoiceId,
                 checkout_url: checkoutUrl,
                 paymentType: 'checkout',
@@ -227,23 +229,20 @@ export const createTransaction = async (req, res) => {
 
 
 /**
- * IntaSend Webhook Handler
- * Receives POST with payment state changes from IntaSend
+ * Payment Webhook Handler
+ * Receives POST with payment state changes from provider
  */
 export const handleIntaSendWebhook = async (req, res) => {
     try {
-        console.log('IntaSend Webhook Received:', JSON.stringify(req.body, null, 2));
+        console.log('Webhook Received:', JSON.stringify(req.body, null, 2));
 
         const event = req.body;
         const invoiceId = event.invoice_id;
         const state = event.state;
         const apiRef = event.api_ref;
-        const challenge = event.challenge;
 
-        // Validate challenge matches (set in IntaSend dashboard)
-        // In production, verify the challenge string
         if (!invoiceId || !state) {
-            console.log('IntaSend Webhook: Missing invoice_id or state');
+            console.log('Webhook: Missing invoice_id or state');
             return res.status(400).json({ message: 'Missing required fields' });
         }
 
@@ -324,24 +323,24 @@ export const handleIntaSendWebhook = async (req, res) => {
             }
             if (transaction && transaction.status === 'Pending') {
                 await Transaction.updateStatus(transaction.id, 'Failed');
-                console.log(`Transaction ${apiRef} marked as Failed (IntaSend webhook)`);
+                console.log(`Transaction ${apiRef} marked as Failed (webhook)`);
             }
         }
 
         res.status(200).json({ status: 'OK' });
     } catch (error) {
-        console.error('IntaSend webhook error:', error);
+        console.error('Webhook error:', error);
         res.status(500).send('Internal Server Error');
     }
 };
 
 /**
- * Check IntaSend payment status by invoice ID
+ * Check payment status by invoice ID
  */
 export const checkIntaSendPaymentStatus = async (req, res) => {
     try {
         const { invoiceId } = req.params;
-        const result = await intasendService.checkPaymentStatus(invoiceId);
+        const result = await provider.checkPaymentStatus(invoiceId);
 
         const invoiceState = result?.invoice?.state || result?.state || null;
 
@@ -410,7 +409,7 @@ export const checkIntaSendPaymentStatus = async (req, res) => {
             raw: result,
         });
     } catch (error) {
-        console.error('Check IntaSend Payment Status Error:', error);
+        console.error('Check Payment Status Error:', error);
         res.status(500).json({ message: error.message });
     }
 };
