@@ -1,10 +1,21 @@
 import IntaSend from 'intasend-node';
-import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createRequire } from 'module';
 
+const require = createRequire(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.resolve(__dirname, '..', '..', '.env') });
+
+// Always try to load dotenv when this module is first imported
+try {
+    const envPath = path.resolve(__dirname, '..', '..', '.env');
+    const fs = require('fs');
+    if (fs.existsSync(envPath)) {
+        require('dotenv').config({ path: envPath });
+    }
+} catch (e) {
+    // Ignore - might already be loaded by index.js
+}
 
 const isProd = process.env.NODE_ENV === 'production';
 const debugLog = (...args) => { if (!isProd) console.log(...args); };

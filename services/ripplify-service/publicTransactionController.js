@@ -1,5 +1,14 @@
 import crypto from 'crypto';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { createRequire } from 'module';
 import { createConnection } from '../shared/db.js';
+import dotenv from 'dotenv';
+
+const require = createRequire(import.meta.url);
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.resolve(__dirname, '..', '..', '.env') });
+
 import IntaSendProvider from './utils/IntaSendProvider.js';
 
 const db = () => createConnection('ripplify_db');
