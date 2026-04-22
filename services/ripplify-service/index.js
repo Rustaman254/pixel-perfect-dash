@@ -25,7 +25,7 @@ import * as linkCtrl from './linkController.js';
 import * as payoutCtrl from './payoutController.js';
 
 if (!process.env.RIPPLIFY_PORT) {
-    process.env.RIPPLIFY_PORT = '8080';
+    process.env.RIPPLIFY_PORT = '8050';
 }
 
 dotenv.config({ path: path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '.env') });
@@ -136,7 +136,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: process.env.NODE_ENV === 'production' ? 'Internal Server Error' : err.message });
 });
 
-const PORT = process.env.RIPPLIFY_PORT || 3002;
+const PORT = process.env.RIPPLIFY_PORT || '8050';
 const server = app.listen(PORT, () => {
   console.log(`Ripplify service running on port ${PORT}`);
 });
