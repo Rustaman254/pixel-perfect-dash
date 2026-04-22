@@ -30,7 +30,15 @@ export interface StoreBlock {
   props: Record<string, unknown>;
 }
 
-export type SectionStyle = 'default' | 'minimal' | 'editorial' | 'bold' | 'centered' | 'split';
+export type SectionStyle = 'default' | 'minimal' | 'editorial' | 'bold' | 'centered' | 'split' | 'elegant' | 'solid' | 'modern';
+
+export type HeroLayout = 'default' | 'centered' | 'split' | 'full' | 'split-reversed';
+
+export type ProductStyle = 'default' | 'elegant' | 'minimal' | 'grid' | 'list';
+
+export type FooterStyle = 'default' | 'minimal' | 'elegant' | 'modern' | 'columns';
+
+export type ImageTextLayout = 'left' | 'right' | 'center' | 'split';
 
 export interface SectionStyleConfig {
   sectionBgColor?: string;

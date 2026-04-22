@@ -48,6 +48,10 @@ export async function migrate() {
     t.string('sourceOrderId');
     t.string('returnUrl');
     t.string('webhookUrl');
+    t.text('itemsJson');
+    t.integer('minItems').defaultTo(1);
+    t.integer('maxItems').defaultTo(100);
+    t.boolean('allowMultiQuantity').defaultTo(false);
     t.timestamp('createdAt').defaultTo(db.fn.now());
     t.timestamp('updatedAt').defaultTo(db.fn.now());
   });
@@ -73,6 +77,7 @@ export async function migrate() {
     t.string('txHash');
     t.text('metadata');
     t.string('externalRef');
+    t.text('itemsJson');
     t.timestamp('createdAt').defaultTo(db.fn.now());
   });
 

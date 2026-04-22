@@ -2,37 +2,22 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '@/store';
 import { useAuth } from '@/contexts/AuthContext';
-import { Palette, Eye, ExternalLink, Loader2, Plus, Pencil, Search, Smartphone, Monitor, Layout, Trash2, CheckCircle2, Crown, Zap, ShieldCheck, X, ShoppingCart, CreditCard, Banknote, Smartphone as PhoneIcon, Globe, Link2, AlertCircle } from 'lucide-react';
+import { Palette, Eye, ExternalLink, Loader2, Plus, Pencil, Search, Smartphone, Monitor, Layout, Trash2, CheckCircle2, X, Globe, Link2, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import StorePreview from '@/components/StorePreview';
 import { fetchWithAuth } from '@/lib/api';
 
 export default function OnlineStorePage() {
   const navigate = useNavigate();
-  const { projects, loadProjects, publishProject, deleteProject, upgradeProject, updateProjectTheme } = useStore();
+  const { projects, loadProjects, publishProject, deleteProject, updateProjectTheme } = useStore();
   const { userProfile } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [upgrading, setUpgrading] = useState<string | null>(null);
-  const [upgradeModal, setUpgradeModal] = useState<{ open: boolean; projectId: string | null }>({ open: false, projectId: null });
   const [domainModal, setDomainModal] = useState<{ open: boolean; projectId: string | null; currentDomain: string }>({ open: false, projectId: null, currentDomain: '' });
   const [customDomain, setCustomDomain] = useState('');
   const [domainLoading, setDomainLoading] = useState(false);
   const [domainError, setDomainError] = useState('');
 
   useEffect(() => { loadProjects().then(() => setLoading(false)); }, [loadProjects]);
-
-  const handleUpgrade = async () => {
-    if (!upgradeModal.projectId) return;
-    try {
-      setUpgrading(upgradeModal.projectId);
-      await upgradeProject(upgradeModal.projectId, 'premium');
-      setUpgradeModal({ open: false, projectId: null });
-    } catch (err) {
-      alert('Upgrade failed. Please check your Ripplify balance.');
-    } finally {
-      setUpgrading(null);
-    }
-  };
 
   const togglePublish = async (id: string) => {
       try {
@@ -130,16 +115,11 @@ export default function OnlineStorePage() {
                       <h3 className="text-[20px] font-bold text-black" style={{ fontFamily: 'Rebond Grotesque, sans-serif' }}>{publishedProject?.name || 'Unpublished'}</h3>
                    </div>
                 </div>
-                {publishedProject && (
+{publishedProject && (
                   <div className="flex gap-2">
-                     <span className="text-[11px] px-3 py-1.5 rounded-full font-bold uppercase tracking-wider bg-[#D4F655]/20 text-black border border-[#D4F655]/50 flex items-center gap-1.5 hidden sm:flex">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> Published
-                     </span>
-                     {publishedProject.isPremium && (
-                        <span className="text-[11px] px-3 py-1.5 rounded-full font-bold uppercase tracking-wider bg-black text-[#D4F655] border border-black flex items-center gap-1.5">
-                           <Crown className="w-3.5 h-3.5" /> Premium
-                        </span>
-                     )}
+                    <span className="text-[11px] px-3 py-1.5 rounded-full font-bold uppercase tracking-wider bg-[#D4F655]/20 text-black border border-[#D4F655]/50 flex items-center gap-1.5 hidden sm:flex">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Published
+                    </span>
                   </div>
                 )}
               </div>
@@ -219,52 +199,36 @@ export default function OnlineStorePage() {
                  <button onClick={() => navigate('/gallery')} className="text-[12px] font-bold text-gray-500 hover:text-black hover:underline uppercase tracking-wider flex items-center gap-1">Browse templates <ExternalLink className="w-3 h-3" /></button>
                </div>
                
-               {draftProjects.length > 0 ? (
-                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+{draftProjects.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {draftProjects.map(draft => (
                       <div key={draft.id} className="border border-gray-200 rounded-2xl flex flex-col overflow-hidden hover:border-black/20 transition-all shadow-sm group">
-                         <div className="aspect-[4/3] bg-gray-100 relative overflow-hidden border-b border-gray-100 p-2">
-                            <div className="w-full h-full rounded-xl overflow-hidden relative pointer-events-none shadow-sm border border-gray-200/50 bg-white">
-                               <div style={{ width: '1440px', height: '1440px', transform: 'scale(0.2)', transformOrigin: 'top left' }}>
-                                  <StorePreview project={draft} interactive={false} />
-                               </div>
+                        <div className="aspect-[4/3] bg-gray-100 relative overflow-hidden border-b border-gray-100 p-2">
+                          <div className="w-full h-full rounded-xl overflow-hidden relative pointer-events-none shadow-sm border border-gray-200/50 bg-white">
+                            <div style={{ width: '1440px', height: '1440px', transform: 'scale(0.2)', transformOrigin: 'top left' }}>
+                              <StorePreview project={draft} interactive={false} />
                             </div>
-                         </div>
-                         <div className="p-5 flex-1 flex flex-col">
-                            <h4 className="font-bold text-[15px] text-black mb-1 truncate">{draft.name}</h4>
-                            <p className="text-[12px] text-gray-400 mb-5 pb-5 border-b border-gray-100 font-medium">Added {new Date(draft.createdAt).toLocaleDateString()}</p>
-                            
-                            <div className="mt-auto flex flex-col gap-2">
-                                <div className="grid grid-cols-2 gap-2">
-                                   <button onClick={() => navigate(`/editor/${draft.id}`)} className="py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-black text-[13px] font-bold transition-colors w-full flex items-center justify-center gap-2">
-                                      <Pencil className="w-4 h-4" /> Edit
-                                   </button>
-                                   <button onClick={() => togglePublish(draft.id)} className="py-2.5 rounded-xl bg-[#0A0A0A] hover:bg-black text-white text-[13px] font-bold transition-colors w-full">Publish</button>
-                                </div>
-                                 {!draft.isPremium && (
-                                    <button 
-                                      onClick={() => setUpgradeModal({ open: true, projectId: draft.id })} 
-                                      disabled={upgrading === draft.id}
-                                      className="py-3 rounded-xl bg-gradient-to-r from-black to-gray-800 text-[#D4F655] text-[13px] font-bold transition-all w-full flex items-center justify-center gap-2 shadow-lg shadow-black/10 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
-                                    >
-                                       {upgrading === draft.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Crown className="w-4 h-4" />}
-                                       Upgrade to Premium
-                                    </button>
-                                 )}
-                                {draft.isPremium && (
-                                   <div className="py-2.5 rounded-xl border border-[#D4F655] bg-[#D4F655]/5 text-black text-[11px] font-bold uppercase tracking-widest text-center flex items-center justify-center gap-2">
-                                      <ShieldCheck className="w-4 h-4 text-black" /> Premium Active
-                                   </div>
-                                )}
-                             </div>
+                          </div>
+                        </div>
+                        <div className="p-5 flex-1 flex flex-col">
+                          <h4 className="font-bold text-[15px] text-black mb-1 truncate">{draft.name}</h4>
+                          <p className="text-[12px] text-gray-400 mb-5 pb-5 border-b border-gray-100 font-medium">Added {new Date(draft.createdAt).toLocaleDateString()}</p>
+                          <div className="mt-auto flex flex-col gap-2">
+                            <div className="grid grid-cols-2 gap-2">
+                              <button onClick={() => navigate(`/editor/${draft.id}`)} className="py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-black text-[13px] font-bold transition-colors w-full flex items-center justify-center gap-2">
+                                <Pencil className="w-4 h-4" /> Edit
+                              </button>
+                              <button onClick={() => togglePublish(draft.id)} className="py-2.5 rounded-xl bg-[#0A0A0A] hover:bg-black text-white text-[13px] font-bold transition-colors w-full">Publish</button>
+                            </div>
                             <button onClick={() => { if(confirm('Delete theme?')) deleteProject(draft.id); }} className="mt-3 flex items-center justify-center gap-1.5 text-[12px] font-bold text-gray-400 hover:text-red-500 transition-colors py-2">
-                               <Trash2 className="w-3.5 h-3.5" /> Delete
+                              <Trash2 className="w-3.5 h-3.5" /> Delete
                             </button>
-                         </div>
+                          </div>
+                        </div>
                       </div>
                     ))}
-                 </div>
-               ) : (
+                  </div>
+                ) : (
                  <div className="border-2 border-dashed border-gray-200 rounded-2xl p-8 flex flex-col items-center justify-center text-center bg-gray-50/50 h-[200px]">
                     <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm border border-gray-200 mb-3"><Layout className="w-5 h-5 text-gray-400" /></div>
                     <p className="text-[14px] font-bold text-black mb-1">No draft themes</p>
@@ -273,96 +237,6 @@ export default function OnlineStorePage() {
                )}
             </div>
 
-          </div>
-        </div>
-      )}
-
-      {/* Premium Upgrade Modal */}
-      {upgradeModal.open && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white rounded-[2.5rem] w-full max-w-lg overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 relative">
-            {/* Close button */}
-            <button 
-              onClick={() => setUpgradeModal({ open: false, projectId: null })}
-              className="absolute top-5 right-5 w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors z-10"
-            >
-              <X className="w-4 h-4" />
-            </button>
-
-            {/* Header */}
-            <div className="bg-[#0A0A0A] text-white p-8 pb-10 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-48 h-48 bg-[#D4F655]/10 rounded-full blur-[60px] pointer-events-none" />
-              <div className="relative z-10">
-                <div className="w-14 h-14 rounded-2xl bg-[#D4F655] flex items-center justify-center mb-5 shadow-lg shadow-[#D4F655]/20">
-                  <Crown className="w-7 h-7 text-black" />
-                </div>
-                <h2 className="text-2xl font-bold tracking-tight mb-2" style={{ fontFamily: 'Rebond Grotesque, sans-serif' }}>Upgrade to Premium</h2>
-                <p className="text-gray-400 text-[14px] leading-relaxed">Unlock premium templates, advanced sections, and Ripplify-powered checkout for your store.</p>
-              </div>
-            </div>
-
-            {/* Features */}
-            <div className="p-8 space-y-4">
-              {[
-                { icon: Palette, title: 'Premium Templates', desc: 'Lumière, Velocity, Aesthetics & more' },
-                { icon: Zap, title: 'Advanced Sections', desc: 'Instagram feeds, featured collections, navbars' },
-                { icon: ShoppingCart, title: 'Ripplify Checkout', desc: 'Integrated payment processing with Ripplify' },
-                { icon: ShieldCheck, title: 'Priority Support', desc: '24/7 dedicated merchant support' },
-              ].map((feat, i) => (
-                <div key={i} className="flex items-start gap-4 p-3 rounded-xl hover:bg-gray-50 transition-colors">
-                  <div className="w-10 h-10 rounded-xl bg-[#D4F655]/10 flex items-center justify-center shrink-0">
-                    <feat.icon className="w-5 h-5 text-black" />
-                  </div>
-                  <div>
-                    <p className="text-[14px] font-bold text-black">{feat.title}</p>
-                    <p className="text-[12px] text-gray-500 mt-0.5">{feat.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Ripplify Payment Widget */}
-            <div className="px-8 pb-6">
-              <div className="bg-gray-50 rounded-2xl p-5 border border-gray-200">
-                <div className="flex items-center gap-2 mb-4">
-                  <ShoppingCart className="w-4 h-4 text-black" />
-                  <span className="text-[12px] font-bold text-black uppercase tracking-wider">Powered by Ripplify</span>
-                </div>
-                <div className="grid grid-cols-3 gap-3 mb-4">
-                  {[
-                    { icon: CreditCard, label: 'Card' },
-                    { icon: PhoneIcon, label: 'M-Pesa' },
-                    { icon: Banknote, label: 'Bank' },
-                  ].map((method, i) => (
-                    <div key={i} className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-white border border-gray-200 shadow-sm">
-                      <method.icon className="w-5 h-5 text-gray-600" />
-                      <span className="text-[10px] font-bold text-gray-500 uppercase">{method.label}</span>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[13px] font-medium text-gray-500">Premium upgrade</span>
-                  <span className="text-[20px] font-bold text-black" style={{ fontFamily: 'Rebond Grotesque, sans-serif' }}>$50<span className="text-[12px] text-gray-400 font-medium">/one-time</span></span>
-                </div>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="px-8 pb-8 flex gap-3">
-              <button 
-                onClick={() => setUpgradeModal({ open: false, projectId: null })}
-                className="flex-1 py-4 rounded-xl font-bold text-[14px] text-gray-500 hover:bg-gray-100 transition-colors"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={handleUpgrade}
-                disabled={upgrading !== null}
-                className="flex-1 py-4 rounded-xl bg-[#D4F655] hover:bg-[#c1e247] text-black font-bold text-[14px] transition-all shadow-lg shadow-[#D4F655]/20 flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                {upgrading ? <><Loader2 className="w-4 h-4 animate-spin" /> Processing...</> : <><Crown className="w-4 h-4" /> Upgrade Now</>}
-              </button>
-            </div>
           </div>
         </div>
       )}

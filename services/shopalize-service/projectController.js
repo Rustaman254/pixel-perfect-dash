@@ -7,6 +7,11 @@ const db = () => createConnection('shopalize_db');
 
 export const createProject = async (req, res) => {
   try {
+    if (!req.user?.id) {
+      return res.status(401).json({ message: 'Not authorized' });
+    }
+    
+    const userId = req.user.id;
     const { name, description, templateId, subdomain, themeJson } = req.body;
     if (!name) return res.status(400).json({ message: 'Project name is required' });
 
@@ -32,10 +37,11 @@ export const createProject = async (req, res) => {
     let sectionsJson = null;
     if (templateId) {
       let templateQuery = db()('templates');
-      if (isNaN(parseInt(templateId))) {
+      const tidNum = parseInt(templateId);
+      if (isNaN(tidNum)) {
         templateQuery = templateQuery.where({ slug: templateId });
       } else {
-        templateQuery = templateQuery.where({ id: parseInt(templateId) });
+        templateQuery = templateQuery.where({ id: tidNum });
       }
       const template = await templateQuery.first();
       if (template) {
@@ -49,11 +55,12 @@ export const createProject = async (req, res) => {
       fonts: { heading: 'Inter', body: 'Inter' },
     });
 
-    const [{ id: projectId }] = await db()('projects')
+// Insert project
+    const [insertedProject] = await db()('projects')
       .insert({
-        userId: req.user.id,
+        userId,
         name,
-        slug,  // Use clean slug without random suffix
+        slug,
         subdomain: projectSubdomain,
         templateId: templateId || null,
         description: description || '',
@@ -62,13 +69,18 @@ export const createProject = async (req, res) => {
         isPremium: false,
         premiumStatus: 'basic',
       })
-      .returning('id');
+      .returning('*');
 
-    const project = await db()('projects').where({ id: projectId }).first();
+    if (!insertedProject?.id) {
+      console.error('[createProject] Failed to get project after insert');
+      return res.status(500).json({ message: 'Failed to create project' });
+    }
+
+    const insertedId = insertedProject.id;
 
     // Create default home page
     await db()('project_pages').insert({
-      projectId: project.id,
+      projectId: insertedId,
       name: 'Home',
       slug: 'home',
       type: 'home',
@@ -82,7 +94,7 @@ export const createProject = async (req, res) => {
 
     // Create default product listing page
     await db()('project_pages').insert({
-      projectId: project.id,
+      projectId: insertedId,
       name: 'Products',
       slug: 'products',
       type: 'products',
@@ -93,17 +105,27 @@ export const createProject = async (req, res) => {
       seoDescription: `Browse all products from ${name}`,
     });
 
+    // Record activity
     await recordActivity({
-      userId: req.user.id,
+      userId,
       action: 'project_created',
-      projectId: project.id,
-      description: `Created new store: ${name}`
+      projectId: insertedId,
+      description: `Created new store: ${name}`,
+      metadata: { slug, templateId }
     });
 
-    const fullProject = await db()('projects').where({ id: projectId }).first();
-
-    res.status(201).json(fullProject);
+    const pages = await db()('project_pages').where({ projectId: insertedId }).orderBy('createdAt', 'asc');
+    
+    const response = {
+      ...insertedProject,
+      id: String(insertedProject.id),
+      pages
+    };
+    
+    console.log('[createProject] Response:', response);
+    res.status(201).json(response);
   } catch (error) {
+    console.error('[createProject] Error:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -121,8 +143,12 @@ export const getMyProjects = async (req, res) => {
 
 export const getProject = async (req, res) => {
   try {
+    const projectId = parseInt(req.params.id);
+    if (isNaN(projectId)) {
+      return res.status(400).json({ message: 'Invalid project ID' });
+    }
     const project = await db()('projects')
-      .where({ id: parseInt(req.params.id), userId: req.user.id })
+      .where({ id: projectId, userId: req.user.id })
       .first();
     if (!project) return res.status(404).json({ message: 'Project not found' });
 
@@ -153,10 +179,14 @@ export const getProject = async (req, res) => {
 
 export const updateProject = async (req, res) => {
   try {
+    const projectId = parseInt(req.params.id);
+    if (isNaN(projectId)) {
+      return res.status(400).json({ message: 'Invalid project ID' });
+    }
     const { name, description, status, domain, themeJson } = req.body;
 
     const project = await db()('projects')
-      .where({ id: parseInt(req.params.id), userId: req.user.id })
+      .where({ id: projectId, userId: req.user.id })
       .first();
     if (!project) return res.status(404).json({ message: 'Project not found' });
 
@@ -170,11 +200,11 @@ export const updateProject = async (req, res) => {
     if (req.body.premiumStatus !== undefined) updates.premiumStatus = req.body.premiumStatus;
 
     await db()('projects')
-      .where({ id: parseInt(req.params.id) })
+      .where({ id: projectId })
       .update(updates);
 
     const updated = await db()('projects')
-      .where({ id: parseInt(req.params.id) })
+      .where({ id: projectId })
       .first();
 
     await recordActivity({
@@ -192,8 +222,12 @@ export const updateProject = async (req, res) => {
 
 export const deleteProject = async (req, res) => {
   try {
+    const projectId = parseInt(req.params.id);
+    if (isNaN(projectId)) {
+      return res.status(400).json({ message: 'Invalid project ID' });
+    }
     const project = await db()('projects')
-      .where({ id: parseInt(req.params.id), userId: req.user.id })
+      .where({ id: projectId, userId: req.user.id })
       .first();
     if (!project) return res.status(404).json({ message: 'Project not found' });
 
@@ -216,17 +250,21 @@ export const deleteProject = async (req, res) => {
 
 export const publishProject = async (req, res) => {
   try {
+    const projectId = parseInt(req.params.id);
+    if (isNaN(projectId)) {
+      return res.status(400).json({ message: 'Invalid project ID' });
+    }
     const project = await db()('projects')
-      .where({ id: parseInt(req.params.id), userId: req.user.id })
+      .where({ id: projectId, userId: req.user.id })
       .first();
     if (!project) return res.status(404).json({ message: 'Project not found' });
 
     await db()('projects')
-      .where({ id: project.id })
+      .where({ id: projectId })
       .update({ status: 'published', updatedAt: db().fn.now() });
 
     const updated = await db()('projects')
-      .where({ id: project.id })
+      .where({ id: projectId })
       .first();
 
     await recordActivity({
@@ -244,17 +282,21 @@ export const publishProject = async (req, res) => {
 
 export const unpublishProject = async (req, res) => {
   try {
+    const projectId = parseInt(req.params.id);
+    if (isNaN(projectId)) {
+      return res.status(400).json({ message: 'Invalid project ID' });
+    }
     const project = await db()('projects')
-      .where({ id: parseInt(req.params.id), userId: req.user.id })
+      .where({ id: projectId, userId: req.user.id })
       .first();
     if (!project) return res.status(404).json({ message: 'Project not found' });
 
     await db()('projects')
-      .where({ id: project.id })
+      .where({ id: projectId })
       .update({ status: 'draft', updatedAt: db().fn.now() });
 
     const updated = await db()('projects')
-      .where({ id: project.id })
+      .where({ id: projectId })
       .first();
 
     await recordActivity({

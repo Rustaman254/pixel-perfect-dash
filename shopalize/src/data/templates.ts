@@ -7,6 +7,13 @@ const sampleProducts: Product[] = [
   { id: '4', name: 'Minimalist Timepiece', price: 450.00, description: 'Swiss movement with Italian leather band', image: 'https://images.unsplash.com/photo-1524805444758-089113d48a6d?w=600&q=80', category: 'Accessories' },
 ];
 
+const samplePerfumeProducts: Product[] = [
+  { id: 'p1', name: 'Midnight Oud', price: 285.00, description: 'Rich oud wood with amber and sandalwood base', image: 'https://images.unsplash.com/photo-1541643600914-78b084683601?w=600&q=80', category: 'Eau de Parfum' },
+  { id: 'p2', name: 'Velvet Rose', price: 195.00, description: 'Bulgarian roses with vanilla and musk', image: 'https://images.unsplash.com/photo-1585232351009-3138e6a0d9c8?w=600&q=80', category: 'Eau de Toilette' },
+  { id: 'p3', name: 'Citrus Neroli', price: 165.00, description: 'Fresh citrus notes with white flowers', image: 'https://images.unsplash.com/photo-1592936971733-2f8a6e44d8f7?w=600&q=80', category: 'Eau de Cologne' },
+  { id: 'p4', name: 'Sandal Mysore', price: 320.00, description: 'Creamy sandalwood with bergamot top', image: 'https://images.unsplash.com/photo-1615634260167-c8cdede51a75f?w=600&q=80', category: 'Eau de Parfum' },
+];
+
 const defaultTheme = {
   primaryColor: '#0A0A0A',
   secondaryColor: '#27272A',
@@ -113,14 +120,13 @@ export const templates: Template[] = [
     ],
   },
   
-  // PREMIUM THEMES
   {
     id: 'lumiere-pro',
     name: 'Lumière',
     description: 'A highly sophisticated, editorial-style layout for high-end luxury, jewelry, or couture fashion.',
     category: 'Luxury',
     image: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800&q=80', 
-    isPremium: true,
+    isPremium: false,
     theme: { ...defaultTheme, primaryColor: '#1c1917', secondaryColor: '#44403c', accentColor: '#d97706', backgroundColor: '#fafaf9', textColor: '#1c1917', fontFamily: 'Playfair Display' },
     products: sampleProducts,
     pages: [
@@ -146,7 +152,7 @@ export const templates: Template[] = [
     description: 'An aggressive, high-conversion layout designed specifically for athletic apparel and technical gear.',
     category: 'Sports',
     image: 'https://images.unsplash.com/photo-1556906781-9a412961c28c?w=800&q=80',
-    isPremium: true,
+    isPremium: false,
     theme: { ...defaultTheme, primaryColor: '#FAFAFA', secondaryColor: '#A1A1AA', accentColor: '#D4F655', backgroundColor: '#09090B', textColor: '#FAFAFA', fontFamily: 'Roboto' },
     products: sampleProducts,
     pages: [
@@ -170,7 +176,7 @@ export const templates: Template[] = [
     description: 'A soft, immersive, and sensorial layout built for premium cosmetics and wellness brands.',
     category: 'Beauty',
     image: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=800&q=80',
-    isPremium: true,
+    isPremium: false,
     theme: { ...defaultTheme, primaryColor: '#FDF2F8', secondaryColor: '#FBCFE8', accentColor: '#DB2777', backgroundColor: '#FFF1F2', textColor: '#4C1D95', fontFamily: 'Montserrat' },
     products: sampleProducts,
     pages: [
@@ -194,7 +200,7 @@ export const templates: Template[] = [
     description: 'A tech-forward, futuristic layout designed for consumer electronics and digital goods.',
     category: 'Technology',
     image: 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=800&q=80',
-    isPremium: true,
+    isPremium: false,
     theme: { ...defaultTheme, primaryColor: '#3B82F6', secondaryColor: '#1D4ED8', accentColor: '#10B981', backgroundColor: '#020617', textColor: '#F8FAFC', fontFamily: 'Inter' },
     products: sampleProducts,
     pages: [
@@ -214,12 +220,43 @@ export const templates: Template[] = [
     ],
   },
   {
+    id: 'essence-perfume',
+    name: 'Essence',
+    description: 'An elegant, editorial-inspired template designed for premium perfume and fragrance brands. Features sophisticated typography, generous whitespace, and a WordPress-like blog section for scent stories.',
+    category: 'Beauty',
+    image: 'https://images.unsplash.com/photo-1592946971733-2f8a6e44d8f7?w=800&q=80',
+    isPremium: false,
+    theme: { ...defaultTheme, primaryColor: '#1C1C1C', secondaryColor: '#4A4A4A', accentColor: '#C9A962', backgroundColor: '#FAFAF8', textColor: '#2D2D2D', fontFamily: 'Cormorant Garamond' },
+    products: samplePerfumeProducts,
+    pages: [
+      { id: 'home', name: 'Home', slug: 'index', sections: [
+        { id: 'h1', type: 'header', props: { storeName: 'ESSENCE', navLinks: ['Fragrances', 'Collections', 'Our Story', 'Journal', 'Contact'], showCart: true, showSearch: true, sticky: true, style: 'minimal', hidden: false } },
+        { id: 'hero1', type: 'hero', props: { title: 'The Art of Scent', subtitle: 'Handcrafted fragrances inspired by the world\'s most beautiful memories.', cta: 'Discover Collection', style: 'split', layout: 'centered' } },
+        { id: 'feat1', type: 'features', props: { title: 'Why Essence' }, blocks: [
+          { id: 'f1', type: 'feature', props: { icon: '🌸', title: 'Natural Ingredients', text: 'Sourced from the finest perfumeries around the world.' } },
+          { id: 'f2', type: 'feature', props: { icon: '🎨', title: 'Artisan Crafted', text: 'Each bottle is hand-blended by master perfumers.' } },
+          { id: 'f3', type: 'feature', props: { icon: '✨', title: 'Long-Lasting', text: 'Concentrated formulas that linger for 12+ hours.' } },
+        ]},
+        { id: 'prod1', type: 'products', props: { title: 'Signature Collection', columns: 2, style: 'elegant' } },
+        { id: 'img1', type: 'image_with_text', props: { title: 'The Notes', text: 'Every fragrance tells a story. Top notes inviting you in, heart notes that capture the moment, and base notes that leave a lasting impression.', cta: 'Learn More', layout: 'left' } },
+        { id: 'test1', type: 'testimonials', props: { title: 'What Our Clients Say' } },
+        { id: 'cta1', type: 'cta', props: { title: 'Find Your Signature', text: 'Subscribe for early access to new releases and exclusive offers.', cta: 'Join the List' } },
+        { id: 'ft1', type: 'footer', props: { storeName: 'ESSENCE', text: '© 2026 Essence Parfums', links: ['Privacy', 'Terms', 'Shipping', 'Returns', 'FAQ'], showSocial: true, style: 'elegant' } },
+      ]},
+      { id: 'checkout', name: 'Checkout', slug: 'checkout', sections: [
+        { id: 'h1', type: 'header', props: { storeName: 'ESSENCE', navLinks: ['Fragrances', 'Collections', 'Our Story', 'Journal', 'Contact'], showCart: true, showSearch: true, sticky: true, style: 'minimal', hidden: false } },
+        { id: 'chk1', type: 'checkout', props: {} },
+        { id: 'ft1', type: 'footer', props: { storeName: 'ESSENCE', text: '© 2026 Essence Parfums', links: ['Privacy', 'Terms', 'Shipping', 'Returns', 'FAQ'], showSocial: true, style: 'elegant' } },
+      ]},
+    ],
+  },
+  {
     id: 'aurum-bags',
     name: 'Aurum',
     description: 'A luxurious, tactile layout designed specifically for premium leather goods and designer bags.',
     category: 'Luxury',
     image: 'https://images.unsplash.com/photo-1584916201218-f4242ceb4809?w=800&q=80',
-    isPremium: true,
+    isPremium: false,
     theme: { ...defaultTheme, primaryColor: '#451A03', secondaryColor: '#78350F', accentColor: '#D97706', backgroundColor: '#FEF3C7', textColor: '#451A03', fontFamily: 'Playfair Display' },
     products: [
       { id: 'b1', name: 'The Classic Tote', price: 850.00, description: 'Hand-stitched Italian calf leather.', image: 'https://images.unsplash.com/photo-1584916201218-f4242ceb4809?w=600&q=80', category: 'Bags' },

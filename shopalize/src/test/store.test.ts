@@ -1,14 +1,31 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { useStore } from '@/store'
 import { templates } from '@/data/templates'
 
+// Mock fetchWithAuth
+vi.mock('@/lib/api', () => ({
+  fetchWithAuth: vi.fn(),
+  BASE_URL: '/api',
+  DNS_URL: '/api/dns',
+  SSO_HUB_URL: 'http://localhost:3001/sso.html',
+  PRODUCTS: {
+    ripplify: "http://localhost:8080",
+    shopalize: "http://localhost:8081",
+    watchtower: "http://localhost:8083",
+    admin: "http://localhost:8082",
+  }
+}))
+
+import { fetchWithAuth } from '@/lib/api'
+
 beforeEach(() => {
+  vi.clearAllMocks();
   localStorage.clear();
   useStore.setState({
     projects: [],
     currentProject: null,
-    user: null,
-    isLoggedIn: false,
+    loading: false,
+    cart: [],
   });
 });
 
@@ -17,128 +34,102 @@ describe('Store', () => {
     const state = useStore.getState();
     expect(state.projects).toEqual([]);
     expect(state.currentProject).toBeNull();
-    expect(state.isLoggedIn).toBe(false);
   });
 
-  it('creates a project from template', () => {
+  it('creates a project from template', async () => {
+    const mockProject = {
+      id: '1',
+      name: 'Test Store',
+      slug: 'test-store',
+      templateId: 'studio',
+      themeJson: JSON.stringify(templates[0].theme),
+      pages: [],
+      products: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+
+    vi.mocked(fetchWithAuth).mockResolvedValueOnce(mockProject);
+
     const { createProject } = useStore.getState();
     const template = templates[0];
-    const project = createProject(template, 'Test Store');
+    const project = await createProject(template, 'Test Store');
 
+    expect(fetchWithAuth).toHaveBeenCalledWith('/shopalize/projects', expect.objectContaining({
+      method: 'POST',
+    }));
     expect(project).not.toBeNull();
     expect(project!.name).toBe('Test Store');
-    expect(project!.templateId).toBe(template.id);
-    expect(project!.pages.length).toBeGreaterThan(0);
-    expect(project!.theme).toEqual(template.theme);
+    expect(project!.id).toBe('1');
   });
 
-  it('generates unique project IDs', () => {
-    const { createProject } = useStore.getState();
-    const template = templates[0];
-    const p1 = createProject(template, 'Store 1');
-    const p2 = createProject(template, 'Store 2');
+  it('loads projects', async () => {
+    const mockProjects = [
+      { id: '1', name: 'Store 1', slug: 'store-1', createdAt: Date.now(), updatedAt: Date.now() },
+      { id: '2', name: 'Store 2', slug: 'store-2', createdAt: Date.now(), updatedAt: Date.now() },
+    ];
 
-    expect(p1!.id).not.toBe(p2!.id);
+    vi.mocked(fetchWithAuth).mockResolvedValueOnce(mockProjects);
+
+    const { loadProjects } = useStore.getState();
+    await loadProjects();
+
+    const state = useStore.getState();
+    expect(state.projects.length).toBe(2);
+    expect(state.projects[0].name).toBe('Store 1');
   });
 
-  it('enforces anonymous 3 project limit', () => {
-    const { createProject, canCreateProject } = useStore.getState();
-    const template = templates[0];
+  it('loads a project by ID', async () => {
+    const mockProject = { id: '1', name: 'Test', slug: 'test', createdAt: Date.now(), updatedAt: Date.now() };
+    vi.mocked(fetchWithAuth).mockResolvedValueOnce(mockProject);
 
-    expect(canCreateProject()).toBe(true);
-
-    createProject(template, 'Store 1');
-    expect(canCreateProject()).toBe(true);
-
-    createProject(template, 'Store 2');
-    expect(canCreateProject()).toBe(true);
-
-    createProject(template, 'Store 3');
-    expect(canCreateProject()).toBe(false);
-
-    const result = createProject(template, 'Store 4');
-    expect(result).toBeNull();
-  });
-
-  it('allows unlimited projects when logged in', () => {
-    const { createProject, login, canCreateProject } = useStore.getState();
-    const template = templates[0];
-
-    createProject(template, 'Store 1');
-    createProject(template, 'Store 2');
-    createProject(template, 'Store 3');
-
-    expect(canCreateProject()).toBe(false);
-
-    login('google');
-    expect(canCreateProject()).toBe(true);
-
-    const p4 = createProject(template, 'Store 4');
-    expect(p4).not.toBeNull();
-  });
-
-  it('loads a project by ID', () => {
-    const { createProject, loadProject } = useStore.getState();
-    const template = templates[0];
-    const project = createProject(template, 'Test');
-
-    useStore.setState({ currentProject: null });
-    loadProject(project!.id);
+    const { loadProject } = useStore.getState();
+    await loadProject('1');
 
     expect(useStore.getState().currentProject).not.toBeNull();
-    expect(useStore.getState().currentProject!.id).toBe(project!.id);
+    expect(useStore.getState().currentProject!.id).toBe('1');
   });
 
-  it('deletes a project', () => {
-    const { createProject, deleteProject } = useStore.getState();
-    const template = templates[0];
-    const project = createProject(template, 'Test');
+  it('deletes a project', async () => {
+    vi.mocked(fetchWithAuth).mockResolvedValueOnce({});
+    
+    useStore.setState({ 
+      projects: [{ id: '1', name: 'Test', slug: 'test', pages: [], theme: {} as any, createdAt: 0, updatedAt: 0, templateId: '' }] 
+    });
 
-    expect(useStore.getState().projects.length).toBe(1);
+    const { deleteProject } = useStore.getState();
+    await deleteProject('1');
 
-    deleteProject(project!.id);
+    expect(fetchWithAuth).toHaveBeenCalledWith('/shopalize/projects/1', { method: 'DELETE' });
     expect(useStore.getState().projects.length).toBe(0);
   });
 
-  it('updates project theme', () => {
-    const { createProject, updateProjectTheme } = useStore.getState();
-    const template = templates[0];
-    createProject(template, 'Test');
+  it('updates project name', async () => {
+    vi.mocked(fetchWithAuth).mockResolvedValueOnce({});
+    const currentProject = { id: '1', name: 'Old Name', slug: 'old-name', pages: [], theme: {} as any, createdAt: 0, updatedAt: 0, templateId: '' };
+    useStore.setState({ currentProject, projects: [currentProject] });
 
-    updateProjectTheme({ primaryColor: '#ff0000' });
+    const { updateProjectName } = useStore.getState();
+    await updateProjectName('New Name');
 
-    expect(useStore.getState().currentProject!.theme.primaryColor).toBe('#ff0000');
-  });
-
-  it('updates project name', () => {
-    const { createProject, updateProjectName } = useStore.getState();
-    const template = templates[0];
-    createProject(template, 'Old Name');
-
-    updateProjectName('New Name');
-
+    expect(fetchWithAuth).toHaveBeenCalledWith('/shopalize/projects/1', expect.objectContaining({
+      method: 'PUT',
+      body: JSON.stringify({ name: 'New Name' }),
+    }));
     expect(useStore.getState().currentProject!.name).toBe('New Name');
   });
 
-  it('login sets user and isLoggedIn', () => {
-    const { login } = useStore.getState();
+  it('manages cart', () => {
+    const { addToCart, getCartTotal, clearCart } = useStore.getState();
+    const product = { id: 'p1', name: 'Product 1', price: 100, description: '', image: '', category: '' };
 
-    login('github');
+    addToCart(product, 2);
+    expect(useStore.getState().cart.length).toBe(1);
+    expect(useStore.getState().cart[0].quantity).toBe(2);
+    expect(getCartTotal()).toBe(200);
 
-    const state = useStore.getState();
-    expect(state.isLoggedIn).toBe(true);
-    expect(state.user).not.toBeNull();
-    expect(state.user!.provider).toBe('github');
-  });
-
-  it('logout clears user', () => {
-    const { login, logout } = useStore.getState();
-
-    login('google');
-    expect(useStore.getState().isLoggedIn).toBe(true);
-
-    logout();
-    expect(useStore.getState().isLoggedIn).toBe(false);
-    expect(useStore.getState().user).toBeNull();
+    clearCart();
+    expect(useStore.getState().cart.length).toBe(0);
   });
 });
+

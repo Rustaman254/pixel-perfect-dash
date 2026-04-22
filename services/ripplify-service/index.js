@@ -24,6 +24,10 @@ import * as transCtrl from './transactionController.js';
 import * as linkCtrl from './linkController.js';
 import * as payoutCtrl from './payoutController.js';
 
+if (!process.env.RIPPLIFY_PORT) {
+    process.env.RIPPLIFY_PORT = '8080';
+}
+
 dotenv.config({ path: path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '.env') });
 
 // Run migrations

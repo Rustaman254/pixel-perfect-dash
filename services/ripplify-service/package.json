@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
+    "start8080": "node -e \"process.env.RIPPLIFY_PORT='8080'; import('./index.js')\"",
     "dev": "node --watch index.js",
     "migrate": "node migrate.js"
   },

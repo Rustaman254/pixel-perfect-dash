@@ -69,10 +69,15 @@ export const protectJwt = async (req, res, next) => {
   if (req.headers.authorization?.startsWith('Bearer')) {
     try {
       token = req.headers.authorization.split(' ')[1];
-      const decoded = jwt.verify(token, getJwtSecret());
+      console.log('[protectJwt] Token received, length:', token?.length);
+      const secret = getJwtSecret();
+      console.log('[protectJwt] Using secret:', secret?.substring(0, 10));
+      const decoded = jwt.verify(token, secret);
+      console.log('[protectJwt] Decoded:', decoded);
       req.user = { id: decoded.id, email: decoded.email, role: decoded.role };
       return next();
     } catch (error) {
+      console.log('[protectJwt] Error:', error.message);
       if (error.name === 'TokenExpiredError') {
         return res.status(401).json({ message: 'Token expired' });
       }

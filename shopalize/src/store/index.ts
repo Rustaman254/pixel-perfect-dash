@@ -151,7 +151,7 @@ export const useStore = create<AppState>((set, get) => ({
     try {
       set({ loading: true });
       const data = await fetchWithAuth('/shopalize/projects');
-      const projects = data.map(apiProjectToProject);
+      const projects = data.map(apiProjectToProject).filter(p => p.id && p.id !== 'null' && !isNaN(Number(p.id)));
       set({ projects, loading: false });
     } catch {
       set({ loading: false });
@@ -172,9 +172,8 @@ export const useStore = create<AppState>((set, get) => ({
         }),
       });
 
-      // Load the full project with pages
-      const full = await fetchWithAuth(`/shopalize/projects/${data.id}`);
-      const project = apiProjectToProject(full);
+      // API returns project object but id may be null - use response directly
+      const project = apiProjectToProject(data);
 
       // If template has pages, update the project pages to match the template exactly
       if (template.pages && template.pages.length > 0 && project.pages.length > 0) {
