@@ -13,7 +13,7 @@ export const TrustLogos = () => (
           </span>
         ))}
       </div>
-      <Link to="/products" className="mt-6 inline-block text-xs font-semibold uppercase tracking-widest text-primary hover:underline">
+      <Link to="/products" className="mt-6 inline-block text-xs font-semibold uppercase tracking-widest text-brand-blue hover:underline">
         Customer stories ›
       </Link>
     </div>

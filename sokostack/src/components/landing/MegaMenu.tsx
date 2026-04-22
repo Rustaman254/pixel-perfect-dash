@@ -187,11 +187,11 @@ export const MegaMenuPanel = ({ content }: { content: MegaMenuContent }) => {
                       to="/products"
                       className="group flex items-start gap-3 rounded-md p-2 transition-colors hover:bg-surface-soft"
                     >
-                      <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-surface-muted text-primary group-hover:bg-primary/10">
+                      <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-surface-muted text-brand-red group-hover:bg-brand-red/10">
                         <Icon className="h-4 w-4" />
                       </span>
                       <span className="min-w-0">
-                        <span className="block text-sm font-medium text-brand-dark group-hover:text-primary">
+                        <span className="block text-sm font-medium text-brand-dark group-hover:text-brand-red">
                           {item.label}
                         </span>
                         {item.desc && (
@@ -207,12 +207,12 @@ export const MegaMenuPanel = ({ content }: { content: MegaMenuContent }) => {
         ))}
       </div>
       {content.featured && (
-        <aside className="rounded-lg bg-gradient-to-br from-primary/10 via-brand-yellow/10 to-brand-blue/10 p-6">
+        <aside className="rounded-lg bg-gradient-to-br from-brand-red/10 via-brand-yellow/10 to-brand-blue/10 p-6">
           <h4 className="text-base font-semibold text-brand-dark">{content.featured.title}</h4>
           <p className="mt-2 text-sm text-muted-foreground">{content.featured.description}</p>
           <Link
             to="/products"
-            className="mt-4 inline-flex text-sm font-medium text-primary hover:underline"
+            className="mt-4 inline-flex text-sm font-medium text-brand-red hover:underline"
           >
             {content.featured.cta} →
           </Link>

@@ -2065,10 +2065,10 @@
   "users": [
     {
       "id": 1,
-      "email": "admin@ripplify.co",
-      "password": "$2b$10$lBrg3WcgSjucve.5MBaGPu2MX6f7ZFGcY236hrrzsEtwSbSNN3nq.",
+      "email": "anwarmagara@gmail.com",
+      "password": "$2b$10$AVVTVNbFL0O6rAUc7HqQweB3y7VggPjtW/UBeEvJOqtJf7oAjgyB2",
       "role": "admin",
-      "fullName": "System Administrator",
+      "fullName": "Super Admin",
       "phone": "",
       "businessName": "RippliFy Inc",
       "idType": "National ID",
@@ -2160,9 +2160,9 @@
       "kycStatus": "verified",
       "kybStatus": "verified",
       "transactionLimit": 5000,
-      "isDisabled": 0,
+      "isDisabled": 1,
       "isSuspended": 0,
-      "accountStatus": "active",
+      "accountStatus": "disabled",
       "suspendReason": "",
       "referralPoints": 0,
       "pin": null

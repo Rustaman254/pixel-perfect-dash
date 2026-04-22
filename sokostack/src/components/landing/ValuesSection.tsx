@@ -24,20 +24,20 @@ const values = [
   },
 ];
 
-// 12-tile collage using gradient backgrounds (no copyrighted imagery)
+// 12-tile collage using gradients only (no copyrighted imagery)
 const tileGradients = [
-  "from-primary/80 to-brand-secondary",
-  "from-primary/70 to-brand-secondary",
-  "from-brand-secondary to-primary/80",
-  "from-primary/60 to-brand-secondary",
-  "from-brand-accent/70 to-primary/70",
-  "from-primary/70 to-brand-accent/70",
-  "from-primary/80 to-brand-accent/60",
-  "from-brand-secondary/70 to-primary/60",
-  "from-primary/70 to-brand-secondary/80",
-  "from-brand-secondary/60 to-primary/60",
-  "from-primary/60 to-brand-secondary/70",
-  "from-brand-accent/60 to-primary/70",
+  "from-brand-red/80 to-brand-yellow/70",
+  "from-brand-blue/70 to-brand-purple/80",
+  "from-brand-yellow/80 to-brand-red/60",
+  "from-brand-purple/80 to-brand-blue/70",
+  "from-emerald-500/70 to-brand-blue/70",
+  "from-brand-red/70 to-brand-purple/70",
+  "from-brand-blue/80 to-emerald-400/60",
+  "from-brand-yellow/70 to-emerald-500/60",
+  "from-brand-purple/70 to-brand-red/80",
+  "from-brand-blue/60 to-brand-yellow/60",
+  "from-brand-red/60 to-brand-blue/70",
+  "from-brand-purple/60 to-brand-yellow/70",
 ];
 
 export const ValuesSection = () => (
@@ -58,7 +58,7 @@ export const ValuesSection = () => (
         <div className="mt-10 grid gap-10 md:grid-cols-2">
           {values.map(({ Icon, title, body }) => (
             <div key={title} className="flex gap-4">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-surface-muted text-primary">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-surface-muted text-brand-blue">
                 <Icon className="h-5 w-5" />
               </div>
               <div>
@@ -69,7 +69,7 @@ export const ValuesSection = () => (
           ))}
         </div>
         <div className="mt-10 text-center">
-          <Link to="/products" className="text-xs font-semibold uppercase tracking-widest text-primary hover:underline">
+          <Link to="/products" className="text-xs font-semibold uppercase tracking-widest text-brand-blue hover:underline">
             Read our story ›
           </Link>
         </div>

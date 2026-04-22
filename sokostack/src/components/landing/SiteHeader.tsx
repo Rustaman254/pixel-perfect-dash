@@ -5,7 +5,7 @@ import { Logo } from "./Logo";
 import { Button } from "@/components/ui/button";
 import { megaMenus, MegaMenuPanel } from "./MegaMenu";
 
-const nav = ["Products", "Customer Stories", "Learn", "Pricing", "Support"] as const;
+const nav = ["Products", "Customers", "Partners", "Resources"] as const;
 
 export const SiteHeader = () => {
   const [open, setOpen] = useState<string | null>(null);
@@ -33,7 +33,7 @@ export const SiteHeader = () => {
                 onFocus={() => handleEnter(item)}
                 aria-expanded={open === item}
                 className={`flex items-center gap-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                  open === item ? "text-primary" : "text-foreground/80 hover:text-primary"
+                  open === item ? "text-brand-red" : "text-foreground/80 hover:text-brand-red"
                 }`}
               >
                 {item}
@@ -54,7 +54,7 @@ export const SiteHeader = () => {
             <Globe className="h-4 w-4" />
             English
           </button>
-          <Link to="/products" className="text-sm font-medium text-primary hover:underline">
+          <Link to="/products" className="text-sm font-medium text-brand-red hover:underline">
             Sign in
           </Link>
           <Button asChild variant="outlineRed" size="sm">

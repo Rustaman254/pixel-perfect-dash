@@ -20,14 +20,14 @@ export const HeroSection = () => {
             Your life's work,
             <br />
             powered by <span className="relative inline-block">our life's work
-              <span className="absolute -bottom-1 left-0 right-0 h-[3px] bg-primary rounded-full" />
+              <span className="absolute -bottom-1 left-0 right-0 h-[3px] bg-brand-red rounded-full" />
             </span>
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-base text-muted-foreground md:text-lg">
             A unified suite of business software designed for companies of every size — built by a team that values your privacy.
           </p>
           <div className="mt-8">
-            <Button variant="default" size="lg" asChild>
+            <Button variant="red" size="lg" asChild>
               <Link to="/products">Get started for free</Link>
             </Button>
           </div>
@@ -37,9 +37,9 @@ export const HeroSection = () => {
         <div className="mx-auto mt-14 max-w-5xl overflow-hidden rounded-xl border border-border bg-card shadow-card">
           <div className="grid grid-cols-1 md:grid-cols-[280px_1fr]">
             {/* Promo tile */}
-            <div className="relative flex flex-col justify-between bg-gradient-primary p-6 text-white">
+            <div className="relative flex flex-col justify-between bg-gradient-purple p-6 text-white">
               <div>
-                <Sparkles className="h-6 w-6 text-white" />
+                <Sparkles className="h-6 w-6 text-brand-yellow" />
                 <h3 className="mt-6 text-xl font-semibold leading-snug">
                   Introducing
                   <br />
@@ -61,17 +61,17 @@ export const HeroSection = () => {
             {/* App grid */}
             <div className="p-6 md:p-8">
               <div className="mb-5 flex items-center justify-between text-xs font-medium uppercase tracking-wide">
-                <Link to="/products" className="text-primary hover:underline">Featured Apps ›</Link>
-                <Link to="/products" className="text-primary hover:underline">Explore all 50+ products ›</Link>
+                <Link to="/products" className="text-brand-blue hover:underline">Featured Apps ›</Link>
+                <Link to="/products" className="text-brand-blue hover:underline">Explore all 50+ products ›</Link>
               </div>
               <div className="grid grid-cols-2 gap-x-8 gap-y-5 md:grid-cols-3">
                 {apps.map(({ name, desc, Icon }) => (
                   <Link key={name} to="/products" className="group flex gap-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-surface-muted text-primary group-hover:bg-primary/10">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-surface-muted text-brand-blue group-hover:bg-brand-blue/10">
                       <Icon className="h-5 w-5" />
                     </div>
                     <div>
-                      <div className="text-sm font-semibold text-brand-dark group-hover:text-primary">{name}</div>
+                      <div className="text-sm font-semibold text-brand-dark group-hover:text-brand-red">{name}</div>
                       <div className="text-xs leading-snug text-muted-foreground">{desc}</div>
                     </div>
                   </Link>

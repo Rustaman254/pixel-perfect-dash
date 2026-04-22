@@ -2,15 +2,15 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
 const stats = [
-  { v: "130M+", l: "Users worldwide" },
+  { v: "150M+", l: "Users worldwide" },
   { v: "150+", l: "Countries served" },
-  { v: "18K+", l: "Employees worldwide" },
-  { v: "29+", l: "Years in business" },
-  { v: "55+", l: "Products" },
+  { v: "19K+", l: "Employees worldwide" },
+  { v: "30+", l: "Years in business" },
+  { v: "60+", l: "Products" },
 ];
 
 export const StatsBand = () => (
-  <section className="relative overflow-hidden bg-primary text-primary-foreground">
+  <section className="relative overflow-hidden bg-brand-blue text-brand-blue-foreground">
     {/* decorative outline */}
     <svg
       className="absolute right-0 top-1/2 hidden h-72 -translate-y-1/2 opacity-20 md:block"
@@ -34,8 +34,8 @@ export const StatsBand = () => (
           </div>
         ))}
       </div>
-      <Button variant="outline" className="mt-10 border-white/60 bg-transparent text-primary-foreground hover:bg-white hover:text-primary" asChild>
-        <Link to="/products">More about Sokostack</Link>
+      <Button variant="outline" className="mt-10 border-white/60 bg-transparent text-brand-blue-foreground hover:bg-white hover:text-brand-blue" asChild>
+        <Link to="/products">More about SokoStack</Link>
       </Button>
     </div>
   </section>

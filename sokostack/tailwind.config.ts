@@ -25,15 +25,15 @@ export default {
         popover: { DEFAULT: "hsl(var(--popover))", foreground: "hsl(var(--popover-foreground))" },
         card: { DEFAULT: "hsl(var(--card))", foreground: "hsl(var(--card-foreground))" },
         brand: {
-          primary: { DEFAULT: "hsl(var(--brand-primary))", foreground: "hsl(var(--brand-primary-foreground))" },
-          secondary: { DEFAULT: "hsl(var(--brand-secondary))", foreground: "hsl(var(--brand-secondary-foreground))" },
-          accent: { DEFAULT: "hsl(var(--brand-accent))", foreground: "hsl(var(--brand-accent-foreground))" },
+          red: { DEFAULT: "hsl(var(--brand-red))", foreground: "hsl(var(--brand-red-foreground))" },
+          yellow: { DEFAULT: "hsl(var(--brand-yellow))", foreground: "hsl(var(--brand-yellow-foreground))" },
+          blue: { DEFAULT: "hsl(var(--brand-blue))", foreground: "hsl(var(--brand-blue-foreground))" },
+          purple: { DEFAULT: "hsl(var(--brand-purple))", foreground: "hsl(var(--brand-purple-foreground))" },
           dark: "hsl(var(--brand-dark))",
         },
         surface: {
           soft: "hsl(var(--surface-soft))",
           muted: "hsl(var(--surface-muted))",
-          highlight: "hsl(var(--surface-highlight))",
         },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
@@ -47,13 +47,11 @@ export default {
         },
       },
       backgroundImage: {
-        "gradient-primary": "var(--gradient-primary)",
+        "gradient-purple": "var(--gradient-purple)",
         "gradient-hero": "var(--gradient-hero)",
-        "gradient-dark": "var(--gradient-dark)",
       },
       boxShadow: {
         card: "var(--shadow-card)",
-        button: "var(--shadow-button)",
       },
       borderRadius: {
         lg: "var(--radius)",

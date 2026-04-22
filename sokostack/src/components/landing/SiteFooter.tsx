@@ -13,11 +13,11 @@ const cols = [
   },
   {
     title: "Community",
-    items: ["User Community", "Customer Stories", "Work With a Partner", "Sokostack for Startups", "Affiliate Program", "Humans of Sokostack"],
+    items: ["User Community", "Customer Stories", "Work With a Partner", "SokoStack for Startups", "Affiliate Program", "Humans of SokoStack"],
   },
   {
     title: "Company",
-    items: ["About Us", "Our Story", "Press", "Events", "Branding Assets", "Sokostack Schools", "Service Status", "Careers"],
+    items: ["About Us", "Our Story", "Press", "Events", "Branding Assets", "SokoStack Schools", "Service Status", "Careers"],
   },
 ];
 
@@ -31,7 +31,7 @@ export const SiteFooter = () => (
             <ul className="mt-4 space-y-2.5">
               {c.items.map((i) => (
                 <li key={i}>
-                  <Link to="/products" className="text-sm text-muted-foreground hover:text-primary">
+                  <Link to="/products" className="text-sm text-muted-foreground hover:text-brand-red">
                     {i}
                   </Link>
                 </li>
@@ -45,14 +45,14 @@ export const SiteFooter = () => (
       <div className="container flex flex-col items-center gap-4 py-6">
         <div className="flex gap-5 text-muted-foreground">
           {[Twitter, Facebook, Youtube, Linkedin, Instagram].map((I, i) => (
-            <a key={i} href="#" aria-label="social" className="hover:text-primary">
+            <a key={i} href="#" aria-label="social" className="hover:text-brand-red">
               <I className="h-4 w-4" />
             </a>
           ))}
         </div>
         <ul className="flex flex-wrap justify-center gap-x-5 gap-y-1 text-xs text-muted-foreground">
           {["Contact Us", "Security", "Compliance", "IPR Complaints", "Anti‑spam Policy", "Terms of Service", "Privacy Policy", "Cookie Policy", "Trademark Policy"].map((x) => (
-            <li key={x}><Link to="/products" className="hover:text-primary">{x}</Link></li>
+            <li key={x}><Link to="/products" className="hover:text-brand-red">{x}</Link></li>
           ))}
         </ul>
       </div>
@@ -60,7 +60,7 @@ export const SiteFooter = () => (
     <div className="bg-brand-dark py-5 text-center text-xs text-white/70">
       <div className="container flex flex-col items-center gap-2">
         <Logo />
-        <span>© 2026, Sokostack Technologies Pvt. Ltd. All Rights Reserved.</span>
+        <span>© 2026, SokoStack Corporation Pvt. Ltd. All Rights Reserved.</span>
       </div>
     </div>
   </footer>
