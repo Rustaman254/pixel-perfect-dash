@@ -8,17 +8,30 @@ import Transaction from '../models/Transaction.js';
 
 export const createLink = async (req, res) => {
     try {
-        let { name, slug, description, price, currency, linkType, hasPhotos, deliveryDays, expiryDate, expiryLabel, buyerName, buyerPhone, buyerEmail, minDonation, category, shippingFee } = req.body;
+        let { name, slug, description, price, currency, linkType, hasPhotos, deliveryDays, expiryDate, expiryLabel, buyerName, buyerPhone, buyerEmail, minDonation, category, shippingFee, items, minItems, maxItems, allowMultiQuantity } = req.body;
 
         const user = await User.findById(req.user.id);
         if (!user) {
             return res.status(404).json({ message: "User not found" });
         }
 
-        const linkPrice = price || 0;
+        let itemsJson = null;
+        let totalPrice = price || 0;
+        let finalMinItems = minItems || 1;
+        let finalMaxItems = maxItems || 100;
+
+        if (items && Array.isArray(items) && items.length > 0) {
+            itemsJson = JSON.stringify(items);
+            totalPrice = items.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0);
+            if (items.length > 0) {
+                finalMinItems = Math.max(1, minItems || 1);
+                finalMaxItems = maxItems || items.length;
+            }
+        }
+
         const transactionLimit = user.transactionLimit || 1000;
 
-        if (linkPrice > transactionLimit) {
+        if (totalPrice > transactionLimit) {
             return res.status(400).json({ message: `Please complete KYC verification to create links with prices higher than ${transactionLimit}.` });
         }
 
@@ -32,7 +45,7 @@ export const createLink = async (req, res) => {
             name,
             slug,
             description,
-            price: price || 0,
+            price: totalPrice,
             currency,
             linkType,
             hasPhotos,
@@ -44,7 +57,11 @@ export const createLink = async (req, res) => {
             buyerEmail,
             minDonation: minDonation || 0,
             category,
-            shippingFee: shippingFee || 0
+            shippingFee: shippingFee || 0,
+            itemsJson,
+            minItems: finalMinItems,
+            maxItems: finalMaxItems,
+            allowMultiQuantity: allowMultiQuantity || false
         });
 
         res.status(201).json(newLink);
@@ -99,11 +116,24 @@ export const getPublicLink = async (req, res) => {
             ? paymentMethods.filter(pm => pm.enabled).map(pm => pm.methodId)
             : ['card', 'mpesa', 'bank', 'crypto'];
 
+        let items = [];
+        if (link.itemsJson) {
+            try {
+                items = JSON.parse(link.itemsJson);
+            } catch (e) {
+                items = [];
+            }
+        }
+
         res.json({ 
             ...link, 
             isExpired, 
             expirationReason, 
             enabledMethods,
+            items,
+            minItems: link.minItems || 1,
+            maxItems: link.maxItems || 100,
+            allowMultiQuantity: link.allowMultiQuantity || false
         });
     } catch (error) {
         res.status(500).json({ message: error.message });

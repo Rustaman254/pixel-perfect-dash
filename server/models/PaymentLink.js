@@ -21,7 +21,11 @@ const PaymentLink = {
             buyerEmail: linkData.buyerEmail,
             minDonation: linkData.minDonation || 0,
             category: linkData.category || 'product',
-            shippingFee: linkData.shippingFee || 0
+            shippingFee: linkData.shippingFee || 0,
+            itemsJson: linkData.itemsJson || null,
+            minItems: linkData.minItems || 1,
+            maxItems: linkData.maxItems || 100,
+            allowMultiQuantity: linkData.allowMultiQuantity || false
         }).returning('*');
 
         return result;

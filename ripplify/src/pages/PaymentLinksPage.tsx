@@ -28,6 +28,12 @@ const PaymentLinksPage = () => {
         deliveryDays: "2", buyerName: "", buyerPhone: "", buyerEmail: "", hasPhotos: false,
         category: "product" as "product" | "service", shippingFee: "", minDonation: "",
     });
+    const [items, setItems] = useState<{ name: string; price: string; currency: string; quantity: number; hasPhotos: boolean }[]>([]);
+    const [showItemsManager, setShowItemsManager] = useState(false);
+    const [currentItem, setCurrentItem] = useState({ name: "", price: "", currency: "KES", quantity: 1, hasPhotos: false });
+    const [minItems, setMinItems] = useState(1);
+    const [maxItems, setMaxItems] = useState(100);
+    const [allowMultiQuantity, setAllowMultiQuantity] = useState(false);
     const [formError, setFormError] = useState("");
     const [showReviewModal, setShowReviewModal] = useState(false);
     const [selectedLink, setSelectedLink] = useState<any>(null);
@@ -45,14 +51,22 @@ const PaymentLinksPage = () => {
             deliveryDays: "2", buyerName: "", buyerPhone: "", buyerEmail: "", hasPhotos: false,
             category: "product", shippingFee: "", minDonation: "",
         });
+        setItems([]);
+        setCurrentItem({ name: "", price: "", currency: "KES", quantity: 1, hasPhotos: false });
+        setMinItems(1);
+        setMaxItems(100);
+        setAllowMultiQuantity(false);
+        setShowItemsManager(false);
         setFormError("");
     };
 
     const handleCreate = async () => {
         if (!form.name.trim()) { setFormError("Please enter an item name."); return; }
-        if (form.linkType !== "donation" && (!form.price.trim() || isNaN(parseFloat(form.price)))) { setFormError("Please enter a valid amount."); return; }
+        if (form.linkType !== "donation" && items.length === 0 && (!form.price.trim() || isNaN(parseFloat(form.price)))) { setFormError("Please enter a valid amount or add at least one item."); return; }
         if (form.linkType === "reusable" && form.hasExpiry && !form.expiryDate) { setFormError("Please select an expiry date."); return; }
         if (form.linkType !== "donation" && (!form.deliveryDays || parseInt(form.deliveryDays) < 1)) { setFormError("Please set expected delivery time."); return; }
+        if (items.length > 0 && items.length < minItems) { setFormError(`Please add at least ${minItems} item(s).`); return; }
+        if (items.length > maxItems) { setFormError(`Maximum ${maxItems} items allowed.`); return; }
 
         setLoading(true);
         try {
@@ -81,7 +95,7 @@ const PaymentLinksPage = () => {
                 price: form.price ? parseFloat(form.price) : 0,
                 currency: form.currency,
                 linkType: form.linkType,
-                hasPhotos: form.hasPhotos,
+                hasPhotos: form.hasPhotos || items.some(i => i.hasPhotos),
                 deliveryDays: form.deliveryDays ? parseInt(form.deliveryDays) : null,
                 expiryDate,
                 expiryLabel,
@@ -91,6 +105,10 @@ const PaymentLinksPage = () => {
                 category: form.category,
                 shippingFee: parseFloat(form.shippingFee) || 0,
                 minDonation: form.linkType === "donation" ? (parseFloat(form.minDonation) || 0) : 0,
+                items: items.length > 0 ? items : null,
+                minItems,
+                maxItems,
+                allowMultiQuantity
             };
 
             const newLink = await fetchWithAuth('/links', {
@@ -114,6 +132,28 @@ const PaymentLinksPage = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleAddItem = () => {
+        if (!currentItem.name.trim()) { setFormError("Please enter item name."); return; }
+        if (!currentItem.price.trim() || isNaN(parseFloat(currentItem.price))) { setFormError("Please enter a valid price."); return; }
+        if (parseInt(currentItem.quantity) < 1) { setFormError("Quantity must be at least 1."); return; }
+        
+        const newItems = [...items, { 
+            name: currentItem.name.trim(), 
+            price: currentItem.price.trim(),
+            currency: currentItem.currency,
+            quantity: parseInt(currentItem.quantity) || 1,
+            hasPhotos: currentItem.hasPhotos
+        }];
+        setItems(newItems);
+        setCurrentItem({ name: "", price: "", currency: "KES", quantity: 1, hasPhotos: false });
+        setFormError("");
+    };
+
+    const handleRemoveItem = (index: number) => {
+        const newItems = items.filter((_, i) => i !== index);
+        setItems(newItems);
     };
 
     const handleCopyLink = (url: string) => {
@@ -437,10 +477,10 @@ const PaymentLinksPage = () => {
                                     </div>
                                 )}
 
-                                {/* Item Name */}
+                                {/* Page Name */}
                                 <div>
-                                    <label className="text-sm font-medium text-foreground block mb-1.5">Item Name *</label>
-                                    <input type="text" placeholder='e.g. "iPhone 12 128GB"' className={inputClass} value={form.name} onChange={(e) => setForm(p => ({ ...p, name: e.target.value }))} autoFocus />
+                                    <label className="text-sm font-medium text-foreground block mb-1.5">Page Name *</label>
+                                    <input type="text" placeholder='e.g. "School Fees payment", "SME Store"' className={inputClass} value={form.name} onChange={(e) => setForm(p => ({ ...p, name: e.target.value }))} autoFocus />
                                     {form.name.trim() && <p className="text-[11px] text-[#025864] mt-1 font-medium bg-[#025864]/5 px-2 py-1 rounded-md border border-[#025864]/10 inline-block">🔗 {window.location.origin}/pay/{slugify(form.name)}</p>}
                                 </div>
 
@@ -472,7 +512,87 @@ const PaymentLinksPage = () => {
                                     </div>
                                 </div>
 
-                                {/* Link Type - MOVED HERE */}
+                                {/* Multi-Items Manager Toggle - Show by default for service/category */}
+                                <div className="flex items-center justify-between p-3 rounded-xl bg-muted/30">
+                                    <div className="flex items-center gap-2">
+                                        <Package className="w-4 h-4 text-muted-foreground" />
+                                        <span className="text-sm text-foreground">Add Multiple Items</span>
+                                        <span className="text-[10px] text-muted-foreground">(e.g., School Fees, SME Products)</span>
+                                    </div>
+                                    <button type="button" onClick={() => setShowItemsManager(!showItemsManager)} className={`relative w-10 h-5 rounded-full transition-colors ${showItemsManager ? '' : 'bg-gray-200'}`} style={showItemsManager ? { backgroundColor: '#00D47E' } : undefined}>
+                                        <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${showItemsManager ? 'left-[21px]' : 'left-0.5'}`} />
+                                    </button>
+                                </div>
+
+                                {/* Items Manager */}
+                                {showItemsManager && (
+                                    <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                                        <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-3">
+                                            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Add Items (Min {minItems} - Max {maxItems})</p>
+                                            
+                                            {items.length > 0 && (
+                                                <div className="space-y-2 max-h-32 overflow-y-auto">
+                                                    {items.map((item, idx) => (
+                                                        <div key={idx} className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-slate-200">
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-sm font-medium text-slate-900 truncate">{item.name}</p>
+                                                                <p className="text-[11px] text-slate-500">{item.currency} {parseFloat(item.price).toLocaleString()} × {item.quantity} {item.hasPhotos && <span className="ml-1 text-[#025864]">📷</span>}</p>
+                                                            </div>
+                                                            <button type="button" onClick={() => handleRemoveItem(idx)} className="text-red-400 hover:text-red-600 p-1">
+                                                                <X className="w-4 h-4" />
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            <div className="grid grid-cols-12 gap-2 items-end">
+                                                <div className="col-span-5">
+                                                    <input type="text" placeholder="Item name" className="w-full px-2 py-2 rounded-lg border border-slate-200 text-sm" value={currentItem.name} onChange={(e) => setCurrentItem(p => ({ ...p, name: e.target.value }))} />
+                                                </div>
+                                                <div className="col-span-3">
+                                                    <input type="number" placeholder="Price" className="w-full px-2 py-2 rounded-lg border border-slate-200 text-sm" value={currentItem.price} onChange={(e) => setCurrentItem(p => ({ ...p, price: e.target.value }))} />
+                                                </div>
+                                                <div className="col-span-2">
+                                                    <select className="w-full px-2 py-2 rounded-lg border border-slate-200 text-sm" value={currentItem.currency} onChange={(e) => setCurrentItem(p => ({ ...p, currency: e.target.value }))}>
+                                                        {currencies.map(c => <option key={c} value={c}>{c}</option>)}
+                                                    </select>
+                                                </div>
+                                                <button type="button" onClick={handleAddItem} className="col-span-2 bg-[#025864] text-white text-xs font-bold rounded-lg hover:opacity-90">Add</button>
+                                            </div>
+
+                                            <div className="flex items-center gap-2 pt-2">
+                                                <input type="checkbox" id="itemHasPhotos" checked={currentItem.hasPhotos} onChange={(e) => setCurrentItem(p => ({ ...p, hasPhotos: e.target.checked }))} className="w-4 h-4 rounded border-slate-300 text-[#025864]" />
+                                                <label htmlFor="itemHasPhotos" className="text-xs text-slate-600">This item has images</label>
+                                            </div>
+
+                                            {/* Item Limits */}
+                                            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-200">
+                                                <div>
+                                                    <label className="text-[10px] font-medium text-slate-500 block mb-1">Minimum Items</label>
+                                                    <input type="number" min="1" max={items.length || 1} className="w-full px-2 py-1.5 rounded-lg border border-slate-200 text-sm" value={minItems} onChange={(e) => setMinItems(Math.max(1, parseInt(e.target.value) || 1))} />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[10px] font-medium text-slate-500 block mb-1">Maximum Items</label>
+                                                    <input type="number" min={minItems} className="w-full px-2 py-1.5 rounded-lg border border-slate-200 text-sm" value={maxItems} onChange={(e) => setMaxItems(parseInt(e.target.value) || 100)} />
+                                                </div>
+                                            </div>
+
+                                            {/* Multi-Quantity Toggle */}
+                                            <div className="flex items-center justify-between pt-2 border-t border-slate-200">
+                                                <div>
+                                                    <span className="text-xs font-medium text-slate-600">Allow Quantity Selection</span>
+                                                    <p className="text-[10px] text-slate-400">Buyer can select multiple of same item</p>
+                                                </div>
+                                                <button type="button" onClick={() => setAllowMultiQuantity(!allowMultiQuantity)} className={`relative w-10 h-5 rounded-full transition-colors ${allowMultiQuantity ? '' : 'bg-gray-200'}`} style={allowMultiQuantity ? { backgroundColor: '#025864' } : undefined}>
+                                                    <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${allowMultiQuantity ? 'left-[21px]' : 'left-0.5'}`} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Link Type */}
                                 <div>
                                     <label className="text-sm font-medium text-foreground block mb-2">Link Type</label>
                                     <div className="grid grid-cols-3 gap-3">
@@ -483,7 +603,7 @@ const PaymentLinksPage = () => {
                                                 <Clock className="w-4 h-4" style={{ color: form.linkType === "one-time" ? '#025864' : '#9ca3af' }} />
                                                 <span className="text-sm font-medium text-foreground">One-time</span>
                                             </div>
-                                            <p className="text-[11px] text-muted-foreground">Expires in 1 hour or after one payment</p>
+                                            <p className="text-[11px] text-muted-foreground">Expires after payment</p>
                                         </button>
                                         <button type="button" onClick={() => setForm(p => ({ ...p, linkType: "reusable" }))}
                                             className={`p-3 rounded-xl border-2 text-left transition-colors ${form.linkType === "reusable" ? "border-[#025864]" : "border-border hover:border-gray-300"}`}
@@ -494,7 +614,6 @@ const PaymentLinksPage = () => {
                                             </div>
                                             <p className="text-[11px] text-muted-foreground">Multiple uses</p>
                                         </button>
-                                        {/* Donation - Only show for service/digital */}
                                         {form.category !== "product" && (
                                             <button
                                                 type="button"
@@ -505,41 +624,26 @@ const PaymentLinksPage = () => {
                                                     <Heart className="w-4 h-4" style={{ color: form.linkType === "donation" ? '#ec4899' : '#9ca3af' }} />
                                                     <span className="text-sm font-medium text-foreground">Donation</span>
                                                 </div>
-                                                <p className="text-[11px] text-muted-foreground">Accept flexible donations</p>
+                                                <p className="text-[11px] text-muted-foreground">Flexible amount</p>
                                             </button>
                                         )}
                                     </div>
                                 </div>
 
-                                {/* Amount + Currency + Shipping (if product) */}
-                                <div className="space-y-4">
-                                    <div className="grid grid-cols-3 gap-3">
-                                        <div className="col-span-2">
-                                            <label className="text-sm font-medium text-foreground block mb-1.5">{form.linkType === "donation" ? "Suggested Amount" : form.category === "product" ? "Item Price *" : "Service Fee *"}</label>
-                                            <input type="number" min="0" step="1" placeholder={form.linkType === "donation" ? "0 (optional)" : "45,000"} className={inputClass} value={form.price} onChange={(e) => setForm(p => ({ ...p, price: e.target.value }))} />
+                                {/* Shipping Fee (for products) */}
+                                {form.category === "product" && (
+                                    <div>
+                                        <label className="text-sm font-medium text-foreground block mb-1.5 flex items-center justify-between">
+                                            <span>Shipping / Delivery Fee</span>
+                                            <span className="text-[10px] text-muted-foreground font-normal">Optional</span>
+                                        </label>
+                                        <div className="relative">
+                                            <Truck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                            <input type="number" min="0" step="1" placeholder="500" className={inputClass + " pl-9"} value={form.shippingFee} onChange={(e) => setForm(p => ({ ...p, shippingFee: e.target.value }))} />
                                         </div>
-                                        <div>
-                                            <label className="text-sm font-medium text-foreground block mb-1.5">Currency</label>
-                                            <select className={inputClass} value={form.currency} onChange={(e) => setForm(p => ({ ...p, currency: e.target.value }))}>
-                                                {currencies.map(c => <option key={c} value={c}>{c}</option>)}
-                                            </select>
-                                        </div>
+                                        <p className="text-[10px] text-muted-foreground mt-1 px-1">This fee will be added to the total at checkout.</p>
                                     </div>
-
-                                    {form.category === "product" && (
-                                        <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                                            <label className="text-sm font-medium text-foreground block mb-1.5 flex items-center justify-between">
-                                                <span>Shipping / Delivery Fee</span>
-                                                <span className="text-[10px] text-muted-foreground font-normal">Optional</span>
-                                            </label>
-                                            <div className="relative">
-                                                <Truck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                                <input type="number" min="0" step="1" placeholder="500" className={inputClass + " pl-9"} value={form.shippingFee} onChange={(e) => setForm(p => ({ ...p, shippingFee: e.target.value }))} />
-                                            </div>
-                                            <p className="text-[10px] text-muted-foreground mt-1 px-1">This fee will be added to the item price at checkout.</p>
-                                        </div>
-                                    )}
-                                </div>
+                                )}
 
                                 {/* Description */}
                                 <div>
@@ -547,25 +651,27 @@ const PaymentLinksPage = () => {
                                     <textarea placeholder="Condition, what's included, delivery details..." rows={2} className={inputClass + " resize-none"} value={form.description} onChange={(e) => setForm(p => ({ ...p, description: e.target.value }))} />
                                 </div>
 
-                                {/* Expected Delivery */}
+                                {/* Expected Delivery Time */}
                                 <div>
                                     <label className="text-sm font-medium text-foreground block mb-1.5">Expected Delivery Time *</label>
                                     <div className="flex items-center gap-2">
-                                        <input type="number" min="1" max="30" className={inputClass + " w-20"} value={form.deliveryDays} onChange={(e) => setForm(p => ({ ...p, deliveryDays: e.target.value }))} />
+                                        <input type="number" min="1" max="365" className={inputClass + " w-20"} value={form.deliveryDays} onChange={(e) => setForm(p => ({ ...p, deliveryDays: e.target.value }))} />
                                         <span className="text-sm text-muted-foreground">days</span>
                                     </div>
                                 </div>
 
                                 {/* Photos Toggle */}
-                                <div className="flex items-center justify-between p-3 rounded-xl bg-muted/30">
-                                    <div className="flex items-center gap-2">
-                                        <ImageIcon className="w-4 h-4 text-muted-foreground" />
-                                        <span className="text-sm text-foreground">Add photos of the item</span>
+                                {(form.hasPhotos || items.some(i => i.hasPhotos)) && (
+                                    <div className="flex items-center justify-between p-3 rounded-xl bg-muted/30">
+                                        <div className="flex items-center gap-2">
+                                            <ImageIcon className="w-4 h-4 text-muted-foreground" />
+                                            <span className="text-sm text-foreground">Add item photos</span>
+                                        </div>
+                                        <button type="button" onClick={() => setForm(p => ({ ...p, hasPhotos: !p.hasPhotos }))} className={`relative w-10 h-5 rounded-full transition-colors ${form.hasPhotos ? '' : 'bg-gray-200'}`} style={form.hasPhotos ? { backgroundColor: '#00D47E' } : undefined}>
+                                            <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${form.hasPhotos ? 'left-[21px]' : 'left-0.5'}`} />
+                                        </button>
                                     </div>
-                                    <button type="button" onClick={() => setForm(p => ({ ...p, hasPhotos: !p.hasPhotos }))} className={`relative w-10 h-5 rounded-full transition-colors ${form.hasPhotos ? '' : 'bg-gray-200'}`} style={form.hasPhotos ? { backgroundColor: '#00D47E' } : undefined}>
-                                        <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${form.hasPhotos ? 'left-[21px]' : 'left-0.5'}`} />
-                                    </button>
-                                </div>
+                                )}
 
                                 {/* One-time & Donation info notices */}
                                 {form.linkType === "one-time" && (

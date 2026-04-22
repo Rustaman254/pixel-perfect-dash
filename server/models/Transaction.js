@@ -17,7 +17,8 @@ const Transaction = {
             status: transactionData.status || 'Pending',
             transactionId: transactionData.transactionId,
             trackingToken,
-            type: transactionData.type || 'Payment'
+            type: transactionData.type || 'Payment',
+            itemsJson: transactionData.itemsJson || null
         }).returning('*');
 
         return result;

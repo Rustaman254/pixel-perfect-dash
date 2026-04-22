@@ -28,6 +28,7 @@ const PublicPaymentPage = () => {
     const [mpesaPhone, setMpesaPhone] = useState("");
     const [donationAmount, setDonationAmount] = useState("");
     const [cryptoDepositInfo, setCryptoDepositInfo] = useState<any>(null);
+    const [cartItems, setCartItems] = useState<{ [key: number]: number }>({});
 
     const [verifyingPayment, setVerifyingPayment] = useState(false);
 
@@ -223,6 +224,41 @@ const PublicPaymentPage = () => {
         || (link.fullName && link.fullName.trim())
         || 'Private Seller';
 
+    const hasItems = link.items && Array.isArray(link.items) && link.items.length > 0;
+    const minItems = link.minItems || 1;
+    const maxItems = link.maxItems || 100;
+    const allowMultiQty = link.allowMultiQuantity || false;
+
+    const getSelectedItemsCount = () => Object.values(cartItems).reduce((sum, qty) => sum + qty, 0);
+    const getTotalAmount = () => {
+        if (hasItems) {
+            return Object.entries(cartItems).reduce((total, [idx, qty]) => {
+                const item = link.items[parseInt(idx)];
+                const price = parseFloat(item?.price) || 0;
+                return total + (price * qty);
+            }, 0) + (link.category === 'product' ? (parseFloat(link.shippingFee) || 0) : 0);
+        }
+        return (parseFloat(link.price) || 0) + (link.category === 'product' ? (parseFloat(link.shippingFee) || 0) : 0);
+    };
+
+    const canProceed = () => {
+        if (link.linkType === 'donation') return true;
+        const selectedCount = getSelectedItemsCount();
+        return selectedCount >= minItems && selectedCount <= maxItems;
+    };
+
+    const updateCartItem = (index: number, delta: number) => {
+        const currentQty = cartItems[index] || 0;
+        const newQty = Math.max(0, Math.min(allowMultiQty ? maxItems : 1, currentQty + delta));
+        if (newQty === 0) {
+            const newCart = { ...cartItems };
+            delete newCart[index];
+            setCartItems(newCart);
+        } else {
+            setCartItems({ ...cartItems, [index]: newQty });
+        }
+    };
+
     const handleNextStep = () => {
         if (step === 1) {
             if (link.linkType === 'donation') {
@@ -255,14 +291,26 @@ const PublicPaymentPage = () => {
     const handlePayment = async () => {
         try {
             const isDonation = link.linkType === 'donation';
-            const payAmount = isDonation
-                ? (parseFloat(donationAmount) || 0)
-                : link.price + (link.category === 'product' ? (link.shippingFee || 0) : 0);
+            const payAmount = getTotalAmount();
 
             if (payAmount <= 0) {
-                toast({ title: "Invalid Amount", description: "Please enter a valid amount.", variant: "destructive" });
+                toast({ title: "Invalid Amount", description: "Please select at least one item.", variant: "destructive" });
                 return;
             }
+
+            if (hasItems && !canProceed()) {
+                toast({ title: "Invalid Selection", description: `Please select ${minItems} to ${maxItems} item(s).`, variant: "destructive" });
+                return;
+            }
+
+            const selectedItems = Object.entries(cartItems)
+                .filter(([_, qty]) => qty > 0)
+                .map(([idx, qty]) => ({
+                    itemIndex: parseInt(idx),
+                    name: link.items[parseInt(idx)].name,
+                    price: link.items[parseInt(idx)].price,
+                    quantity: qty
+                }));
 
             const body: any = {
                 buyerName: buyerInfo.fullName,
@@ -272,7 +320,8 @@ const PublicPaymentPage = () => {
                 currency: link.currency,
                 type: isDonation ? 'Donation' : 'Payment',
                 paymentMethod,
-                network: link.currency === 'USDA' ? 'cardano' : 'polygon'
+                network: link.currency === 'USDA' ? 'cardano' : 'polygon',
+                items: hasItems ? selectedItems : null
             };
 
             // For M-Pesa, attach the phone number
@@ -380,12 +429,18 @@ const PublicPaymentPage = () => {
                                         </div>
                                         <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 leading-tight">{link.name}</h1>
                                         <div className="flex items-center gap-4 pt-1">
-                                            <div className="text-3xl font-black text-[#025864]">
-                                                {link.linkType === 'donation'
-                                                    ? (link.price > 0 ? `${link.currency} ${link.price.toLocaleString()}` : 'Any Amount')
-                                                    : `${link.currency} ${link.price.toLocaleString()}`
+                                            {hasItems ? (
+                                                <div className="text-3xl font-black text-[#025864]">
+                                                    {link.currency} {getTotalAmount().toLocaleString()}
+                                                </div>
+                                            ) : (
+                                                <div className="text-3xl font-black text-[#025864]">
+                                                    {link.linkType === 'donation'
+                                                        ? (link.price > 0 ? `${link.currency} ${link.price.toLocaleString()}` : 'Any Amount')
+                                                        : `${link.currency} ${link.price.toLocaleString()}`
                                                 }
-                                            </div>
+                                                </div>
+                                            )}
                                             <span className={`px-2.5 py-1 text-[11px] font-bold rounded-md flex items-center gap-1 ${link.linkType === 'donation' ? 'bg-pink-50 text-pink-600' : 'bg-slate-100 text-slate-600'}`}>
                                                 {link.linkType === 'donation' ? 'Donation' : link.linkType === 'reusable' ? 'Reusable Link' : 'One-time Link'}
                                             </span>
@@ -426,6 +481,51 @@ const PublicPaymentPage = () => {
                                             {link.minDonation > 0 && (
                                                 <p className="text-[11px] text-pink-600">Minimum donation: {link.currency} {link.minDonation.toLocaleString()}</p>
                                             )}
+                                        </div>
+                                    )}
+
+                                    {/* Multi-Items Selection */}
+                                    {hasItems && (
+                                        <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200 space-y-3">
+                                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Select Items ({minItems} - {maxItems} required)</h4>
+                                            <div className="space-y-2 max-h-48 overflow-y-auto">
+                                                {(link.items as { name: string; price: number; quantity?: number }[]).map((item, idx) => (
+                                                    <div key={idx} className="flex items-center justify-between bg-white rounded-xl px-4 py-3 border border-slate-200">
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-sm font-bold text-slate-900 truncate">{item.name}</p>
+                                                            <p className="text-xs text-slate-500">{item.currency} {(parseFloat(item.price) || 0).toLocaleString()}</p>
+                                                        </div>
+                                                        <div className="flex items-center gap-3">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => updateCartItem(idx, -1)}
+                                                                disabled={(cartItems[idx] || 0) === 0}
+                                                                className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 font-bold disabled:opacity-40 hover:bg-slate-200 transition-colors"
+                                                            >
+                                                                -
+                                                            </button>
+                                                            <span className="w-6 text-center font-bold text-slate-900">{cartItems[idx] || 0}</span>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => updateCartItem(idx, 1)}
+                                                                disabled={allowMultiQty ? (cartItems[idx] || 0) >= maxItems : (cartItems[idx] || 0) >= 1}
+                                                                className="w-8 h-8 rounded-full bg-[#025864] text-white font-bold disabled:opacity-40 hover:bg-[#014751] transition-colors"
+                                                            >
+                                                                +
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <div className="flex items-center justify-between pt-3 border-t border-slate-200">
+                                                <div>
+                                                    <p className="text-xs text-slate-500">Selected: <span className="font-bold text-slate-700">{getSelectedItemsCount()}</span> / {minItems}-{maxItems}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-sm text-slate-500">Subtotal</p>
+                                                    <p className="text-lg font-black text-[#025864]">{link.currency} {(getTotalAmount()).toLocaleString()}</p>
+                                                </div>
+                                            </div>
                                         </div>
                                     )}
                                     {link.linkType !== 'donation' && (
@@ -691,10 +791,12 @@ const PublicPaymentPage = () => {
                                     </div>
 
                                     {!cryptoDepositInfo ? (
-                                        <button onClick={handlePayment} className={`w-full font-bold py-4 rounded-2xl transition-all shadow-lg text-white ${link.linkType === 'donation' ? 'bg-pink-500 hover:bg-pink-600 shadow-pink-200' : 'bg-[#025864] hover:bg-[#014751] shadow-[#025864]/20'} ${step === 3 && !cryptoDepositInfo ? 'md:block hidden' : ''}`}>
+                                        <button onClick={handlePayment} disabled={hasItems && !canProceed()} className={`w-full font-bold py-4 rounded-2xl transition-all shadow-lg text-white ${link.linkType === 'donation' ? 'bg-pink-500 hover:bg-pink-600 shadow-pink-200' : 'bg-[#025864] hover:bg-[#014751] shadow-[#025864]/20'} ${step === 3 && !cryptoDepositInfo ? 'md:block hidden' : ''} disabled:opacity-50 disabled:cursor-not-allowed`}>
                                             {link.linkType === 'donation'
                                                 ? `Donate ${link.currency} ${(parseFloat(donationAmount) || 0).toLocaleString()}`
-                                                : `Pay ${link.currency} ${(link.price + (link.category === 'product' ? (link.shippingFee || 0) : 0)).toLocaleString()} Securely`
+                                                : hasItems
+                                                    ? `Pay ${link.currency} ${getTotalAmount().toLocaleString()} (${getSelectedItemsCount()} item${getSelectedItemsCount() !== 1 ? 's' : ''})`
+                                                    : `Pay ${link.currency} ${getTotalAmount().toLocaleString()} Securely`
                                             }
                                         </button>
                                     ) : (
