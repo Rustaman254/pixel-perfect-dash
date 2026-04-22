@@ -1,7 +1,8 @@
 import { createConnection } from '../shared/db.js';
-import intasendService from './utils/intasendService.js';
+import IntaSendProvider from './utils/IntaSendProvider.js';
 
 const db = () => createConnection('ripplify_db');
+const provider = new IntaSendProvider();
 
 export const getWallets = async (req, res) => {
   try {
@@ -11,7 +12,7 @@ export const getWallets = async (req, res) => {
     if (wallets.length === 0) {
       try {
         const intasendLabel = `User ${req.user.id} - KES`;
-        const intasendWallet = await intasendService.createIntaSendWallet(intasendLabel, 'KES');
+        const intasendWallet = await provider.createIntaSendWallet(intasendLabel, 'KES');
         
         const [newWallet] = await db()('wallets')
           .insert({
@@ -35,7 +36,7 @@ export const getWallets = async (req, res) => {
     const syncedWallets = await Promise.all(wallets.map(async (wallet) => {
       if (wallet.intasend_wallet_id) {
         try {
-          const details = await intasendService.getIntaSendWallet(wallet.intasend_wallet_id);
+          const details = await provider.getIntaSendWallet(wallet.intasend_wallet_id);
           // Update local balance if it differs
           if (parseFloat(details.available_balance) !== parseFloat(wallet.balance)) {
             await db()('wallets')
@@ -77,7 +78,7 @@ export const createWallet = async (req, res) => {
     
     if (!network || network === 'fiat') {
       try {
-        const intasendWallet = await intasendService.createIntaSendWallet(intasendLabel, currency_code);
+        const intasendWallet = await provider.createIntaSendWallet(intasendLabel, currency_code);
         intasendWalletId = intasendWallet.wallet_id;
       } catch (e) {
         return res.status(500).json({ message: `IntaSend Wallet creation failed: ${e.message}` });
@@ -109,7 +110,7 @@ export const getWalletTransactions = async (req, res) => {
     if (!wallet) return res.status(404).json({ message: 'Wallet not found' });
 
     if (wallet.intasend_wallet_id) {
-      const transactions = await intasendService.getIntaSendWalletTransactions(wallet.intasend_wallet_id);
+      const transactions = await provider.getIntaSendWalletTransactions(wallet.intasend_wallet_id);
       return res.json(transactions);
     }
 
@@ -172,7 +173,7 @@ export const withdraw = async (req, res) => {
 
     // If IntaSend wallet exists, we should ideally check balance there too
     if (wallet.intasend_wallet_id) {
-       const details = await intasendService.getIntaSendWallet(wallet.intasend_wallet_id);
+       const details = await provider.getIntaSendWallet(wallet.intasend_wallet_id);
        if (parseFloat(details.available_balance) < numericAmount) {
            return res.status(400).json({ message: `Insufficient IntaSend balance. Available: ${details.available_balance}` });
        }
@@ -210,7 +211,7 @@ export const getWalletStats = async (req, res) => {
     let syncedBalance = wallet ? wallet.balance : 0;
     if (wallet && wallet.intasend_wallet_id) {
         try {
-            const details = await intasendService.getIntaSendWallet(wallet.intasend_wallet_id);
+            const details = await provider.getIntaSendWallet(wallet.intasend_wallet_id);
             syncedBalance = details.available_balance;
         } catch (e) {}
     }

@@ -1,7 +1,8 @@
 import { createConnection } from '../shared/db.js';
-import intasendService from './utils/intasendService.js';
+import IntaSendProvider from './utils/IntaSendProvider.js';
 
 const db = () => createConnection('ripplify_db');
+const provider = new IntaSendProvider();
 
 const getWalletBalance = async (userId, currency = 'KES') => {
   const wallet = await db()('wallets').where({ userId, currency_code: currency }).first();
@@ -10,7 +11,7 @@ const getWalletBalance = async (userId, currency = 'KES') => {
   // Sync if IntaSend wallet
   if (wallet.intasend_wallet_id) {
       try {
-          const details = await intasendService.getIntaSendWallet(wallet.intasend_wallet_id);
+          const details = await provider.getIntaSendWallet(wallet.intasend_wallet_id);
           return parseFloat(details.available_balance);
       } catch (e) {
           return parseFloat(wallet.balance);
@@ -68,15 +69,15 @@ export const sendTransfer = async (req, res) => {
       if (senderWallet?.intasend_wallet_id && receiverWallet?.intasend_wallet_id) {
           // Perform IntaSend internal transfer
           try {
-              const resp = await intasendService.intasendInternalTransfer({
+              const resp = await provider.intasendInternalTransfer({
                   name: receiverEmail || receiverPhone || 'User',
                   amount: numericAmount,
                   narrative: note || `Transfer from ${req.user.fullName || senderId}`,
                   walletId: senderWallet.intasend_wallet_id // Wait, intasendTransfer in service needs update
               });
               // Actually, intasend-node SDK intra_transfer uses sender_wallet_id and receiver_wallet_id
-              // I should update intasendService.intasendInternalTransfer to use the intra_transfer API properly
-              const intraResp = await intasendService.intasendInternalTransfer({
+              // I should update provider.intasendInternalTransfer to use the intra_transfer API properly
+              const intraResp = await provider.intasendInternalTransfer({
                   sender_wallet_id: senderWallet.intasend_wallet_id,
                   receiver_wallet_id: receiverWallet.intasend_wallet_id,
                   amount: numericAmount,

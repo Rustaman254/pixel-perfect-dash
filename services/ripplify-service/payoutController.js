@@ -1,7 +1,8 @@
 import { createConnection } from '../shared/db.js';
-import intasendService from './utils/intasendService.js';
+import IntaSendProvider from './utils/IntaSendProvider.js';
 
 const db = () => createConnection('ripplify_db');
+const provider = new IntaSendProvider();
 
 export const requestPayout = async (req, res) => {
   try {
@@ -26,7 +27,7 @@ export const requestPayout = async (req, res) => {
     let available = parseFloat(wallet.balance);
     if (wallet.intasend_wallet_id) {
         try {
-            const details = await intasendService.getIntaSendWallet(wallet.intasend_wallet_id);
+            const details = await provider.getIntaSendWallet(wallet.intasend_wallet_id);
             available = parseFloat(details.available_balance);
         } catch (e) {
             console.error('Failed to sync wallet balance before payout:', e.message);
@@ -64,7 +65,7 @@ export const requestPayout = async (req, res) => {
         try {
             let resp;
             if (payoutMethod.method === 'mpesa') {
-                resp = await intasendService.mpesaB2c({
+                resp = await provider.mpesaB2c({
                     name: req.user.fullName || 'User',
                     account: payoutDetails,
                     amount: numericAmount,
@@ -73,7 +74,7 @@ export const requestPayout = async (req, res) => {
                 });
             } else {
                 // Bank payout (simplified, might need more details)
-                resp = await intasendService.bankPayout({
+                resp = await provider.bankPayout({
                     name: req.user.fullName || 'User',
                     account: payoutDetails,
                     bankCode: payoutMethod.bankCode || '01',

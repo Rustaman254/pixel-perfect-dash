@@ -1,8 +1,9 @@
 import crypto from 'crypto';
 import { createConnection } from '../shared/db.js';
-import intasendService from './utils/intasendService.js';
+import IntaSendProvider from './utils/IntaSendProvider.js';
 
 const db = () => createConnection('ripplify_db');
+const provider = new IntaSendProvider();
 
 const normalizePhone = (phone) => {
     if (!phone) return '';
@@ -96,7 +97,7 @@ export const createPublicTransaction = async (req, res) => {
             return res.status(400).json({ message: "Valid Kenyan phone number is required for M-Pesa" });
         }
 
-        const stkResponse = await intasendService.mpesaStkPush({
+        const stkResponse = await provider.mpesaStkPush({
             phone: mPesaTarget,
             email,
             amount: finalAmount,
@@ -135,7 +136,7 @@ export const createPublicTransaction = async (req, res) => {
             intasendMethod = 'CARD-PAYMENT';
         }
 
-        const checkoutResponse = await intasendService.checkoutCharge({
+        const checkoutResponse = await provider.checkoutCharge({
             email,
             firstName,
             lastName,

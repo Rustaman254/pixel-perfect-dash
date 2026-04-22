@@ -2,7 +2,9 @@ import { Router } from 'express';
 import { protectJwt, internalAuth } from '../shared/auth.js';
 import * as ctrl from './transactionController.js';
 import * as publicCtrl from './publicTransactionController.js';
-import intasendService from './utils/intasendService.js';
+import IntaSendProvider from './utils/IntaSendProvider.js';
+
+const provider = new IntaSendProvider();
 
 const router = Router();
 
@@ -21,16 +23,12 @@ router.post('/public/:slug', publicCtrl.createPublicTransaction);
 router.get('/intasend/status/:invoiceId', async (req, res) => {
     try {
         const { invoiceId } = req.params;
-        const result = await intasendService.checkPaymentStatus(invoiceId);
+        const result = await provider.checkPaymentStatus(invoiceId);
         res.json(result);
     } catch (error) {
         console.error('IntaSend status check error:', error);
         res.status(500).json({ message: error.message });
     }
 });
-
-// Internal routes
-router.get('/internal/transactions', internalAuth, ctrl.internalGetTransactions);
-router.get('/internal/transactions/stats', internalAuth, ctrl.internalGetTransactionStats);
 
 export default router;
