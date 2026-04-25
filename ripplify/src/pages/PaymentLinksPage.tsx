@@ -405,8 +405,8 @@ const PaymentLinksPage = () => {
                                     <td className="py-3 hidden md:table-cell">
                                         <p className="text-sm font-semibold text-foreground">
                                             {link.linkType === "reusable" 
-                                                ? `${link.currency} ${link.totalEarnedValue.toLocaleString()}` 
-                                                : `${link.currency} ${((link.price || 0) + (link.shippingFee || 0)).toLocaleString()}`
+                                                ? `${link.currency} ${(parseFloat(String(link.totalEarnedValue).toString().replace(/,/g, '') || 0).toLocaleString()}` 
+                                                : `${link.currency} ${((parseFloat(String(link.price).toString().replace(/,/g, '') || 0) + (parseFloat(String(link.shippingFee).toString().replace(/,/g, '') || 0)).toLocaleString()}`
                                             }
                                         </p>
                                         {link.linkType === "reusable" && (
