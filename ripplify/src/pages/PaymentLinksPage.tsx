@@ -403,21 +403,18 @@ const PaymentLinksPage = () => {
                                         </div>
                                     </td>
                                     <td className="py-3 hidden md:table-cell">
-                                        {(() => {
-                                            const totalValue = link.linkType === "reusable" 
-                                                ? parseFloat(String(link.totalEarnedValue).toString().replace(/,/g, '')
-                                                : (parseFloat(String(link.price).toString().replace(/,/g, '') || 0) + (parseFloat(String(link.shippingFee).toString().replace(/,/g, '') || 0)).toString();
-                                            return (
-                                                <>
-                                                    <p className="text-sm font-semibold text-foreground">
-                                                        {link.currency} {parseFloat(totalValue).toLocaleString()}
-                                                    </p>
-                                                    {link.linkType === "reusable" && (
-                                                        <p className="text-[10px] text-muted-foreground mt-1">{link.paymentCount} payment{link.paymentCount !== 1 ? 's' : ''}</p>
-                                                    )}
-                                                </>
-                                            );
-                                        })()}
+                                        {link.linkType === "reusable" ? (
+                                            <p className="text-sm font-semibold text-foreground">
+                                                {link.currency} {parseFloat(String(link.totalEarnedValue).toString().replace(/,/g, '')).toLocaleString()}
+                                            </p>
+                                        ) : (
+                                            <p className="text-sm font-semibold text-foreground">
+                                                {link.currency} {(parseFloat(String(link.price).toString().replace(/,/g, '') || 0) + (parseFloat(String(link.shippingFee).toString().replace(/,/g, '') || 0)).toLocaleString()}
+                                            </p>
+                                        )}
+                                        {(link.linkType === "reusable" && link.paymentCount) && (
+                                            <p className="text-[10px] text-muted-foreground mt-1">{link.paymentCount} payment{link.paymentCount !== 1 ? 's' : ''}</p>
+                                        )}
                                     </td>
                                     <td className="py-3">
                                         <div className="flex items-center gap-1.5">
