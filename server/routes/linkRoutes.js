@@ -1,5 +1,5 @@
 import express from 'express';
-import { createLink, getMyLinks, getPublicLink, deleteLink, updateLinkStatus, confirmDelivery, reportDispute } from '../controllers/linkController.js';
+import { createLink, getMyLinks, getPublicLink, deleteLink, updateLinkStatus, confirmDelivery, reportDispute, updateLink } from '../controllers/linkController.js';
 import { protect } from '../middlewares/authMiddleware.js';
 import { requireFeature, enforceUserStatus } from '../middlewares/featureMiddleware.js';
 
@@ -8,6 +8,7 @@ const router = express.Router();
 // Private routes (registered first to avoid wildcard conflicts)
 router.post('/', protect, enforceUserStatus, requireFeature('payment_links'), createLink);
 router.get('/my', protect, requireFeature('payment_links'), getMyLinks);
+router.put('/:id', protect, enforceUserStatus, requireFeature('payment_links'), updateLink);
 router.delete('/:id', protect, enforceUserStatus, requireFeature('payment_links'), deleteLink);
 router.put('/:id/status', protect, enforceUserStatus, requireFeature('payment_links'), updateLinkStatus);
 

@@ -79,6 +79,54 @@ export const getMyLinks = async (req, res) => {
     }
 };
 
+export const updateLink = async (req, res) => {
+    try {
+        let { name, description, price, currency, linkType, hasPhotos, deliveryDays, expiryDate, expiryLabel, buyerName, buyerPhone, buyerEmail, minDonation, category, shippingFee, items } = req.body;
+        const linkId = req.params.id;
+
+        const existing = await PaymentLink.findById(linkId);
+        if (!existing) {
+            return res.status(404).json({ message: "Payment link not found" });
+        }
+        if (existing.userId !== req.user.id) {
+            return res.status(403).json({ message: "Not authorized" });
+        }
+
+        let itemsJson = null;
+        let totalPrice = price || 0;
+
+        if (items && Array.isArray(items) && items.length > 0) {
+            itemsJson = JSON.stringify(items);
+            totalPrice = items.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0);
+        } else {
+            totalPrice = existing.price;
+        }
+
+        const updatedLink = await PaymentLink.update(linkId, req.user.id, {
+            name,
+            description,
+            price: totalPrice,
+            currency,
+            linkType,
+            hasPhotos,
+            deliveryDays,
+            expiryDate,
+            expiryLabel,
+            buyerName,
+            buyerPhone,
+            buyerEmail,
+            minDonation: minDonation || 0,
+            category,
+            shippingFee: shippingFee || 0,
+            itemsJson
+        });
+
+        res.json(updatedLink);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 export const getPublicLink = async (req, res) => {
     try {
         const link = await PaymentLink.findBySlug(req.params.slug);

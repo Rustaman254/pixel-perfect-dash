@@ -28,6 +28,18 @@ const PublicPaymentPage = () => {
     const [mpesaPhone, setMpesaPhone] = useState("");
     const [donationAmount, setDonationAmount] = useState("");
     const [cryptoDepositInfo, setCryptoDepositInfo] = useState<any>(null);
+    const [cartItems, setCartItems] = useState<{ [key: number]: number }>({});
+
+    // Default all items to quantity 1 when loaded
+    useEffect(() => {
+        if (link?.items && Array.isArray(link.items) && link.items.length > 0) {
+            const defaultQtys: { [key: number]: number } = {};
+            link.items.forEach((_: any, idx: number) => {
+                defaultQtys[idx] = 1;
+            });
+            setCartItems(defaultQtys);
+        }
+    }, [link?.items]);
 
     const [verifyingPayment, setVerifyingPayment] = useState(false);
 
@@ -223,6 +235,48 @@ const PublicPaymentPage = () => {
         || (link.fullName && link.fullName.trim())
         || 'Private Seller';
 
+    const hasItems = link.items && Array.isArray(link.items) && link.items.length > 0;
+    const minItems = link.minItems || 1;
+    const maxItems = link.maxItems || 100;
+    const allowMultiQty = link.allowMultiQuantity || false;
+
+    const getSelectedItemsCount = () => {
+        if (hasItems) {
+            return (link.items as { name: string; price: number; quantity?: number; currency?: string }[])
+                .reduce((sum, item) => sum + (item.quantity || 1), 0);
+        }
+        return 0;
+    };
+    const getTotalAmount = () => {
+        if (hasItems) {
+            return (link.items as { name: string; price: number; quantity?: number; currency?: string }[])
+                .reduce((total, item) => {
+                    const price = parseFloat(item.price) || 0;
+                    const qty = item.quantity || 1;
+                    return total + (price * qty);
+                }, 0) + (link.category === 'product' ? (parseFloat(link.shippingFee) || 0) : 0);
+        }
+        return (parseFloat(link.price) || 0) + (link.category === 'product' ? (parseFloat(link.shippingFee) || 0) : 0);
+    };
+
+    const canProceed = () => {
+        if (link.linkType === 'donation') return true;
+        const selectedCount = getSelectedItemsCount();
+        return selectedCount >= minItems && selectedCount <= maxItems;
+    };
+
+    const updateCartItem = (index: number, delta: number) => {
+        const currentQty = cartItems[index] || 0;
+        const newQty = Math.max(0, Math.min(allowMultiQty ? maxItems : 1, currentQty + delta));
+        if (newQty === 0) {
+            const newCart = { ...cartItems };
+            delete newCart[index];
+            setCartItems(newCart);
+        } else {
+            setCartItems({ ...cartItems, [index]: newQty });
+        }
+    };
+
     const handleNextStep = () => {
         if (step === 1) {
             if (link.linkType === 'donation') {
@@ -255,14 +309,26 @@ const PublicPaymentPage = () => {
     const handlePayment = async () => {
         try {
             const isDonation = link.linkType === 'donation';
-            const payAmount = isDonation
-                ? (parseFloat(donationAmount) || 0)
-                : link.price + (link.category === 'product' ? (link.shippingFee || 0) : 0);
+            const payAmount = getTotalAmount();
 
             if (payAmount <= 0) {
-                toast({ title: "Invalid Amount", description: "Please enter a valid amount.", variant: "destructive" });
+                toast({ title: "Invalid Amount", description: "Please select at least one item.", variant: "destructive" });
                 return;
             }
+
+            if (hasItems && !canProceed()) {
+                toast({ title: "Invalid Selection", description: `Please select ${minItems} to ${maxItems} item(s).`, variant: "destructive" });
+                return;
+            }
+
+            const selectedItems = Object.entries(cartItems)
+                .filter(([_, qty]) => qty > 0)
+                .map(([idx, qty]) => ({
+                    itemIndex: parseInt(idx),
+                    name: link.items[parseInt(idx)].name,
+                    price: link.items[parseInt(idx)].price,
+                    quantity: qty
+                }));
 
             const body: any = {
                 buyerName: buyerInfo.fullName,
@@ -272,7 +338,8 @@ const PublicPaymentPage = () => {
                 currency: link.currency,
                 type: isDonation ? 'Donation' : 'Payment',
                 paymentMethod,
-                network: link.currency === 'USDA' ? 'cardano' : 'polygon'
+                network: link.currency === 'USDA' ? 'cardano' : 'polygon',
+                items: hasItems ? selectedItems : null
             };
 
             // For M-Pesa, attach the phone number
@@ -380,12 +447,18 @@ const PublicPaymentPage = () => {
                                         </div>
                                         <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 leading-tight">{link.name}</h1>
                                         <div className="flex items-center gap-4 pt-1">
-                                            <div className="text-3xl font-black text-[#025864]">
-                                                {link.linkType === 'donation'
-                                                    ? (link.price > 0 ? `${link.currency} ${link.price.toLocaleString()}` : 'Any Amount')
-                                                    : `${link.currency} ${link.price.toLocaleString()}`
+                                            {hasItems ? (
+                                                <div className="text-3xl font-black text-[#025864]">
+                                                    {link.currency} {getTotalAmount().toLocaleString()}
+                                                </div>
+                                            ) : (
+                                                <div className="text-3xl font-black text-[#025864]">
+                                                    {link.linkType === 'donation'
+                                                        ? (link.price > 0 ? `${link.currency} ${link.price.toLocaleString()}` : 'Any Amount')
+                                                        : `${link.currency} ${link.price.toLocaleString()}`
                                                 }
-                                            </div>
+                                                </div>
+                                            )}
                                             <span className={`px-2.5 py-1 text-[11px] font-bold rounded-md flex items-center gap-1 ${link.linkType === 'donation' ? 'bg-pink-50 text-pink-600' : 'bg-slate-100 text-slate-600'}`}>
                                                 {link.linkType === 'donation' ? 'Donation' : link.linkType === 'reusable' ? 'Reusable Link' : 'One-time Link'}
                                             </span>
@@ -426,6 +499,43 @@ const PublicPaymentPage = () => {
                                             {link.minDonation > 0 && (
                                                 <p className="text-[11px] text-pink-600">Minimum donation: {link.currency} {link.minDonation.toLocaleString()}</p>
                                             )}
+                                        </div>
+                                    )}
+
+                                    {/* Multi-Items Display - Receipt List */}
+                                    {hasItems && (
+                                        <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200 space-y-2">
+                                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Items</h4>
+                                            <div className="space-y-2">
+                                                {(link.items as { name: string; price: number; quantity?: number; currency?: string }[]).map((item, idx) => {
+                                                    const qty = item.quantity || 1;
+                                                    return (
+                                                        <div key={idx} className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-slate-100">
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-sm font-medium text-slate-900 truncate">{item.name}</p>
+                                                                <p className="text-[11px] text-slate-500">
+                                                                    {item.currency || link.currency} {(parseFloat(item.price) || 0).toLocaleString()} × {qty}
+                                                                </p>
+                                                            </div>
+                                                            <p className="text-sm font-bold text-slate-900">
+                                                                {link.currency} {((parseFloat(item.price) || 0) * qty).toLocaleString()}
+                                                            </p>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                            {(link.shippingFee > 0) && (
+                                                <div className="flex items-center justify-between pt-2 border-t border-slate-200 px-3">
+                                                    <p className="text-xs text-slate-500">Shipping</p>
+                                                    <p className="text-xs font-medium text-slate-900">{link.currency} {link.shippingFee.toLocaleString()}</p>
+                                                </div>
+                                            )}
+                                            <div className="flex items-center justify-between pt-3 border-t border-slate-200">
+                                                <p className="text-xs text-slate-500">Total</p>
+                                                <div className="text-right">
+                                                    <p className="text-lg font-black text-[#025864]">{link.currency} {(getTotalAmount()).toLocaleString()}</p>
+                                                </div>
+                                            </div>
                                         </div>
                                     )}
                                     {link.linkType !== 'donation' && (
@@ -691,10 +801,12 @@ const PublicPaymentPage = () => {
                                     </div>
 
                                     {!cryptoDepositInfo ? (
-                                        <button onClick={handlePayment} className={`w-full font-bold py-4 rounded-2xl transition-all shadow-lg text-white ${link.linkType === 'donation' ? 'bg-pink-500 hover:bg-pink-600 shadow-pink-200' : 'bg-[#025864] hover:bg-[#014751] shadow-[#025864]/20'} ${step === 3 && !cryptoDepositInfo ? 'md:block hidden' : ''}`}>
+                                        <button onClick={handlePayment} disabled={hasItems && !canProceed()} className={`w-full font-bold py-4 rounded-2xl transition-all shadow-lg text-white ${link.linkType === 'donation' ? 'bg-pink-500 hover:bg-pink-600 shadow-pink-200' : 'bg-[#025864] hover:bg-[#014751] shadow-[#025864]/20'} ${step === 3 && !cryptoDepositInfo ? 'md:block hidden' : ''} disabled:opacity-50 disabled:cursor-not-allowed`}>
                                             {link.linkType === 'donation'
                                                 ? `Donate ${link.currency} ${(parseFloat(donationAmount) || 0).toLocaleString()}`
-                                                : `Pay ${link.currency} ${(link.price + (link.category === 'product' ? (link.shippingFee || 0) : 0)).toLocaleString()} Securely`
+                                                : hasItems
+                                                    ? `Pay ${link.currency} ${getTotalAmount().toLocaleString()} (${getSelectedItemsCount()} item${getSelectedItemsCount() !== 1 ? 's' : ''})`
+                                                    : `Pay ${link.currency} ${getTotalAmount().toLocaleString()} Securely`
                                             }
                                         </button>
                                     ) : (

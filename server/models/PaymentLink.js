@@ -68,6 +68,35 @@ const PaymentLink = {
         return await db('payment_links').where({ id }).first();
     },
 
+    update: async (id, userId, linkData) => {
+        const db = getRipplifyDb();
+        const updateData = {
+            name: linkData.name,
+            description: linkData.description,
+            price: linkData.price,
+            currency: linkData.currency,
+            linkType: linkData.linkType,
+            hasPhotos: linkData.hasPhotos,
+            deliveryDays: linkData.deliveryDays,
+            expiryDate: linkData.expiryDate,
+            expiryLabel: linkData.expiryLabel,
+            buyerName: linkData.buyerName,
+            buyerPhone: linkData.buyerPhone,
+            buyerEmail: linkData.buyerEmail,
+            category: linkData.category,
+            shippingFee: linkData.shippingFee,
+            minDonation: linkData.minDonation,
+            updatedAt: db.fn.now()
+        };
+        
+        if (linkData.itemsJson !== undefined) {
+            updateData.itemsJson = linkData.itemsJson;
+        }
+        
+        await db('payment_links').where({ id, userId }).update(updateData);
+        return await db('payment_links').where({ id }).first();
+    },
+
     incrementClicks: async (id) => {
         const db = getRipplifyDb();
         await db('payment_links').where({ id }).increment('clicks', 1);

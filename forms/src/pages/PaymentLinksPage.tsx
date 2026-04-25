@@ -1,9 +1,16 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import FeatureGuard from "@/components/FeatureGuard";
 import { useToast } from "@/hooks/use-toast";
-import { Copy, ExternalLink, MoreHorizontal, Plus, Search, Filter, X, MousePointerClick, Calendar, Clock, Package, Truck, CheckCircle2, AlertTriangle, DollarSign, Share2, Image as ImageIcon, Eye, QrCode, Download, User, Mail, Phone, Heart, BarChart3 } from "lucide-react";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+    DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { Copy, ExternalLink, MoreHorizontal, Plus, Search, Filter, X, MousePointerClick, Calendar, Clock, Package, Truck, CheckCircle2, AlertTriangle, DollarSign, Share2, Image as ImageIcon, Eye, QrCode, Download, User, Mail, Phone, Heart, BarChart3, Pencil, Trash2 } from "lucide-react";
 import { useAppContext } from "@/contexts/AppContext";
 import type { DealStatus } from "@/contexts/AppContext";
 import { fetchWithAuth } from "@/lib/api";
@@ -16,11 +23,14 @@ const slugify = (text: string) =>
 
 const PaymentLinksPage = () => {
     usePageTitle("Payment Links");
+    const navigate = useNavigate();
     const { links, refreshData } = useAppContext();
     const { toast } = useToast();
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState<"All" | DealStatus>("All");
     const [showModal, setShowModal] = useState(false);
+    const [editMode, setEditMode] = useState(false);
+    const [editLink, setEditLink] = useState<any>(null);
     const [loading, setLoading] = useState(false);
     const [form, setForm] = useState({
         name: "", price: "", currency: "KES", description: "",
@@ -28,6 +38,8 @@ const PaymentLinksPage = () => {
         deliveryDays: "2", buyerName: "", buyerPhone: "", buyerEmail: "", hasPhotos: false,
         category: "product" as "product" | "service", shippingFee: "", minDonation: "",
     });
+    const [items, setItems] = useState<{ name: string; price: string; currency: string; quantity: number; hasPhotos: boolean }[]>([]);
+    const [currentItem, setCurrentItem] = useState({ name: "", price: "", currency: "KES", quantity: 1, hasPhotos: false });
     const [formError, setFormError] = useState("");
     const [showReviewModal, setShowReviewModal] = useState(false);
     const [selectedLink, setSelectedLink] = useState<any>(null);
@@ -45,12 +57,16 @@ const PaymentLinksPage = () => {
             deliveryDays: "2", buyerName: "", buyerPhone: "", buyerEmail: "", hasPhotos: false,
             category: "product", shippingFee: "", minDonation: "",
         });
+        setItems([]);
+        setCurrentItem({ name: "", price: "", currency: "KES", quantity: 1, hasPhotos: false });
         setFormError("");
+        setEditMode(false);
+        setEditLink(null);
     };
 
     const handleCreate = async () => {
         if (!form.name.trim()) { setFormError("Please enter an item name."); return; }
-        if (form.linkType !== "donation" && (!form.price.trim() || isNaN(parseFloat(form.price)))) { setFormError("Please enter a valid amount."); return; }
+        if (form.linkType !== "donation" && items.length === 0 && (!form.price.trim() || isNaN(parseFloat(form.price)))) { setFormError("Please enter a valid amount or add at least one item."); return; }
         if (form.linkType === "reusable" && form.hasExpiry && !form.expiryDate) { setFormError("Please select an expiry date."); return; }
         if (form.linkType !== "donation" && (!form.deliveryDays || parseInt(form.deliveryDays) < 1)) { setFormError("Please set expected delivery time."); return; }
 
@@ -81,7 +97,7 @@ const PaymentLinksPage = () => {
                 price: form.price ? parseFloat(form.price) : 0,
                 currency: form.currency,
                 linkType: form.linkType,
-                hasPhotos: form.hasPhotos,
+                hasPhotos: form.hasPhotos || items.some(i => i.hasPhotos),
                 deliveryDays: form.deliveryDays ? parseInt(form.deliveryDays) : null,
                 expiryDate,
                 expiryLabel,
@@ -91,6 +107,7 @@ const PaymentLinksPage = () => {
                 category: form.category,
                 shippingFee: parseFloat(form.shippingFee) || 0,
                 minDonation: form.linkType === "donation" ? (parseFloat(form.minDonation) || 0) : 0,
+                items: items.length > 0 ? items : null,
             };
 
             const newLink = await fetchWithAuth('/links', {
@@ -116,6 +133,90 @@ const PaymentLinksPage = () => {
         }
     };
 
+    const handleUpdate = async () => {
+        if (!form.name.trim()) { setFormError("Please enter an item name."); return; }
+        if (form.linkType !== "donation" && items.length === 0 && (!form.price.trim() || isNaN(parseFloat(form.price)))) { setFormError("Please enter a valid amount or add at least one item."); return; }
+        if (form.linkType === "reusable" && form.hasExpiry && !form.expiryDate) { setFormError("Please select an expiry date."); return; }
+        if (form.linkType !== "donation" && (!form.deliveryDays || parseInt(form.deliveryDays) < 1)) { setFormError("Please set expected delivery time."); return; }
+
+        setLoading(true);
+        try {
+            let expiryLabel: string | null = null;
+            let expiryDate: string | null = null;
+            if (form.linkType === "one-time") {
+                expiryLabel = "1 hour after creation";
+            } else if (form.linkType === "donation") {
+                expiryLabel = "No expiry";
+            } else if (form.hasExpiry && form.expiryDate) {
+                expiryDate = form.expiryDate;
+                expiryLabel = new Date(form.expiryDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+            } else {
+                expiryLabel = "No expiry";
+            }
+
+            const payload = {
+                name: form.name.trim(),
+                description: form.description.trim(),
+                price: form.price ? parseFloat(form.price) : 0,
+                currency: form.currency,
+                linkType: form.linkType,
+                hasPhotos: form.hasPhotos || items.some(i => i.hasPhotos),
+                deliveryDays: form.deliveryDays ? parseInt(form.deliveryDays) : null,
+                expiryDate,
+                expiryLabel,
+                buyerName: form.buyerName.trim(),
+                buyerPhone: form.buyerPhone.trim(),
+                buyerEmail: form.buyerEmail.trim(),
+                category: form.category,
+                shippingFee: parseFloat(form.shippingFee) || 0,
+                minDonation: form.linkType === "donation" ? (parseFloat(form.minDonation) || 0) : 0,
+                items: items.length > 0 ? items : null,
+            };
+
+            await fetchWithAuth(`/links/${editLink.id}`, {
+                method: 'PUT',
+                body: JSON.stringify(payload)
+            });
+
+            await refreshData();
+            toast({
+                title: "Link Updated!",
+                description: "Payment link has been updated.",
+            });
+
+            resetForm();
+            setShowModal(false);
+            setEditMode(false);
+            setEditLink(null);
+        } catch (error: any) {
+            setFormError(error.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleAddItem = () => {
+        if (!currentItem.name.trim()) { setFormError("Please enter item name."); return; }
+        if (!currentItem.price.trim() || isNaN(parseFloat(currentItem.price))) { setFormError("Please enter a valid price."); return; }
+        if (parseInt(currentItem.quantity) < 1) { setFormError("Quantity must be at least 1."); return; }
+        
+        const newItems = [...items, { 
+            name: currentItem.name.trim(), 
+            price: currentItem.price.trim(),
+            currency: currentItem.currency,
+            quantity: parseInt(currentItem.quantity) || 1,
+            hasPhotos: currentItem.hasPhotos
+        }];
+        setItems(newItems);
+        setCurrentItem({ name: "", price: "", currency: "KES", quantity: 1, hasPhotos: false });
+        setFormError("");
+    };
+
+    const handleRemoveItem = (index: number) => {
+        const newItems = items.filter((_, i) => i !== index);
+        setItems(newItems);
+    };
+
     const handleCopyLink = (url: string) => {
         navigator.clipboard.writeText(url);
         toast({
@@ -135,6 +236,31 @@ const PaymentLinksPage = () => {
         } catch (error: any) {
             toast({ title: "Error", description: error.message, variant: "destructive" });
         }
+    };
+
+    const handleEdit = (link: any) => {
+        setEditLink(link);
+        setForm({
+            name: link.name || "",
+            price: link.price?.toString() || "",
+            currency: link.currency || "KES",
+            description: link.description || "",
+            linkType: link.linkType || "one-time",
+            hasExpiry: !!link.expiryDate,
+            expiryDate: link.expiryDate || "",
+            deliveryDays: link.deliveryDays?.toString() || "2",
+            buyerName: link.buyerName || "",
+            buyerPhone: link.buyerPhone || "",
+            buyerEmail: link.buyerEmail || "",
+            hasPhotos: link.hasPhotos || false,
+            category: link.category || "product",
+            shippingFee: link.shippingFee?.toString() || "",
+            minDonation: link.minDonation?.toString() || "",
+        });
+        setItems(link.itemsJson ? JSON.parse(link.itemsJson) : []);
+        setCurrentItem({ name: "", price: "", currency: "KES", quantity: 1, hasPhotos: false });
+        setEditMode(true);
+        setShowModal(true);
     };
 
     const handleShip = async (id: number) => {
@@ -278,7 +404,10 @@ const PaymentLinksPage = () => {
                                     </td>
                                     <td className="py-3 hidden md:table-cell">
                                         <p className="text-sm font-semibold text-foreground">
-                                            {link.linkType === "reusable" ? `${link.currency} ${link.totalEarnedValue.toLocaleString()}` : `${link.currency} ${link.price}`}
+                                            {link.linkType === "reusable" 
+                                                ? `${link.currency} ${link.totalEarnedValue.toLocaleString()}` 
+                                                : `${link.currency} ${((link.price || 0) + (link.shippingFee || 0)).toLocaleString()}`
+                                            }
                                         </p>
                                         {link.linkType === "reusable" && (
                                             <p className="text-[10px] text-muted-foreground mt-1">{link.paymentCount} payment{link.paymentCount !== 1 ? 's' : ''}</p>
@@ -336,71 +465,56 @@ const PaymentLinksPage = () => {
                                         })()}
                                     </td>
                                     <td className="py-3">
-                                        <div className="flex items-center justify-end gap-1">
-                                            {link.status === "Funds locked" && (
-                                                <button
-                                                    onClick={() => handleShip(link.id)}
-                                                    className="px-2 py-1 bg-[#025864] text-white text-[10px] font-bold rounded-md hover:bg-[#013a42] transition-colors flex items-center gap-1 mr-1"
-                                                    title="Mark as Shipped"
-                                                >
-                                                    <Truck className="w-3 h-3" /> Ship
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <button className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground" title="More actions">
+                                                    <MoreHorizontal className="w-3.5 h-3.5" />
                                                 </button>
-                                            )}
-                                            <Link
-                                                to={`/insights/entity/${link.id}`}
-                                                className="p-1.5 rounded-md hover:bg-muted transition-colors text-[#025864] hover:text-[#014751]"
-                                                title="View Insights"
-                                            >
-                                                <BarChart3 className="w-3.5 h-3.5" />
-                                            </Link>
-                                            <button
-                                                onClick={() => {
-                                                    setSelectedLink(link);
-                                                    setShowReviewModal(true);
-                                                    document.title = link.name;
-                                                }}
-                                                className="p-1.5 rounded-md hover:bg-muted transition-colors text-[#025864] hover:text-[#014751]"
-                                                title="Review Link"
-                                            >
-                                                <Eye className="w-3.5 h-3.5" />
-                                            </button>
-                                            <a
-                                                href={link.url}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                                                title="Visit Link"
-                                            >
-                                                <ExternalLink className="w-3.5 h-3.5" />
-                                            </a>
-                                            <button
-                                                onClick={() => handleCopyLink(link.url)}
-                                                className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                                                title="Copy link"
-                                            >
-                                                <Copy className="w-3.5 h-3.5" />
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    navigator.clipboard.writeText(link.url);
-                                                    toast({
-                                                        title: "Link Shared!",
-                                                        description: "Payment link copied for sharing.",
-                                                    });
-                                                }}
-                                                className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                                                title="Share"
-                                            >
-                                                <Share2 className="w-3.5 h-3.5" />
-                                            </button>
-                                            <button
-                                                onClick={() => handleDeleteLink(link.id)}
-                                                className="p-1.5 rounded-md hover:bg-muted transition-colors text-red-400 hover:text-red-600 hover:bg-red-50"
-                                                title="Delete"
-                                            >
-                                                <MoreHorizontal className="w-3.5 h-3.5" />
-                                            </button>
-                                        </div>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" className="w-48">
+                                                <DropdownMenuItem onClick={() => handleEdit(link)} className="cursor-pointer">
+                                                    <Pencil className="w-3.5 h-3.5 mr-2" />
+                                                    Edit
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => navigate(`/insights/entity/${link.id}`)} className="cursor-pointer">
+                                                    <BarChart3 className="w-3.5 h-3.5 mr-2" />
+                                                    View Insights
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => { setSelectedLink(link); setShowReviewModal(true); document.title = link.name; }} className="cursor-pointer">
+                                                    <Eye className="w-3.5 h-3.5 mr-2" />
+                                                    Review
+                                                </DropdownMenuItem>
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem asChild>
+                                                    <a href={link.url} target="_blank" rel="noopener noreferrer" className="cursor-pointer flex items-center">
+                                                        <ExternalLink className="w-3.5 h-3.5 mr-2" />
+                                                        Visit Link
+                                                    </a>
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => handleCopyLink(link.url)} className="cursor-pointer">
+                                                    <Copy className="w-3.5 h-3.5 mr-2" />
+                                                    Copy Link
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => { navigator.clipboard.writeText(link.url); toast({ title: "Link Shared!", description: "Payment link copied for sharing.", }); }} className="cursor-pointer">
+                                                    <Share2 className="w-3.5 h-3.5 mr-2" />
+                                                    Share
+                                                </DropdownMenuItem>
+                                                {link.status === "Funds locked" && (
+                                                    <>
+                                                        <DropdownMenuSeparator />
+                                                        <DropdownMenuItem onClick={() => handleShip(link.id)} className="cursor-pointer text-emerald-600">
+                                                            <Truck className="w-3.5 h-3.5 mr-2" />
+                                                            Mark as Shipped
+                                                        </DropdownMenuItem>
+                                                    </>
+                                                )}
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem onClick={() => handleDeleteLink(link.id)} className="cursor-pointer text-red-600 focus:text-red-600">
+                                                    <Trash2 className="w-3.5 h-3.5 mr-2" />
+                                                    Delete
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
                                     </td>
                                 </tr>
                             ))}
@@ -412,7 +526,7 @@ const PaymentLinksPage = () => {
                 </div>
             </div>
 
-            {/* Create Deal Modal */}
+{/* Create Deal Modal */}
             {showModal && (
                 <>
                     <div className="fixed inset-0 bg-black/40 z-[60]" onClick={() => { setShowModal(false); resetForm(); }} />
@@ -421,7 +535,7 @@ const PaymentLinksPage = () => {
                             {/* Header */}
                             <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
                                 <div>
-                                    <h2 className="text-lg font-semibold text-foreground">New Deal</h2>
+                                    <h2 className="text-lg font-semibold text-foreground">{editMode ? 'Edit Deal' : 'New Deal'}</h2>
                                     <p className="text-[11px] text-muted-foreground">Create an escrow-protected payment link</p>
                                 </div>
                                 <button onClick={() => { setShowModal(false); resetForm(); }} className="p-1 rounded-lg hover:bg-muted transition-colors text-muted-foreground"><X className="w-5 h-5" /></button>
@@ -430,17 +544,17 @@ const PaymentLinksPage = () => {
                             {/* Body */}
                             <div className="px-5 py-4 space-y-4 overflow-y-auto flex-1">
                                 {formError && <div className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{formError}</div>}
-
+ 
                                 {loading && (
                                     <div className="absolute inset-0 bg-white/50 z-10 flex items-center justify-center">
                                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#025864]"></div>
                                     </div>
                                 )}
 
-                                {/* Item Name */}
+                                {/* Page Name */}
                                 <div>
-                                    <label className="text-sm font-medium text-foreground block mb-1.5">Item Name *</label>
-                                    <input type="text" placeholder='e.g. "iPhone 12 128GB"' className={inputClass} value={form.name} onChange={(e) => setForm(p => ({ ...p, name: e.target.value }))} autoFocus />
+                                    <label className="text-sm font-medium text-foreground block mb-1.5">Page Name *</label>
+                                    <input type="text" placeholder='e.g. "School Fees payment", "SME Store"' className={inputClass} value={form.name} onChange={(e) => setForm(p => ({ ...p, name: e.target.value }))} autoFocus />
                                     {form.name.trim() && <p className="text-[11px] text-[#025864] mt-1 font-medium bg-[#025864]/5 px-2 py-1 rounded-md border border-[#025864]/10 inline-block">🔗 {window.location.origin}/pay/{slugify(form.name)}</p>}
                                 </div>
 
@@ -472,7 +586,96 @@ const PaymentLinksPage = () => {
                                     </div>
                                 </div>
 
-                                {/* Link Type - MOVED HERE */}
+                                {/* Item Input (always visible, no toggle) */}
+                                <div>
+                                    <label className="text-sm font-medium text-foreground block mb-2">Item Details</label>
+                                    <div className="border border-border rounded-xl p-4 space-y-3">
+                                        <div className="grid grid-cols-12 gap-2">
+                                            <div className="col-span-6">
+                                                <label className="text-xs font-medium text-muted-foreground block mb-1">Item Name</label>
+                                                <input type="text" placeholder="Item name" className="w-full px-3 py-2 rounded-lg border border-border text-sm" value={currentItem.name} onChange={(e) => setCurrentItem(p => ({ ...p, name: e.target.value }))} />
+                                            </div>
+                                            <div className="col-span-3">
+                                                <label className="text-xs font-medium text-muted-foreground block mb-1">Unit Price</label>
+                                                <input type="number" placeholder="0" className="w-full px-3 py-2 rounded-lg border border-border text-sm" value={currentItem.price} onChange={(e) => setCurrentItem(p => ({ ...p, price: e.target.value }))} />
+                                            </div>
+                                            <div className="col-span-3">
+                                                <label className="text-xs font-medium text-muted-foreground block mb-1">Qty</label>
+                                                <input type="number" min="1" className="w-full px-3 py-2 rounded-lg border border-border text-sm" value={currentItem.quantity} onChange={(e) => setCurrentItem(p => ({ ...p, quantity: parseInt(e.target.value) || 1 }))} />
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <input type="checkbox" id="itemHasPhotos" checked={currentItem.hasPhotos} onChange={(e) => setCurrentItem(p => ({ ...p, hasPhotos: e.target.checked }))} className="w-4 h-4 rounded border-border text-[#025864]" />
+                                                <label htmlFor="itemHasPhotos" className="text-xs text-muted-foreground">This item has images</label>
+                                            </div>
+                                            <button type="button" onClick={handleAddItem} disabled={!currentItem.name.trim() || !currentItem.price} className="text-xs font-medium text-white px-3 py-1.5 rounded-lg hover:opacity-90 disabled:opacity-40" style={{ backgroundColor: '#025864' }}>Add Item</button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Added Items List */}
+                                {items.length > 0 && (
+                                    <div className="space-y-2">
+                                        <p className="text-xs font-medium text-muted-foreground">Added Items ({items.length})</p>
+                                        <div className="space-y-2 max-h-32 overflow-y-auto">
+                                            {items.map((item, idx) => (
+                                                <div key={idx} className="flex items-center justify-between bg-muted rounded-lg px-3 py-2">
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-sm font-medium text-foreground truncate">{item.name}</p>
+                                                        <p className="text-[11px] text-muted-foreground">{item.currency} {parseFloat(item.price).toLocaleString()} × {item.quantity} {item.hasPhotos && <span className="ml-1 text-[#025864]">📷</span>}</p>
+                                                    </div>
+                                                    <button type="button" onClick={() => handleRemoveItem(idx)} className="text-red-400 hover:text-red-600 p-1">
+                                                        <X className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <div className="flex items-center justify-between pt-2 border-t border-border">
+                                            <p className="text-xs text-muted-foreground">Total (excludes shipping)</p>
+                                            <p className="text-sm font-bold text-foreground">
+                                                {form.currency} {items.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0).toLocaleString()}
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Page Name */}
+                                <div>
+                                    <label className="text-sm font-medium text-foreground block mb-1.5">Page Name *</label>
+                                    <input type="text" placeholder='e.g. "School Fees payment", "SME Store"' className={inputClass} value={form.name} onChange={(e) => setForm(p => ({ ...p, name: e.target.value }))} autoFocus />
+                                    {form.name.trim() && <p className="text-[11px] text-[#025864] mt-1 font-medium bg-[#025864]/5 px-2 py-1 rounded-md border border-[#025864]/10 inline-block">🔗 {window.location.origin}/pay/{slugify(form.name)}</p>}
+                                </div>
+
+                                {/* Category Selection */}
+                                <div>
+                                    <label className="text-sm font-medium text-foreground block mb-2">Deal Category</label>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <button type="button" onClick={() => {
+                                            const newType = form.linkType === 'donation' ? 'one-time' : form.linkType;
+                                            setForm(p => ({ ...p, category: "product", linkType: newType }));
+                                        }}
+                                            className={`p-3 rounded-xl border-2 text-left transition-colors ${form.category === "product" ? "border-[#025864]" : "border-border hover:border-gray-300"}`}
+                                            style={form.category === "product" ? { backgroundColor: 'rgba(2,88,100,0.04)' } : undefined}>
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <Package className="w-4 h-4" style={{ color: form.category === "product" ? '#025864' : '#9ca3af' }} />
+                                                <span className="text-sm font-medium text-foreground">Physical Item</span>
+                                            </div>
+                                            <p className="text-[11px] text-muted-foreground">Tangible goods needing delivery</p>
+                                        </button>
+                                        <button type="button" onClick={() => setForm(p => ({ ...p, category: "service" }))}
+                                            className={`p-3 rounded-xl border-2 text-left transition-colors ${form.category === "service" ? "border-[#025864]" : "border-border hover:border-gray-300"}`}
+                                            style={form.category === "service" ? { backgroundColor: 'rgba(2,88,100,0.04)' } : undefined}>
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <MousePointerClick className="w-4 h-4" style={{ color: form.category === "service" ? '#025864' : '#9ca3af' }} />
+                                                <span className="text-sm font-medium text-foreground">Online Service</span>
+                                            </div>
+                                            <p className="text-[11px] text-muted-foreground">Events, consulting, or digital work</p>
+                                        </button>
+                                    </div>
+</div>
+
+                                {/* Link Type */}
                                 <div>
                                     <label className="text-sm font-medium text-foreground block mb-2">Link Type</label>
                                     <div className="grid grid-cols-3 gap-3">
@@ -483,7 +686,7 @@ const PaymentLinksPage = () => {
                                                 <Clock className="w-4 h-4" style={{ color: form.linkType === "one-time" ? '#025864' : '#9ca3af' }} />
                                                 <span className="text-sm font-medium text-foreground">One-time</span>
                                             </div>
-                                            <p className="text-[11px] text-muted-foreground">Expires in 1 hour or after one payment</p>
+                                            <p className="text-[11px] text-muted-foreground">Expires after payment</p>
                                         </button>
                                         <button type="button" onClick={() => setForm(p => ({ ...p, linkType: "reusable" }))}
                                             className={`p-3 rounded-xl border-2 text-left transition-colors ${form.linkType === "reusable" ? "border-[#025864]" : "border-border hover:border-gray-300"}`}
@@ -494,7 +697,6 @@ const PaymentLinksPage = () => {
                                             </div>
                                             <p className="text-[11px] text-muted-foreground">Multiple uses</p>
                                         </button>
-                                        {/* Donation - Only show for service/digital */}
                                         {form.category !== "product" && (
                                             <button
                                                 type="button"
@@ -505,41 +707,26 @@ const PaymentLinksPage = () => {
                                                     <Heart className="w-4 h-4" style={{ color: form.linkType === "donation" ? '#ec4899' : '#9ca3af' }} />
                                                     <span className="text-sm font-medium text-foreground">Donation</span>
                                                 </div>
-                                                <p className="text-[11px] text-muted-foreground">Accept flexible donations</p>
+                                                <p className="text-[11px] text-muted-foreground">Flexible amount</p>
                                             </button>
                                         )}
                                     </div>
                                 </div>
 
-                                {/* Amount + Currency + Shipping (if product) */}
-                                <div className="space-y-4">
-                                    <div className="grid grid-cols-3 gap-3">
-                                        <div className="col-span-2">
-                                            <label className="text-sm font-medium text-foreground block mb-1.5">{form.linkType === "donation" ? "Suggested Amount" : form.category === "product" ? "Item Price *" : "Service Fee *"}</label>
-                                            <input type="number" min="0" step="1" placeholder={form.linkType === "donation" ? "0 (optional)" : "45,000"} className={inputClass} value={form.price} onChange={(e) => setForm(p => ({ ...p, price: e.target.value }))} />
+                                {/* Shipping Fee (for products) */}
+                                {form.category === "product" && (
+                                    <div>
+                                        <label className="text-sm font-medium text-foreground block mb-1.5 flex items-center justify-between">
+                                            <span>Shipping / Delivery Fee</span>
+                                            <span className="text-[10px] text-muted-foreground font-normal">Optional</span>
+                                        </label>
+                                        <div className="relative">
+                                            <Truck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                            <input type="number" min="0" step="1" placeholder="500" className={inputClass + " pl-9"} value={form.shippingFee} onChange={(e) => setForm(p => ({ ...p, shippingFee: e.target.value }))} />
                                         </div>
-                                        <div>
-                                            <label className="text-sm font-medium text-foreground block mb-1.5">Currency</label>
-                                            <select className={inputClass} value={form.currency} onChange={(e) => setForm(p => ({ ...p, currency: e.target.value }))}>
-                                                {currencies.map(c => <option key={c} value={c}>{c}</option>)}
-                                            </select>
-                                        </div>
+                                        <p className="text-[10px] text-muted-foreground mt-1 px-1">This fee will be added to the total at checkout.</p>
                                     </div>
-
-                                    {form.category === "product" && (
-                                        <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                                            <label className="text-sm font-medium text-foreground block mb-1.5 flex items-center justify-between">
-                                                <span>Shipping / Delivery Fee</span>
-                                                <span className="text-[10px] text-muted-foreground font-normal">Optional</span>
-                                            </label>
-                                            <div className="relative">
-                                                <Truck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                                <input type="number" min="0" step="1" placeholder="500" className={inputClass + " pl-9"} value={form.shippingFee} onChange={(e) => setForm(p => ({ ...p, shippingFee: e.target.value }))} />
-                                            </div>
-                                            <p className="text-[10px] text-muted-foreground mt-1 px-1">This fee will be added to the item price at checkout.</p>
-                                        </div>
-                                    )}
-                                </div>
+                                )}
 
                                 {/* Description */}
                                 <div>
@@ -547,25 +734,27 @@ const PaymentLinksPage = () => {
                                     <textarea placeholder="Condition, what's included, delivery details..." rows={2} className={inputClass + " resize-none"} value={form.description} onChange={(e) => setForm(p => ({ ...p, description: e.target.value }))} />
                                 </div>
 
-                                {/* Expected Delivery */}
+                                {/* Expected Delivery Time */}
                                 <div>
                                     <label className="text-sm font-medium text-foreground block mb-1.5">Expected Delivery Time *</label>
                                     <div className="flex items-center gap-2">
-                                        <input type="number" min="1" max="30" className={inputClass + " w-20"} value={form.deliveryDays} onChange={(e) => setForm(p => ({ ...p, deliveryDays: e.target.value }))} />
+                                        <input type="number" min="1" max="365" className={inputClass + " w-20"} value={form.deliveryDays} onChange={(e) => setForm(p => ({ ...p, deliveryDays: e.target.value }))} />
                                         <span className="text-sm text-muted-foreground">days</span>
                                     </div>
                                 </div>
 
                                 {/* Photos Toggle */}
-                                <div className="flex items-center justify-between p-3 rounded-xl bg-muted/30">
-                                    <div className="flex items-center gap-2">
-                                        <ImageIcon className="w-4 h-4 text-muted-foreground" />
-                                        <span className="text-sm text-foreground">Add photos of the item</span>
+                                {(form.hasPhotos || items.some(i => i.hasPhotos)) && (
+                                    <div className="flex items-center justify-between p-3 rounded-xl bg-muted/30">
+                                        <div className="flex items-center gap-2">
+                                            <ImageIcon className="w-4 h-4 text-muted-foreground" />
+                                            <span className="text-sm text-foreground">Add item photos</span>
+                                        </div>
+                                        <button type="button" onClick={() => setForm(p => ({ ...p, hasPhotos: !p.hasPhotos }))} className={`relative w-10 h-5 rounded-full transition-colors ${form.hasPhotos ? '' : 'bg-gray-200'}`} style={form.hasPhotos ? { backgroundColor: '#00D47E' } : undefined}>
+                                            <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${form.hasPhotos ? 'left-[21px]' : 'left-0.5'}`} />
+                                        </button>
                                     </div>
-                                    <button type="button" onClick={() => setForm(p => ({ ...p, hasPhotos: !p.hasPhotos }))} className={`relative w-10 h-5 rounded-full transition-colors ${form.hasPhotos ? '' : 'bg-gray-200'}`} style={form.hasPhotos ? { backgroundColor: '#00D47E' } : undefined}>
-                                        <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${form.hasPhotos ? 'left-[21px]' : 'left-0.5'}`} />
-                                    </button>
-                                </div>
+                                )}
 
                                 {/* One-time & Donation info notices */}
                                 {form.linkType === "one-time" && (
@@ -661,10 +850,10 @@ const PaymentLinksPage = () => {
 
                             {/* Footer */}
                             <div className="px-5 py-4 border-t border-border flex items-center justify-end gap-3 shrink-0">
-                                <button onClick={() => { setShowModal(false); resetForm(); }} className="text-sm px-4 py-2 rounded-lg border border-border text-foreground hover:bg-muted transition-colors">Cancel</button>
-                                <button onClick={handleCreate} disabled={loading} className="flex items-center gap-2 text-sm font-medium text-white px-5 py-2 rounded-lg hover:opacity-90 transition-colors" style={{ backgroundColor: '#025864' }}>
+                                <button onClick={() => { setShowModal(false); resetForm(); setEditMode(false); setEditLink(null); }} className="text-sm px-4 py-2 rounded-lg border border-border text-foreground hover:bg-muted transition-colors">Cancel</button>
+                                <button onClick={editMode ? handleUpdate : handleCreate} disabled={loading} className="flex items-center gap-2 text-sm font-medium text-white px-5 py-2 rounded-lg hover:opacity-90 transition-colors" style={{ backgroundColor: '#025864' }}>
                                     <Plus className="w-4 h-4" />
-                                    {loading ? "Creating..." : "Create & Copy Link"}
+                                    {loading ? (editMode ? "Updating..." : "Creating...") : (editMode ? "Update Link" : "Create & Copy Link")}
                                 </button>
                             </div>
                         </div>

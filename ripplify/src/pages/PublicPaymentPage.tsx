@@ -30,6 +30,17 @@ const PublicPaymentPage = () => {
     const [cryptoDepositInfo, setCryptoDepositInfo] = useState<any>(null);
     const [cartItems, setCartItems] = useState<{ [key: number]: number }>({});
 
+    // Default all items to quantity 1 when loaded
+    useEffect(() => {
+        if (link?.items && Array.isArray(link.items) && link.items.length > 0) {
+            const defaultQtys: { [key: number]: number } = {};
+            link.items.forEach((_: any, idx: number) => {
+                defaultQtys[idx] = 1;
+            });
+            setCartItems(defaultQtys);
+        }
+    }, [link?.items]);
+
     const [verifyingPayment, setVerifyingPayment] = useState(false);
 
     // IntaSend state
@@ -229,14 +240,21 @@ const PublicPaymentPage = () => {
     const maxItems = link.maxItems || 100;
     const allowMultiQty = link.allowMultiQuantity || false;
 
-    const getSelectedItemsCount = () => Object.values(cartItems).reduce((sum, qty) => sum + qty, 0);
+    const getSelectedItemsCount = () => {
+        if (hasItems) {
+            return (link.items as { name: string; price: number; quantity?: number; currency?: string }[])
+                .reduce((sum, item) => sum + (item.quantity || 1), 0);
+        }
+        return 0;
+    };
     const getTotalAmount = () => {
         if (hasItems) {
-            return Object.entries(cartItems).reduce((total, [idx, qty]) => {
-                const item = link.items[parseInt(idx)];
-                const price = parseFloat(item?.price) || 0;
-                return total + (price * qty);
-            }, 0) + (link.category === 'product' ? (parseFloat(link.shippingFee) || 0) : 0);
+            return (link.items as { name: string; price: number; quantity?: number; currency?: string }[])
+                .reduce((total, item) => {
+                    const price = parseFloat(item.price) || 0;
+                    const qty = item.quantity || 1;
+                    return total + (price * qty);
+                }, 0) + (link.category === 'product' ? (parseFloat(link.shippingFee) || 0) : 0);
         }
         return (parseFloat(link.price) || 0) + (link.category === 'product' ? (parseFloat(link.shippingFee) || 0) : 0);
     };
@@ -484,45 +502,37 @@ const PublicPaymentPage = () => {
                                         </div>
                                     )}
 
-                                    {/* Multi-Items Selection */}
+                                    {/* Multi-Items Display - Receipt List */}
                                     {hasItems && (
-                                        <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200 space-y-3">
-                                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Select Items ({minItems} - {maxItems} required)</h4>
-                                            <div className="space-y-2 max-h-48 overflow-y-auto">
-                                                {(link.items as { name: string; price: number; quantity?: number }[]).map((item, idx) => (
-                                                    <div key={idx} className="flex items-center justify-between bg-white rounded-xl px-4 py-3 border border-slate-200">
-                                                        <div className="flex-1 min-w-0">
-                                                            <p className="text-sm font-bold text-slate-900 truncate">{item.name}</p>
-                                                            <p className="text-xs text-slate-500">{item.currency} {(parseFloat(item.price) || 0).toLocaleString()}</p>
+                                        <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200 space-y-2">
+                                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Items</h4>
+                                            <div className="space-y-2">
+                                                {(link.items as { name: string; price: number; quantity?: number; currency?: string }[]).map((item, idx) => {
+                                                    const qty = item.quantity || 1;
+                                                    return (
+                                                        <div key={idx} className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-slate-100">
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-sm font-medium text-slate-900 truncate">{item.name}</p>
+                                                                <p className="text-[11px] text-slate-500">
+                                                                    {item.currency || link.currency} {(parseFloat(item.price) || 0).toLocaleString()} × {qty}
+                                                                </p>
+                                                            </div>
+                                                            <p className="text-sm font-bold text-slate-900">
+                                                                {link.currency} {((parseFloat(item.price) || 0) * qty).toLocaleString()}
+                                                            </p>
                                                         </div>
-                                                        <div className="flex items-center gap-3">
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => updateCartItem(idx, -1)}
-                                                                disabled={(cartItems[idx] || 0) === 0}
-                                                                className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 font-bold disabled:opacity-40 hover:bg-slate-200 transition-colors"
-                                                            >
-                                                                -
-                                                            </button>
-                                                            <span className="w-6 text-center font-bold text-slate-900">{cartItems[idx] || 0}</span>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => updateCartItem(idx, 1)}
-                                                                disabled={allowMultiQty ? (cartItems[idx] || 0) >= maxItems : (cartItems[idx] || 0) >= 1}
-                                                                className="w-8 h-8 rounded-full bg-[#025864] text-white font-bold disabled:opacity-40 hover:bg-[#014751] transition-colors"
-                                                            >
-                                                                +
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                ))}
+                                                    );
+                                                })}
                                             </div>
-                                            <div className="flex items-center justify-between pt-3 border-t border-slate-200">
-                                                <div>
-                                                    <p className="text-xs text-slate-500">Selected: <span className="font-bold text-slate-700">{getSelectedItemsCount()}</span> / {minItems}-{maxItems}</p>
+                                            {(link.shippingFee > 0) && (
+                                                <div className="flex items-center justify-between pt-2 border-t border-slate-200 px-3">
+                                                    <p className="text-xs text-slate-500">Shipping</p>
+                                                    <p className="text-xs font-medium text-slate-900">{link.currency} {link.shippingFee.toLocaleString()}</p>
                                                 </div>
+                                            )}
+                                            <div className="flex items-center justify-between pt-3 border-t border-slate-200">
+                                                <p className="text-xs text-slate-500">Total</p>
                                                 <div className="text-right">
-                                                    <p className="text-sm text-slate-500">Subtotal</p>
                                                     <p className="text-lg font-black text-[#025864]">{link.currency} {(getTotalAmount()).toLocaleString()}</p>
                                                 </div>
                                             </div>
