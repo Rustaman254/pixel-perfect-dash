@@ -7,6 +7,8 @@ import crypto from 'crypto';
 import emailService from '../services/emailService.js';
 import smsService from '../services/smsService.js';
 
+const provider = getPaymentProvider();
+
 /**
  * Normalize Kenyan phone numbers to 254XXXXXXXXX format (no + prefix)
  */

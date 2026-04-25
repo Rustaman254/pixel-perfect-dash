@@ -1,4 +1,4 @@
-import IntaSendProvider from './IntaSendProvider.js';
+import IntaSendProvider from '../../services/ripplify-service/utils/IntaSendProvider.js';
 
 const getPaymentProvider = () => {
     const provider = process.env.PAYMENT_PROVIDER || 'intasend';
