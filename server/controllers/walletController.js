@@ -89,20 +89,108 @@ export const getWalletStats = async (req, res) => {
     }
 };
 
+export const createWallet = async (req, res) => {
+    try {
+        const { currency, network } = req.body;
+        const currency_code = currency || req.body.currency_code || 'KES';
+        const finalNetwork = network || req.body.network || 'fiat';
+        
+        // Create the wallet in local database (IntaSend provides default wallet automatically)
+        const wallet = await walletService.getBalance(req.user.id, currency_code, finalNetwork);
+        
+        res.status(201).json({ 
+            message: "Wallet created successfully", 
+            wallet: {
+                id: wallet.id,
+                currency_code: wallet.currency_code,
+                network: wallet.network,
+                balance: wallet.balance
+            }
+        });
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+
 export const depositFunds = async (req, res) => {
     try {
-        const { currency, network, amount, paymentMethod } = req.body;
+        console.log('[DEPOSIT] Request body:', JSON.stringify(req.body));
+        const { currency, network, amount, paymentMethod, phone, method } = req.body;
+        
+        // Handle legacy field names from frontend
+        const finalAmount = amount || req.body.amount || req.body.value;
+        const finalCurrency = currency || req.body.currency_code || 'KES';
+        const finalNetwork = network || req.body.network || 'fiat';
+        const finalPaymentMethod = paymentMethod || method || req.body.paymentMethod || 'checkout';
+        console.log('[DEPOSIT] finalAmount:', finalAmount, 'finalCurrency:', finalCurrency, 'finalPaymentMethod:', finalPaymentMethod);
+        
+        if (!finalAmount || parseFloat(finalAmount) <= 0) {
+            console.log('[DEPOSIT] Invalid amount, finalAmount:', finalAmount);
+            return res.status(400).json({ message: "Amount is required and must be greater than 0" });
+        }
         
         // For crypto, we return the deposit address instead
-        if (paymentMethod === 'crypto') {
-            const depositInfo = await cryptoService.getDepositAddress(req.user.id, network);
+        if (finalPaymentMethod === 'crypto') {
+            const depositInfo = await cryptoService.getDepositAddress(req.user.id, finalNetwork);
             return res.json({ message: "Deposit address generated", depositInfo });
         }
         
-        // For fiat (mock simulating instant deposit for testing)
-        // In reality, this would trigger an M-Pesa STK push or Card flow and deposit happens via webhook
-        const txId = await walletService.deposit(req.user.id, currency, network || 'fiat', parseFloat(amount), null, paymentMethod || 'fiat');
-        res.status(200).json({ message: "Deposit successful", txId });
+        // For fiat - use IntaSend checkout or STK push
+        const provider = getPaymentProvider();
+        
+        if (finalPaymentMethod === 'mpesa') {
+            // STK Push for M-Pesa
+            try {
+                const result = await provider.mpesaStkPush({
+                    phone: phone || req.user.phone,
+                    email: req.user.email,
+                    amount: finalAmount,
+                    firstName: req.user.firstName,
+                    lastName: req.user.lastName,
+                    apiRef: `deposit_${Date.now()}`,
+                    host: process.env.FRONTEND_URL || process.env.BASE_URL
+                });
+                return res.json({ 
+                    message: "STK push initiated", 
+                    data: result,
+                    invoiceId: result?.invoice?.id
+                });
+            } catch (stkError) {
+                console.log('[DEPOSIT] STK Push failed, falling back to checkout:', stkError.message);
+                // Fall through to checkout
+            }
+        }
+        
+        // Default to checkout (card/mobile money via redirect)
+        try {
+            const result = await provider.checkoutCharge({
+                email: req.user.email,
+                firstName: req.user.firstName,
+                lastName: req.user.lastName,
+                phone: phone || req.user.phone,
+                amount: finalAmount,
+                currency: finalCurrency,
+                apiRef: `deposit_${Date.now()}`,
+                redirectUrl: `${process.env.FRONTEND_URL}/pay/callback`,
+                method: finalPaymentMethod === 'card' ? 'CARD-PAYMENT' : (finalPaymentMethod === 'mpesa' ? 'M-PESA' : undefined)
+            });
+            
+            if (result?.data?.url) {
+                return res.json({ 
+                    message: "Payment link created", 
+                    checkoutUrl: result.data.url,
+                    data: result
+                });
+            }
+            
+            return res.json({ 
+                message: "Checkout initiated", 
+                data: result
+            });
+        } catch (checkoutError) {
+            console.log('[DEPOSIT] Checkout also failed:', checkoutError.message);
+            throw checkoutError;
+        }
     } catch (error) {
         res.status(400).json({ message: error.message });
     }

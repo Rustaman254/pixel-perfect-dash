@@ -265,6 +265,7 @@ const checkPayoutStatus = async (trackingId) => {
 
 /**
  * Get all wallets from IntaSend
+ * Note: Wallets API requires specific permissions. May return 403 if not enabled.
  */
 const getWallets = async () => {
     try {
@@ -275,8 +276,10 @@ const getWallets = async () => {
         console.log('IntaSend Wallets Response:', JSON.stringify(response, null, 2));
         return response;
     } catch (error) {
-        console.error('IntaSend Get Wallets Error:', error);
-        throw new Error(error?.message || 'Get wallets failed');
+        console.error('IntaSend Get Wallets Error:', error?.response?.data || error?.message || error);
+        // Return empty array instead of throwing - this allows the app to continue with local wallets
+        console.warn('IntaSend wallets unavailable, falling back to local wallets only');
+        return [];
     }
 };
 

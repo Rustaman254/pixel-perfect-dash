@@ -1,6 +1,7 @@
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Copy, Plus, Send, Wallet, Download, RefreshCw, ArrowUpRight, ArrowDownLeft, Clock } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAppContext, Wallet as WalletType } from "@/contexts/AppContext";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -11,7 +12,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 
 const WalletsPage = () => {
-    const { wallets, refreshData } = useAppContext();
+    const navigate = useNavigate();
+    const { wallets, refreshData, userProfile } = useAppContext();
     const { toast } = useToast();
     const [isDepositOpen, setIsDepositOpen] = useState(false);
     const [isTransferOpen, setIsTransferOpen] = useState(false);
@@ -100,22 +102,15 @@ const WalletsPage = () => {
 
     const handleDeposit = async () => {
         try {
-            const isCrypto = ['USDC', 'USDA'].includes(depositCurrency);
+            const isCrypto = depositCurrency !== 'KES';
             const network = depositCurrency === 'USDA' ? 'cardano' : (isCrypto ? 'polygon' : 'fiat');
             
-            // For KES, we use public-transaction endpoint which is more robust
-            if (!isCrypto) {
-                // Should redirect to a payment link flow or use stk push
-                toast({ title: "Deposit", description: "Please use a payment link to top up your wallet." });
-                setIsDepositOpen(false);
-                return;
-            }
-
             const reqData = {
                 amount: depositAmount || "0",
                 currency: depositCurrency,
                 network,
-                paymentMethod: 'crypto'
+                paymentMethod: isCrypto ? 'crypto' : 'mpesa',
+                phone: userProfile?.phone
             };
             
             const res = await fetchWithAuth('/wallets/deposit', {
@@ -123,7 +118,32 @@ const WalletsPage = () => {
                 body: JSON.stringify(reqData)
             });
             
-            setDepositResponse(res.depositInfo || res.wallet);
+            // Handle M-Pesa STK push response - may need user to enter PIN on their phone
+            if (res.invoiceId || res.data?.invoice?.id) {
+                toast({ 
+                    title: "Payment Initiated", 
+                    description: "Please check your phone and enter your M-Pesa PIN to complete the deposit." 
+                });
+                setIsDepositOpen(false);
+                setDepositAmount("");
+                refreshData();
+                return;
+            }
+            
+            // Handle checkout redirect (card payments)
+            if (res.checkoutUrl) {
+                window.location.href = res.checkoutUrl;
+                return;
+            }
+            
+            // Handle crypto address
+            if (res.depositInfo) {
+                setDepositResponse(res.depositInfo);
+            } else if (res.message) {
+                toast({ title: "Success", description: res.message });
+                setIsDepositOpen(false);
+                refreshData();
+            }
         } catch (error: any) {
             toast({ title: "Deposit Error", description: error.message, variant: "destructive" });
         }
@@ -178,17 +198,13 @@ const WalletsPage = () => {
                                                 <option value="USDA">USDA (Cardano)</option>
                                             </select>
                                         </div>
-                                        {depositCurrency === 'KES' ? (
-                                            <div className="bg-emerald-50 p-4 rounded-lg text-emerald-800 text-sm">
-                                                To deposit KES, create a payment link and pay it. Funds will reflect instantly in your KES wallet.
-                                            </div>
-                                        ) : (
-                                            <div>
-                                                <label className="text-sm font-medium mb-1 block text-slate-700">Amount</label>
-                                                <Input type="number" value={depositAmount} onChange={e => setDepositAmount(e.target.value)} placeholder="0.00" />
-                                            </div>
-                                        )}
-                                        <Button className="w-full" onClick={handleDeposit} disabled={depositCurrency === 'KES'}>Proceed</Button>
+                                        <div>
+                                            <label className="text-sm font-medium mb-1 block text-slate-700">Amount</label>
+                                            <Input type="number" value={depositAmount} onChange={e => setDepositAmount(e.target.value)} placeholder="0.00" />
+                                        </div>
+                                        <Button className="w-full" onClick={handleDeposit} disabled={!depositAmount || parseFloat(depositAmount) <= 0}>
+                                            {depositCurrency === 'KES' ? 'Pay with M-Pesa' : 'Proceed'}
+                                        </Button>
                                     </>
                                 ) : (
                                     <div className="text-center space-y-4">
@@ -211,38 +227,9 @@ const WalletsPage = () => {
                         </DialogContent>
                     </Dialog>
 
-                    <Dialog open={isTransferOpen} onOpenChange={setIsTransferOpen}>
-                        <DialogTrigger asChild>
-                            <Button variant="outline" className="flex items-center gap-2 shadow-sm">
-                                <Send className="w-4 h-4" /> Transfer
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>Internal Transfer</DialogTitle>
-                                <DialogDescription>Send funds to another RippliFy user instantly.</DialogDescription>
-                            </DialogHeader>
-                            <div className="space-y-4 py-4">
-                                <div>
-                                    <label className="text-sm font-medium mb-1 block">Receiver ID / Email</label>
-                                    <Input value={transferReceiverId} onChange={e => setTransferReceiverId(e.target.value)} placeholder="User ID or email" />
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="text-sm font-medium mb-1 block">Currency</label>
-                                        <select className="w-full rounded-md border p-2 text-sm" value={transferCurrency} onChange={e => setTransferCurrency(e.target.value)}>
-                                            {wallets.map(w => <option key={w.id} value={w.currency_code}>{w.currency_code}</option>)}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="text-sm font-medium mb-1 block">Amount</label>
-                                        <Input type="number" value={transferAmount} onChange={e => setTransferAmount(e.target.value)} placeholder="0.00" />
-                                    </div>
-                                </div>
-                                <Button className="w-full" onClick={handleTransfer}>Confirm Transfer</Button>
-                            </div>
-                        </DialogContent>
-                    </Dialog>
+                    <Button variant="outline" className="flex items-center gap-2 shadow-sm" onClick={() => navigate('/transfers')}>
+                            <Send className="w-4 h-4" /> Transfer
+                        </Button>
                     
                     {!wallets.some(w => w.currency_code === 'KES') && (
                         <Button variant="secondary" onClick={() => handleCreateWallet('KES')} className="flex items-center gap-2">
